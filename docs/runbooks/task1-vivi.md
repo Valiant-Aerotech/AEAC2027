@@ -16,6 +16,6 @@ python missions\task1_vivi_survey.py --team "Valiant Aerotech" --camera-offset-c
 
 `Task_1_<team>_targets.txt` - upload before flight window ends.
 
-## Status
+## CONOPS
 
-Task 1 code migration from old-codebase is Track B1 (not yet complete).
+Report filename follows `config/conops.yaml` (`Task_1_{team}_targets.txt`). See [docs/conops.md](../conops.md).

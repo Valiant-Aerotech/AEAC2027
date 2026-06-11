@@ -33,3 +33,31 @@ def send_statustext(master: mavutil.mavfile, message: str, prefix: str = "") -> 
     """Send a HUD message (max 50 chars)."""
     text = f"{prefix}{message}"[:50].encode()
     master.mav.statustext_send(mavutil.mavlink.MAV_SEVERITY_INFO, text)
+
+
+def request_sys_status_stream(master: mavutil.mavfile, rate_hz: int = 2) -> None:
+    """Ask the FC to stream SYS_STATUS (battery_remaining)."""
+    master.mav.request_data_stream_send(
+        master.target_system,
+        master.target_component,
+        mavutil.mavlink.MAV_DATA_STREAM_EXTENDED_STATUS,
+        rate_hz,
+        1,
+    )
+
+
+def send_rtl(master: mavutil.mavfile) -> None:
+    """Command return-to-launch via MAV_CMD_NAV_RETURN_TO_LAUNCH."""
+    master.mav.command_long_send(
+        master.target_system,
+        master.target_component,
+        mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    )

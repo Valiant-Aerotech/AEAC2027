@@ -61,15 +61,17 @@ Add `--help` to any mission for options.
 
 **MAVLink heartbeat timeout** - open Mission Planner, confirm telemetry link, or use `--connection udpin:127.0.0.1:14550`
 
-## Bench-test CV and Metric Recon (no drone required)
+## Bench-test (no drone required)
 
 ```powershell
 python tools\cv_bench_test.py --camera 0
 python tools\metric_bench_test.py --camera 0
+python tools\safety_bench_test.py
+python tools\conops_check.py
 python -m valiant.autonomy.cv.training.generate_targets --count 20
 ```
 
-Tune purple/blue thresholds in `config/vion.yaml` under `cv.hsv_dry` and `cv.hsv_shot`. For distance tuning see `metric_recon` (FOV estimate) and `auto_nav` (approach speed, side clearance).
+Tune purple/blue thresholds in `config/vion.yaml` under `cv.hsv_dry` and `cv.hsv_shot`. For distance tuning see `metric_recon` (FOV estimate) and `auto_nav` (approach speed, side clearance). Safety abort thresholds live under `safety` in the same file - see [docs/runbooks/task2-vion-auto.md](docs/runbooks/task2-vion-auto.md).
 
 ## Next steps for new members
 

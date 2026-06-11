@@ -11,6 +11,11 @@ mavlink:
 camera:
   scrcpy_window_title: ExtinguisherCam
   phone_ip: null                        # set for wireless adb, e.g. "192.168.1.100:5555"
+  max_fps: 30                           # lower for less CPU, higher for smoother CV
+  max_size: 1280                        # scrcpy max dimension (lower = less latency)
+  video_bit_rate_mbps: 8
+  no_audio: true
+  min_grab_interval_s: 0.0              # optional throttle on mss window grabs
   hfov_deg: 66.0
   vfov_deg: 52.0
 
@@ -58,3 +63,5 @@ spray:
 safety:
   min_battery_pct: 20
   geofence_abort: true
+  mission_timeout_s: 600                # 0 disables global timeout
+  rtl_on_abort: false                   # set true to command RTL on battery/geofence abort

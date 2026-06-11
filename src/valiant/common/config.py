@@ -7,6 +7,8 @@ from typing import Any
 
 import yaml
 
+from valiant.autonomy.conops import apply_conops_to_runtime
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _CONFIG_DIR = _REPO_ROOT / "config"
 
@@ -26,10 +28,17 @@ def load_config(drone: str) -> dict[str, Any]:
     defaults_path = _CONFIG_DIR / "defaults.yaml"
     drone_path = _CONFIG_DIR / f"{drone}.yaml"
 
+    conops_path = _CONFIG_DIR / "conops.yaml"
+
     cfg: dict[str, Any] = {}
     if defaults_path.is_file():
         with open(defaults_path, encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
+
+    if conops_path.is_file():
+        with open(conops_path, encoding="utf-8") as f:
+            conops_cfg = yaml.safe_load(f) or {}
+        cfg = _deep_merge(cfg, conops_cfg)
 
     if drone_path.is_file():
         with open(drone_path, encoding="utf-8") as f:
@@ -37,7 +46,7 @@ def load_config(drone: str) -> dict[str, Any]:
         cfg = _deep_merge(cfg, drone_cfg)
 
     cfg["drone"] = drone
-    return cfg
+    return apply_conops_to_runtime(cfg)
 
 
 def _deep_merge(base: dict, override: dict) -> dict:

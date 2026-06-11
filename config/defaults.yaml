@@ -5,6 +5,9 @@ team:
   photo_save_dir: task2_photos
 
 upload:
-  method: gdrive_service_account
+  method: local_copy                    # local_copy | gdrive_service_account
   config_path: config/gdrive_credentials.json
+  folder_id: ""                         # Google Drive folder ID (required for gdrive)
   timeout_s: 15
+  retry_count: 3
+  retry_delay_s: 2.0

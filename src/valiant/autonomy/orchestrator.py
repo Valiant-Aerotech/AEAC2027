@@ -16,20 +16,31 @@ from valiant.autonomy.cv.exceptions import BadFrameError, CVError, LowConfidence
 from valiant.autonomy.cv.ui import draw_overlay
 from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
 from valiant.autonomy.packets import CVPacket, MetricPacket
+from valiant.autonomy.conops import (
+    has_shot_confirmation,
+    max_targets_for_window,
+    require_shot_confirmation,
+    shot_confirm_timeout_s,
+    task2_photo_filename,
+    validate_conops_config,
+)
+from valiant.autonomy.safety.monitor import SafetyAbort, SafetyMonitor
 from valiant.autonomy.spray.actuation import WaterTrigger
 from valiant.autonomy.spray.aim import is_aimed
 from valiant.autonomy.upload.drive import DriveUploader
 from valiant.common.camera import ScrcpyCamera
 from valiant.common.config import load_config
-from valiant.common.mavlink import connect, send_statustext
+from valiant.common.mavlink import connect, request_sys_status_stream, send_rtl, send_statustext
 
 STATE_SEARCHING = "SEARCHING"
 STATE_APPROACHING = "APPROACHING"
 STATE_AIMING = "AIMING"
 STATE_FIRING = "FIRING"
+STATE_VERIFYING = "VERIFYING"
 STATE_CAPTURING = "CAPTURING"
 STATE_UPLOADING = "UPLOADING"
 STATE_COMPLETE = "COMPLETE"
+STATE_ABORTED = "ABORTED"
 
 
 class AutoExtinguisher:
@@ -44,6 +55,7 @@ class AutoExtinguisher:
         sim_mode: bool = False,
         headless: bool = False,
         phone_ip: str | None = None,
+        max_targets: int | None = None,
     ):
         self.cfg = cfg
         self.sim = sim_mode
@@ -61,6 +73,14 @@ class AutoExtinguisher:
         self.shoot_duration_s = cfg.get("spray", {}).get("duration_s", 2.0)
         self.cv_method = cv_cfg.get("method", "hsv")
         self.camera_down = cfg.get("metric_recon", {}).get("camera_down", True)
+        self.require_shot = require_shot_confirmation(cfg)
+        self.shot_confirm_timeout_s = shot_confirm_timeout_s(cfg)
+        self.max_targets = max_targets if max_targets is not None else max_targets_for_window(cfg)
+        self.target_number = 1
+        self.targets_completed = 0
+
+        for warning in validate_conops_config(cfg):
+            print(f"[CONOPS] Warning: {warning}")
 
         print(f"[INIT] Connecting MAVLink on {connection_string} (sim={sim_mode})...")
         if sim_mode:
@@ -77,26 +97,24 @@ class AutoExtinguisher:
                 10,
                 1,
             )
+            request_sys_status_stream(self.master, rate_hz=2)
 
         self.nav = MavlinkDriver(self.master, cfg)
+        self.safety = SafetyMonitor(self.master, cfg, sim=sim_mode)
         self.planner = MotionPlanner(cfg)
         self.metric_recon = MetricReconstructor(self.master, cfg, sim=sim_mode)
         self.trigger = WaterTrigger(self.master, cfg)
         self.uploader = DriveUploader(cfg)
         self.detector = TargetDetector(cfg)
 
-        cam_cfg = cfg.get("camera", {})
-        self.camera = ScrcpyCamera(
-            window_title=cam_cfg.get("scrcpy_window_title", "ExtinguisherCam"),
-            phone_ip=phone_ip or cam_cfg.get("phone_ip"),
-        )
+        self.camera = ScrcpyCamera.from_config(cfg, phone_ip=phone_ip)
 
         self.state = STATE_SEARCHING
         self.frames_without_target = 0
         self.lock_start_time: float | None = None
         self.state_start_time = time.time()
         self.last_hud_alert_time = 0.0
-        self.last_shot_frame = None
+        self.confirm_frame = None
         self.upload_file_path: str | None = None
         self._last_cv: CVPacket | None = None
         self._last_metric: MetricPacket | None = None
@@ -139,6 +157,16 @@ class AutoExtinguisher:
         self._last_metric = metric
         return metric
 
+    def _handle_safety_abort(self, abort: SafetyAbort) -> None:
+        print(f"[SAFETY] Mission abort: {abort.reason}")
+        self.send_hud_message(f"ABORT {abort.reason}"[:50])
+        if not self.sim:
+            self.nav.stop()
+            if abort.trigger_rtl:
+                send_rtl(self.master)
+                print("[SAFETY] RTL commanded")
+        self.set_state(STATE_ABORTED)
+
     def _handle_target_lost(self) -> bool:
         if self.frames_without_target <= self.max_frames_without_target:
             return False
@@ -162,6 +190,11 @@ class AutoExtinguisher:
 
         try:
             while True:
+                safety_abort = self.safety.check()
+                if safety_abort:
+                    self._handle_safety_abort(safety_abort)
+                    break
+
                 frame = self.camera.get_frame()
                 if frame is None:
                     time.sleep(0.5)
@@ -254,31 +287,65 @@ class AutoExtinguisher:
                         print("[Spray] Fire aborted - lost aim")
                         self.set_state(STATE_AIMING)
                         continue
-                    print(f"Firing water for {self.shoot_duration_s}s")
+                    print(f"Firing water for {self.shoot_duration_s}s (target {self.target_number})")
                     self.trigger.fire(self.shoot_duration_s)
-                    self.last_shot_frame = frame
-                    self.set_state(STATE_CAPTURING)
+                    self.confirm_frame = None
+                    if self.require_shot:
+                        self.set_state(STATE_VERIFYING)
+                    else:
+                        self.confirm_frame = frame
+                        self.set_state(STATE_CAPTURING)
+
+                elif self.state == STATE_VERIFYING:
+                    if time.time() - self.state_start_time > self.shot_confirm_timeout_s:
+                        print("[CONOPS] Shot confirmation timeout - no blue/wet target detected")
+                        self.set_state(STATE_SEARCHING)
+                        continue
+                    if has_shot_confirmation(cv_packet):
+                        self.confirm_frame = frame
+                        print("[CONOPS] Shot target confirmed in frame")
+                        self.set_state(STATE_CAPTURING)
 
                 elif self.state == STATE_CAPTURING:
-                    if self.last_shot_frame is not None:
+                    if self.confirm_frame is not None:
                         os.makedirs(self.photo_save_dir, exist_ok=True)
-                        ts = time.strftime("%Y%m%d_%H%M%S")
-                        self.upload_file_path = os.path.join(
-                            self.photo_save_dir, f"task2_confirm_{ts}.jpg"
-                        )
-                        cv2.imwrite(self.upload_file_path, self.last_shot_frame)
+                        filename = task2_photo_filename(self.cfg, self.target_number)
+                        self.upload_file_path = os.path.join(self.photo_save_dir, filename)
+                        cv2.imwrite(self.upload_file_path, self.confirm_frame)
                         print(f"Saved: {self.upload_file_path}")
                         self.set_state(STATE_UPLOADING)
                     else:
-                        self.set_state(STATE_COMPLETE)
+                        self.set_state(STATE_SEARCHING)
 
                 elif self.state == STATE_UPLOADING:
                     if self.upload_file_path:
-                        self.uploader.upload_task2_photo(self.upload_file_path, 1)
-                    self.set_state(STATE_COMPLETE)
+                        ok = self.uploader.upload_task2_photo(
+                            self.upload_file_path,
+                            self.target_number,
+                        )
+                        if ok:
+                            self.targets_completed += 1
+                            self.send_hud_message(
+                                f"Target {self.target_number} uploaded"
+                            )
+                    self.target_number += 1
+                    if self.max_targets is not None and self.targets_completed >= self.max_targets:
+                        self.set_state(STATE_COMPLETE)
+                    else:
+                        print(
+                            f"[CONOPS] Target {self.target_number - 1} done. "
+                            f"Searching for next target..."
+                        )
+                        self.set_state(STATE_SEARCHING)
 
                 elif self.state == STATE_COMPLETE:
-                    print("Task 2 sequence complete.")
+                    print(
+                        f"Task 2 sequence complete. "
+                        f"Extinguished {self.targets_completed} target(s)."
+                    )
+                    break
+
+                elif self.state == STATE_ABORTED:
                     break
 
         except KeyboardInterrupt:
@@ -299,6 +366,7 @@ def run_auto_extinguish(
     sim: bool = False,
     headless: bool = False,
     phone_ip: str | None = None,
+    max_targets: int | None = None,
 ) -> None:
     cfg = load_config("vion")
     mavlink_cfg = cfg.get("mavlink", {})
@@ -312,6 +380,7 @@ def run_auto_extinguish(
         sim_mode=sim,
         headless=headless,
         phone_ip=phone_ip,
+        max_targets=max_targets,
     )
     extinguisher.loop()
 
@@ -323,6 +392,12 @@ def main() -> None:
     parser.add_argument("--sim", action="store_true")
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--scrcpy-ip", default=None)
+    parser.add_argument(
+        "--max-targets",
+        type=int,
+        default=None,
+        help="Stop after N targets (default: unlimited per conops.yaml)",
+    )
     args = parser.parse_args()
     run_auto_extinguish(
         connection=args.connection,
@@ -330,6 +405,7 @@ def main() -> None:
         sim=args.sim,
         headless=args.headless,
         phone_ip=args.scrcpy_ip,
+        max_targets=args.max_targets,
     )
 
 

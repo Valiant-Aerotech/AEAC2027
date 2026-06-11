@@ -10,3 +10,7 @@ pygetwindow>=0.0.9
 
 # Computer vision models (optional until models are trained)
 ultralytics>=8.0
+
+# Google Drive upload (optional - only needed for gdrive_service_account)
+# google-api-python-client>=2.100
+# google-auth>=2.23

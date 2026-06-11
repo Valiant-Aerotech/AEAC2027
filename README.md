@@ -40,4 +40,4 @@ docs/              ← architecture, runbooks, interfaces
 models/            ← ONNX models (see models/README.md)
 ```
 
-See [ONBOARDING.md](ONBOARDING.md) for full setup. See [docs/architecture.md](docs/architecture.md) for the modular pipeline design.
+See [ONBOARDING.md](ONBOARDING.md) for full setup. See [docs/architecture.md](docs/architecture.md) for the modular pipeline design. Competition rules map to config in [docs/conops.md](docs/conops.md).

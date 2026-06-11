@@ -31,9 +31,11 @@ Phone camera (DJI goggles → scrcpy)
 
 ## State machine (Task 2)
 
-`SEARCHING → APPROACHING → AIMING → FIRING → CAPTURING → UPLOADING → COMPLETE`
+`SEARCHING → APPROACHING → AIMING → FIRING → VERIFYING → CAPTURING → UPLOADING → SEARCHING (next target)`
 
-Target loss during APPROACHING or AIMING reverts to SEARCHING.
+Target loss during APPROACHING or AIMING reverts to SEARCHING. After UPLOADING, the orchestrator searches for the next target until the flight window ends or `--max-targets` is reached.
+
+Competition rules are centralized in `config/conops.yaml` - see [docs/conops.md](conops.md).
 
 ## Task 1 (Vivi)
 

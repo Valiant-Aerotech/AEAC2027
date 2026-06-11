@@ -78,3 +78,32 @@ python tools\metric_bench_test.py --video footage.mp4
 - `metric_recon.min_approach_distance_m`: CONOPS 2m approach validation
 - `metric_recon.fire_distance_m`: switch from APPROACHING to AIMING
 - `auto_nav.side_clearance_m`: abort if target too close to frame edge
+
+## Safety (`config/vion.yaml`)
+
+`SafetyMonitor` runs each orchestrator loop iteration:
+
+| Check | Config | Action |
+|-------|--------|--------|
+| Battery | `safety.min_battery_pct` | Mission abort via `SYS_STATUS.battery_remaining` |
+| Geofence | `safety.geofence_abort` | Mission abort via `FENCE_STATUS` or STATUSTEXT |
+| Mission timeout | `safety.mission_timeout_s` | Mission abort after elapsed seconds |
+| RTL on abort | `safety.rtl_on_abort` | Optional `MAV_CMD_NAV_RETURN_TO_LAUNCH` |
+
+Target-loss and phase timeouts remain orchestrator-local (return to SEARCHING, not full abort).
+
+## CONOPS (`config/conops.yaml`)
+
+Competition rules are data, not hardcoded. `load_config()` merges `conops.yaml` and applies task2 limits into `metric_recon`. Helpers live in `src/valiant/autonomy/conops.py`.
+
+- Photo names: `Task_2_{team}_target_{n}.jpg`
+- Multi-target loop after each upload
+- `VERIFYING` state waits for shot (blue) detection before capture
+
+Run `python tools/conops_check.py` after editing rules. See [docs/conops.md](conops.md).
+
+## Upload (`config/defaults.yaml`)
+
+- `upload.method`: `local_copy` (default) or `gdrive_service_account`
+- `upload.retry_count` / `upload.retry_delay_s`: retry failed uploads
+- Credentials: `config/gdrive_credentials.json` (gitignored) + `upload.folder_id`

@@ -1,0 +1,32 @@
+# AEAC competition rules - edit when new CONOPS publishes (Track F)
+# Source: 2026-AEAC-CONOPS (v1.1+). 2027 rules not released yet.
+
+conops:
+  season: "2026"
+  document_url: "https://www.aerialevolution.ca/annual-student-competition/"
+
+  task1:
+    report_filename_template: "Task_1_{team}_targets.txt"
+    allowed_colours:
+      - black
+      - white
+      - red
+      - yellow
+      - blue
+      - green
+
+  task2:
+    # Autonomous extinguishing (all required, no partial points)
+    min_approach_distance_m: 2.0
+    target_diameter_min_m: 0.05
+    target_diameter_max_m: 0.30
+    require_shot_confirmation: true
+    shot_confirm_timeout_s: 8.0
+    max_targets_per_window: null        # null = unknown count, loop until operator stops
+    photo_filename_template: "Task_2_{team}_target_{n}.jpg"
+    # Scoring notes (orchestrator does not implement takeoff/landing autonomy yet)
+    autonomy:
+      takeoff_points: 5
+      extinguishing_points: 20
+      landing_points: 5
+      all_or_nothing: true
