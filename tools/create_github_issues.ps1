@@ -8,7 +8,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Repo = "valiant-aerotech/AEAC2027"
+$Repo = "Valiant-Aerotech/AEAC2027"
 
 function Ensure-Gh {
     if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {

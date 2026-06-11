@@ -1,6 +1,6 @@
 # GitHub Issues Backlog
 
-Use `tools/create_github_issues.ps1` to create these on [valiant-aerotech/AEAC2027](https://github.com/valiant-aerotech/AEAC2027).
+Use `tools/create_github_issues.ps1` to create these on [Valiant-Aerotech/AEAC2027](https://github.com/Valiant-Aerotech/AEAC2027).
 
 ```powershell
 gh auth login

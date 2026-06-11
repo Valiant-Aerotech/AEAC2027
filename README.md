@@ -2,6 +2,8 @@
 
 Valiant Aerotech competition software for AEAC 2027. Everything in this repo is designed to run on a **fresh GCS laptop** with minimal setup.
 
+**New to the team?** Start with [WELCOME.md](WELCOME.md), then open [GitHub Issues](https://github.com/Valiant-Aerotech/AEAC2027/issues).
+
 ## Fleet
 
 | Drone | Role | Mission |
@@ -13,7 +15,7 @@ Valiant Aerotech competition software for AEAC 2027. Everything in this repo is 
 ## Quick start (new laptop)
 
 ```powershell
-git clone https://github.com/valiant-aerotech/AEAC2027.git
+git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
 .\tools\setup.ps1
 python tools\verify_env.py
