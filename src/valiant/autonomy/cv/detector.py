@@ -148,15 +148,3 @@ class TargetDetector:
                     packet.shot.append(shot_hit)
 
         return packet
-
-    def detect_target(self, frame: npt.NDArray[np.uint8] | None):
-        """Return primary dry target as (cx, cy, area, bbox) or None."""
-        try:
-            packet = self.detect(frame)
-        except (BadFrameError, LowConfidenceError):
-            return None
-        return packet.primary_dry_tuple()
-
-
-# Backwards-compatible alias
-YOLODetector = TargetDetector

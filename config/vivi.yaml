@@ -9,11 +9,4 @@ mavlink:
 camera:
   offset_cm: 10                         # vertical offset below GPS/autopilot origin
 
-task1:
-  allowed_colours:
-    - black
-    - white
-    - red
-    - yellow
-    - blue
-    - green
+# Task 1 colours and report naming: config/conops.yaml

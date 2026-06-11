@@ -5,6 +5,7 @@ from __future__ import annotations
 from enum import Enum
 
 from valiant.autonomy.packets import MetricPacket
+from valiant.autonomy.spray.aim import is_aimed
 
 
 class MotionIntent(Enum):
@@ -18,6 +19,7 @@ class MotionPlanner:
     """Decide motion intent and fire permission from metric data."""
 
     def __init__(self, cfg: dict):
+        self._cfg = cfg
         nav = cfg.get("auto_nav", {})
         metric = cfg.get("metric_recon", {})
 
@@ -25,7 +27,6 @@ class MotionPlanner:
         self.fire_distance_m = metric.get("fire_distance_m", 0.8)
         self.side_clearance_m = nav.get("side_clearance_m", 1.0)
         self.target_lock_area_px = nav.get("target_lock_area_px", 15000)
-        self.deadband_px = nav.get("deadband_px", 40)
 
         self._max_distance_seen_m: float | None = None
         self._approach_valid = False
@@ -68,16 +69,12 @@ class MotionPlanner:
     def can_fire(self, metric: MetricPacket, *, lock_duration_met: bool) -> bool:
         if not lock_duration_met:
             return False
-        if not self._is_centered(metric):
+        if not is_aimed(metric, self._cfg):
             return False
         # CONOPS: when distance is available, must have approached from beyond 2m
         if self._max_distance_seen_m is not None:
             return self._approach_valid
         return True
-
-    def _is_centered(self, metric: MetricPacket) -> bool:
-        dx, dy = metric.pixel_offset
-        return abs(dx) < self.deadband_px and abs(dy) < self.deadband_px
 
     @property
     def approach_valid(self) -> bool:

@@ -5,6 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Optional, Sequence
 
+from valiant.autonomy.conops import task1_report_filename
+from valiant.common.config import repo_root
+
 from .detection import TargetEvent
 from .localization import LocalizedTarget, TargetLocalizer
 from .model import BuildingModel
@@ -12,24 +15,7 @@ from .pose import CameraConfig
 
 
 def _default_logs_dir() -> Path:
-    """Return the project-level logs directory.
-
-    report.py is located at:
-
-        Valiant-Aerotech/integration/pipelines/vivi/report.py
-
-    Therefore:
-        parents[0] = vivi
-        parents[1] = pipelines
-        parents[2] = integration
-        parents[3] = Valiant-Aerotech
-
-    The report should be written to:
-
-        Valiant-Aerotech/logs
-    """
-    project_root = Path(__file__).resolve().parents[3]
-    return project_root / "logs"
+    return repo_root() / "logs"
 
 
 def parse(
@@ -40,6 +26,7 @@ def parse(
     output_dir: str | Path | None = None,
     camera: Optional[CameraConfig] = None,
     include_debug_comments: bool = True,
+    cfg: dict | None = None,
 ) -> Path:
     """Generate the required Task One target .txt file.
 
@@ -58,11 +45,6 @@ def parse(
     if not team_name.strip():
         raise ValueError("team_name cannot be empty.")
 
-    safe_team_name = "".join(
-        ch if ch.isalnum() or ch in "_-" else "_"
-        for ch in team_name.strip()
-    )
-
     if output_dir is None:
         output_dir_path = _default_logs_dir()
     else:
@@ -70,7 +52,9 @@ def parse(
 
     output_dir_path.mkdir(parents=True, exist_ok=True)
 
-    output_path = output_dir_path / f"Task_1_{safe_team_name}_targets.txt"
+    report_cfg = dict(cfg or {})
+    report_cfg.setdefault("team", {})["name"] = team_name.strip()
+    output_path = output_dir_path / task1_report_filename(report_cfg)
 
     localizer = TargetLocalizer(model, camera=camera)
 

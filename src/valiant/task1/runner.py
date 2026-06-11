@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from valiant.autonomy.conops import task1_allowed_colours
 from valiant.common.config import load_config
 from valiant.task1.detection import TargetEvent, detect, mark_target
 from valiant.task1.modes import CameraMode
@@ -76,7 +77,12 @@ def run_setup(telemetry: MavlinkTelemetry):
     return model
 
 
-def run_target_search(model, telemetry: MavlinkTelemetry) -> list[TargetEvent]:
+def run_target_search(
+    model,
+    telemetry: MavlinkTelemetry,
+    *,
+    allowed_colours: set[str] | None = None,
+) -> list[TargetEvent]:
     print("\n=== TARGET SEARCH ===")
     target_events: list[TargetEvent] = []
     camera_mode = CameraMode.FRONT
@@ -106,9 +112,14 @@ def run_target_search(model, telemetry: MavlinkTelemetry) -> list[TargetEvent]:
         elif cmd == "m":
             print("\nCentre the coloured circle in the camera view, then press Enter.")
             input("Press Enter when target is centred... ")
-            colour = detect(None, detector=manual_detector)
+            colour = detect(None, detector=manual_detector, allowed_colours=allowed_colours)
             pose = get_current_pose(telemetry)
-            event = mark_target(colour=colour, camera_mode=camera_mode, pose=pose)
+            event = mark_target(
+                colour=colour,
+                camera_mode=camera_mode,
+                pose=pose,
+                allowed_colours=allowed_colours,
+            )
             target_events.append(event)
             print(
                 f"Marked target {len(target_events)}: {colour}, {camera_mode.name}, "
@@ -138,7 +149,10 @@ def run_survey(
     mavlink_cfg = cfg.get("mavlink", {})
     conn = connection or mavlink_cfg.get("connection", "udpin:127.0.0.1:14550")
 
-    team = team_name or input("Team name for output file: ").strip() or "Valiant_Aerotech"
+    team = team_name or cfg.get("team", {}).get("name") or "ValiantAerotech"
+    if team_name is None:
+        team = input(f"Team name for output file [{team}]: ").strip() or team
+    allowed_colours = task1_allowed_colours(cfg)
     if camera_offset_cm is None:
         offset_cm = float(cfg.get("camera", {}).get("offset_cm", 10))
         if team_name is None:
@@ -162,7 +176,7 @@ def run_survey(
 
     try:
         model = run_setup(telemetry)
-        target_events = run_target_search(model, telemetry)
+        target_events = run_target_search(model, telemetry, allowed_colours=allowed_colours)
         output_path = parse(
             events=target_events,
             model=model,
@@ -170,6 +184,7 @@ def run_survey(
             output_dir=None,
             camera=camera,
             include_debug_comments=True,
+            cfg=cfg,
         )
         print(f"\nReport written: {output_path}")
     finally:

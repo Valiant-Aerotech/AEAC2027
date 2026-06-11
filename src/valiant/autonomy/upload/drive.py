@@ -1,4 +1,4 @@
-"""Task 2 photo upload - local fallback or Google Drive service account."""
+"""Task 2 photo upload - local copy fallback or Google Drive service account."""
 
 from __future__ import annotations
 

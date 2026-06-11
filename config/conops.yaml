@@ -21,6 +21,7 @@ conops:
     target_diameter_min_m: 0.05
     target_diameter_max_m: 0.30
     require_shot_confirmation: true
+    post_spray_settle_s: 1.5              # wait for spray blur to clear before CV check
     shot_confirm_timeout_s: 8.0
     max_targets_per_window: null        # null = unknown count, loop until operator stops
     photo_filename_template: "Task_2_{team}_target_{n}.jpg"

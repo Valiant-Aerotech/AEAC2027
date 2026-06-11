@@ -3,21 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Callable, Optional, Set
 import time
 
-from .constants import ALLOWED_COLOURS
 from .modes import CameraMode
 from .pose import Pose
+
+DEFAULT_ALLOWED_COLOURS: Set[str] = {
+    "black", "white", "red", "yellow", "blue", "green"
+}
 
 
 @dataclass
 class TargetEvent:
-    """One operator-confirmed target sighting.
-
-    detect() returns only the colour. mark_target() combines that colour with the
-    pose/camera context needed by the geometry pipeline.
-    """
+    """One operator-confirmed target sighting."""
 
     colour: str
     camera_mode: CameraMode
@@ -27,21 +26,18 @@ class TargetEvent:
     notes: str = ""
 
 
-def detect(frame, detector: Optional[Callable] = None) -> str:
-    """Return only the target colour.
-
-    This is deliberately simple because detect() is only responsible for colour.
-    The real CV package can be passed in as detector(frame), or this function can
-    be replaced by that package.
-
-    Expected detector outputs:
-        "red"
-        {"colour": "red"}
-    """
+def detect(
+    frame,
+    detector: Optional[Callable] = None,
+    *,
+    allowed_colours: Optional[Set[str]] = None,
+) -> str:
+    """Return target colour from detector callback."""
+    allowed = allowed_colours or DEFAULT_ALLOWED_COLOURS
     if detector is None:
         raise NotImplementedError(
             "Plug in the computer-vision detector here. It should return one of: "
-            f"{sorted(ALLOWED_COLOURS)}."
+            f"{sorted(allowed)}."
         )
 
     result = detector(frame)
@@ -54,8 +50,8 @@ def detect(frame, detector: Optional[Callable] = None) -> str:
         raise ValueError(f"detect() expected a colour string, got: {result!r}")
 
     colour = colour.strip().lower()
-    if colour not in ALLOWED_COLOURS:
-        raise ValueError(f"Invalid target colour {colour!r}. Allowed: {sorted(ALLOWED_COLOURS)}")
+    if colour not in allowed:
+        raise ValueError(f"Invalid target colour {colour!r}. Allowed: {sorted(allowed)}")
 
     return colour
 
@@ -67,16 +63,13 @@ def mark_target(
     *,
     selected_face: Optional[str] = None,
     notes: str = "",
+    allowed_colours: Optional[Set[str]] = None,
 ) -> TargetEvent:
-    """Create a target event after the operator presses the target key.
-
-    The target must be centred in the current camera view before this function is
-    called. If not, the code will still run, but the geometry will report the
-    centre ray instead of the actual off-centre target.
-    """
+    """Create a target event after the operator confirms a centred target."""
+    allowed = allowed_colours or DEFAULT_ALLOWED_COLOURS
     colour = colour.strip().lower()
-    if colour not in ALLOWED_COLOURS:
-        raise ValueError(f"Invalid target colour {colour!r}. Allowed: {sorted(ALLOWED_COLOURS)}")
+    if colour not in allowed:
+        raise ValueError(f"Invalid target colour {colour!r}. Allowed: {sorted(allowed)}")
 
     return TargetEvent(
         colour=colour,

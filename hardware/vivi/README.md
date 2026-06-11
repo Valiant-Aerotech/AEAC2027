@@ -1,12 +1,11 @@
 # Vivi Hardware
 
-Small surveying drone, carried by Vulcan 2.
+Small surveying drone for Task 1. Carried by Vulcan 2 to the flight site.
 
-## Contents
+## Software
 
-- `mission-planner/` - FC parameter docs
-- `lua/` - onboard scripts if applicable
+Task 1 pipeline: `python missions/task1_vivi_survey.py`
 
-## Migration
+## FC assets
 
-Hardware docs migrated from old-codebase in Track B7.
+No Lua scripts in repo yet. Vivi uses MAVLink telemetry from Mission Planner (`udpin:127.0.0.1:14550`). Add `lua/` and `mission-planner/` here when FC-specific scripts are finalized.

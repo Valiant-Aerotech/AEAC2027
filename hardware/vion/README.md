@@ -1,18 +1,20 @@
 # Vion Hardware
 
-Pixhawk 6C fire suppression drone. No companion computer - GCS laptop runs autonomy.
+Pixhawk 6C fire suppression drone. GCS laptop runs Task 2 autonomy via scrcpy + MAVLink.
 
 ## Contents
 
-- `mission-planner/` - FC parameter docs and telemetry setup
-- `lua/` - onboard ArduPilot Lua scripts (safety, payload, arm)
+- `lua/` - onboard ArduPilot Lua scripts (safety, payload, arm, stabilize, throttle)
+- `mission-planner/` - FC parameter and setup notes
 
-## Key parameters
+## Lua scripts
 
-- Water trigger: AUX 7 / SERVO15
-- Rangefinder: VL53L1X on I2C
-- `SCR_ENABLE = 1` for Lua scripting
+| Script | Purpose |
+|--------|---------|
+| `safety.lua` | Emergency RC switch to LAND/disarm |
+| `payload.lua` | Water payload servo control |
+| `arm.lua` | Arm helper |
+| `stabilize.lua` | Stabilize mode helper |
+| `throttle_two.lua` | Watchdog + emergency handling |
 
-## Migration
-
-Lua scripts will be copied from `old-codebase/actuation/lua/` in Track B7.
+Load scripts per Mission Planner docs in `mission-planner/003-setup.md`.

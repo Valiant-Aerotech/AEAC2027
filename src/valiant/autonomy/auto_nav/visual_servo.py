@@ -1,4 +1,4 @@
-"""PD visual servo controller - migrated from old-codebase."""
+"""PD visual servo controller for body-frame velocity commands."""
 
 from __future__ import annotations
 
@@ -40,12 +40,6 @@ class VisualServo:
         vel_right = max(-self.max_vel, min(self.max_vel, vel_right))
         vel_vertical = max(-self.max_vel, min(self.max_vel, vel_vertical))
         return vel_right, vel_vertical
-
-    def is_centered(self, cx: int, cy: int, frame_w: int, frame_h: int) -> bool:
-        return (
-            abs(cx - frame_w // 2) < self.deadband_px
-            and abs(cy - frame_h // 2) < self.deadband_px
-        )
 
     def send_velocity_body(self, vel_x: float, vel_y: float, vel_z: float = 0.0) -> None:
         type_mask = (

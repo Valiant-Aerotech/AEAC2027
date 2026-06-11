@@ -19,6 +19,7 @@ from valiant.autonomy.packets import CVPacket, MetricPacket
 from valiant.autonomy.conops import (
     has_shot_confirmation,
     max_targets_for_window,
+    post_spray_settle_s,
     require_shot_confirmation,
     shot_confirm_timeout_s,
     task2_photo_filename,
@@ -75,6 +76,7 @@ class AutoExtinguisher:
         self.camera_down = cfg.get("metric_recon", {}).get("camera_down", True)
         self.require_shot = require_shot_confirmation(cfg)
         self.shot_confirm_timeout_s = shot_confirm_timeout_s(cfg)
+        self.post_spray_settle_s = post_spray_settle_s(cfg)
         self.max_targets = max_targets if max_targets is not None else max_targets_for_window(cfg)
         self.target_number = 1
         self.targets_completed = 0
@@ -297,9 +299,12 @@ class AutoExtinguisher:
                         self.set_state(STATE_CAPTURING)
 
                 elif self.state == STATE_VERIFYING:
-                    if time.time() - self.state_start_time > self.shot_confirm_timeout_s:
+                    elapsed = time.time() - self.state_start_time
+                    if elapsed > self.shot_confirm_timeout_s:
                         print("[CONOPS] Shot confirmation timeout - no blue/wet target detected")
                         self.set_state(STATE_SEARCHING)
+                        continue
+                    if elapsed < self.post_spray_settle_s:
                         continue
                     if has_shot_confirmation(cv_packet):
                         self.confirm_frame = frame

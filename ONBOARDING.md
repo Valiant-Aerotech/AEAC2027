@@ -1,5 +1,7 @@
 # Onboarding - AEAC2027
 
+New recruit? Start with [WELCOME.md](WELCOME.md).
+
 Welcome. This guide gets you from a fresh Windows laptop to running a mission.
 
 ## Prerequisites
@@ -68,6 +70,7 @@ python tools\cv_bench_test.py --camera 0
 python tools\metric_bench_test.py --camera 0
 python tools\safety_bench_test.py
 python tools\conops_check.py
+python tools\cv_regression_test.py --video footage.mp4
 python -m valiant.autonomy.cv.training.generate_targets --count 20
 ```
 

@@ -41,13 +41,6 @@ class CVPacket:
             return None
         return max(self.dry, key=lambda t: t.area)
 
-    def primary_dry_tuple(self) -> tuple[int, int, int, tuple[int, int, int, int]] | None:
-        """Legacy tuple (cx, cy, area, bbox) for orchestrator compatibility."""
-        hit = self.primary_dry
-        if hit is None:
-            return None
-        return (hit.cx, hit.cy, hit.area, hit.bbox)
-
 
 @dataclass
 class MetricPacket:

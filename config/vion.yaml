@@ -28,7 +28,7 @@ cv:
   hsv_shot: { h_min: 100, h_max: 130, s_min: 50, v_min: 50 }
   hsv_min_area_px: 500                  # ignore small colour blobs
   confidence_threshold: 0.35
-  max_frames_without_target: 30
+  max_frames_without_target: 45         # ~1.5 s at 30 fps; tune on real feed
 
 metric_recon:
   rangefinder: fov_estimate              # vl53l1x | fov_estimate | none
@@ -40,13 +40,13 @@ metric_recon:
   rangefinder_stale_s: 1.0
 
 auto_nav:
-  kp_x: 0.002
-  kp_y: 0.002
-  kd_x: 0.0
-  kd_y: 0.0
-  max_vel: 0.5
-  deadband_px: 40
-  approach_speed: 0.3
+  kp_x: 0.0015
+  kp_y: 0.0015
+  kd_x: 0.0004                          # light damping to reduce oscillation
+  kd_y: 0.0004
+  max_vel: 0.4
+  deadband_px: 50
+  approach_speed: 0.25
   side_clearance_m: 1.0
   target_lock_area_px: 15000
   approach_timeout_s: 30

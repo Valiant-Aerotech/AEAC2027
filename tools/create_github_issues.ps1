@@ -23,7 +23,8 @@ function Ensure-Gh {
 
 function Ensure-Label($Name, $Color, $Description) {
     if ($DryRun) { return }
-    $exists = gh label list --repo $Repo --json name --jq ".[] | select(.name==`"$Name`") | .name" 2>$null
+    $labels = gh label list --repo $Repo --json name 2>$null | ConvertFrom-Json
+    $exists = $labels | Where-Object { $_.name -eq $Name }
     if (-not $exists) {
         gh label create $Name --repo $Repo --color $Color --description $Description 2>$null
     }
@@ -31,8 +32,9 @@ function Ensure-Label($Name, $Color, $Description) {
 
 function Ensure-Milestone($Title, $Description) {
     if ($DryRun) { return $Title }
-    $num = gh api "repos/$Repo/milestones" --jq ".[] | select(.title==`"$Title`") | .number" 2>$null
-    if ($num) { return $Title }
+    $milestones = gh api "repos/$Repo/milestones" 2>$null | ConvertFrom-Json
+    $exists = $milestones | Where-Object { $_.title -eq $Title }
+    if ($exists) { return $Title }
     $body = @{ title = $Title; description = $Description; state = "open" } | ConvertTo-Json -Compress
     $tmp = New-TemporaryFile
     Set-Content -Path $tmp -Value $body -Encoding utf8
@@ -41,7 +43,17 @@ function Ensure-Milestone($Title, $Description) {
     return $Title
 }
 
+function Find-OpenIssue($Title) {
+    $issues = gh issue list --repo $Repo --state all --limit 200 --json title,number,state 2>$null | ConvertFrom-Json
+    return $issues | Where-Object { $_.title -eq $Title } | Select-Object -First 1
+}
+
 function New-Issue($Title, $Body, $Labels, $Milestone, [switch]$Close) {
+    $existing = Find-OpenIssue $Title
+    if ($existing) {
+        Write-Host "[skip] $Title (already #$($existing.number))"
+        return
+    }
     $labelStr = $Labels -join ","
     Write-Host "$(if ($Close) {'[close]'} else {'[open] '}) $Title"
     if ($DryRun) { return }

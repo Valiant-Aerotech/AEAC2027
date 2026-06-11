@@ -7,7 +7,13 @@ team:
 upload:
   method: local_copy                    # local_copy | gdrive_service_account
   config_path: config/gdrive_credentials.json
-  folder_id: ""                         # Google Drive folder ID (required for gdrive)
+  folder_id: ""                         # Shared Drive folder ID (required for gdrive)
   timeout_s: 15
   retry_count: 3
   retry_delay_s: 2.0
+  # Real Drive setup:
+  # 1. Create Google Cloud service account with Drive API enabled
+  # 2. Save JSON key to config/gdrive_credentials.json (gitignored)
+  # 3. Share team folder with service account email (Editor)
+  # 4. Set folder_id and method: gdrive_service_account
+  # 5. pip install google-api-python-client google-auth

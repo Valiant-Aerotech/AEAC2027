@@ -65,6 +65,20 @@ def shot_confirm_timeout_s(cfg: dict) -> float:
     return float(task2_settings(cfg).get("shot_confirm_timeout_s", 8.0))
 
 
+def post_spray_settle_s(cfg: dict) -> float:
+    return float(task2_settings(cfg).get("post_spray_settle_s", 1.5))
+
+
+def task1_allowed_colours(cfg: dict) -> set[str]:
+    colours = cfg.get("conops", {}).get("task1", {}).get("allowed_colours")
+    if colours:
+        return {str(c).strip().lower() for c in colours}
+    task1_cfg = cfg.get("task1", {}).get("allowed_colours")
+    if task1_cfg:
+        return {str(c).strip().lower() for c in task1_cfg}
+    return {"black", "white", "red", "yellow", "blue", "green"}
+
+
 def has_shot_confirmation(cv_packet: CVPacket | None) -> bool:
     return cv_packet is not None and len(cv_packet.shot) > 0
 
