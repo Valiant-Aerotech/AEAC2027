@@ -78,4 +78,5 @@ Tune purple/blue thresholds in `config/vion.yaml` under `cv.hsv_dry` and `cv.hsv
 1. Read [docs/drones.md](docs/drones.md) - know which drone does what
 2. Read [docs/architecture.md](docs/architecture.md) - CV -> Metric Recon -> Auto-Nav pipeline
 3. Read [docs/interfaces.md](docs/interfaces.md) - CVPacket, MetricPacket, and detection methods
-4. Pick a GitHub issue from the project board
+4. Read [docs/runbooks/field-test-plan.md](docs/runbooks/field-test-plan.md) - phased validation checklist
+5. Pick a GitHub issue from the [project board](https://github.com/valiant-aerotech/AEAC2027/issues) (see [docs/github-issues-backlog.md](docs/github-issues-backlog.md))

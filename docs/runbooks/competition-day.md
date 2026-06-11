@@ -66,4 +66,4 @@ python missions\task1_vivi_survey.py --team "ValiantAerotech"
 - Target count unknown - keep looping until window ends or operator stops
 - Only water may touch targets
 
-See [docs/conops.md](../conops.md) for full traceability.
+See [docs/conops.md](../conops.md) for full traceability. Phased testing before competition: [field-test-plan.md](field-test-plan.md).
