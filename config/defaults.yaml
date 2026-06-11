@@ -1,0 +1,10 @@
+# Shared defaults - overridden by per-drone YAML files
+
+team:
+  name: ValiantAerotech
+  photo_save_dir: task2_photos
+
+upload:
+  method: gdrive_service_account
+  config_path: config/gdrive_credentials.json
+  timeout_s: 15

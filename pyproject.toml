@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aeac2027"
+version = "0.1.0"
+description = "Valiant Aerotech AEAC 2027 mission software for Vion, Vivi, and Vulcan 2"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+    "pymavlink>=2.4",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+cv = ["ultralytics>=8.0"]
+gcs = ["mss>=9.0", "pygetwindow>=0.0.9"]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,8 @@
+# Vulcan 2 - heavy lifter (carries Vivi as payload)
+# No Python mission yet - hardware docs only
+
+drone: vulcan2
+
+mavlink:
+  connection: "udpin:127.0.0.1:14550"
+  baud: 57600

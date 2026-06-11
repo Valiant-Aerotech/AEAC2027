@@ -1,0 +1,31 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Secrets - never commit
+config/gdrive_credentials.json
+*.pem
+.env
+
+# Runtime output
+task2_photos/
+logs/
+data/training/
+models/runs/
+*.log
+
+# Models (large files - see models/README.md)
+models/*.onnx
+models/*.pt
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

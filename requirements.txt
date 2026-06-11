@@ -1,0 +1,12 @@
+# Core - required for all missions
+numpy>=1.24
+opencv-python>=4.8
+pymavlink>=2.4
+PyYAML>=6.0
+
+# Task 2 GCS offload (scrcpy screen capture)
+mss>=9.0
+pygetwindow>=0.0.9
+
+# Computer vision models (optional until models are trained)
+ultralytics>=8.0

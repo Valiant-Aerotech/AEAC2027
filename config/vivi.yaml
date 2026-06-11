@@ -1,0 +1,19 @@
+# Vivi - surveying drone (carried by Vulcan 2)
+
+drone: vivi
+
+mavlink:
+  connection: "udpin:127.0.0.1:14550"
+  baud: 57600
+
+camera:
+  offset_cm: 10                         # vertical offset below GPS/autopilot origin
+
+task1:
+  allowed_colours:
+    - black
+    - white
+    - red
+    - yellow
+    - blue
+    - green
