@@ -10,13 +10,14 @@
 ## Vion
 
 - **Role:** Fire suppression
-- **Hardware:** Pixhawk 6C, no companion computer, VL53L1X rangefinder, water trigger on AUX 7 / SERVO15
+- **Hardware:** Pixhawk 6C, Raspberry Pi companion, Holybro H-Flow (DroneCAN), AI camera + ArduCam ToF on Pi, water trigger on AUX 7 / SERVO15
 - **Payload:** Up to ~900g (proved 3 laps in 2025-2026)
-- **Software:** Full Task 2 autonomy stack - GCS laptop runs perception and control via scrcpy + MAVLink
+- **Software:** Full Task 2 autonomy on onboard RPi; GCS laptop for calibration, monitor, manual fallback
 - **Missions:**
-  - `missions/task2_vion_auto_extinguish.py` - autonomous
+  - `hardware/vion/rpi/run_mission.py` - primary autonomous (onboard)
+  - `missions/task2_vion_auto_extinguish.py` - GCS dev / legacy fallback
   - `missions/task2_vion_manual_photo.py` - manual fallback
-- **Config:** `config/vion.yaml`
+- **Config:** `config/vion.yaml`, `config/vion_calibration.yaml`
 
 ## Vivi
 

@@ -50,7 +50,7 @@ def train(
     )
     print(f"Training complete: {results}")
     print("Export ONNX: yolo export model=<best.pt> format=onnx")
-    print("Copy exported models to models/dry.onnx and models/shot.onnx")
+    print("Copy exported model to models/best.onnx")
 
 
 def main() -> None:

@@ -2,43 +2,49 @@
 
 Use this on Phase 2 flight line for Vion Task 2 and Vivi Task 1.
 
+Bringup reference: [vion-bringup.md](vion-bringup.md)
+
 ## Before leaving for site
 
 - [ ] `python tools\verify_env.py` passes on competition laptop
 - [ ] `python tools\conops_check.py` passes
-- [ ] `config\vion.yaml` COM port correct
+- [ ] `config\vion.yaml` COM port correct (GCS radio)
 - [ ] `config\defaults.yaml` team name and upload settings correct
-- [ ] Phone charged, scrcpy + adb on PATH
+- [ ] Pi has `models/best.onnx` and `config/vion_calibration.yaml`
 - [ ] Emergency RC switch tested (`hardware/vion/lua/safety.lua`)
-- [ ] Water tank filled, servo spray tested on bench
+- [ ] Water tank filled, SERVO15 spray tested in Mission Planner
+- [ ] H-Flow `opt_qua` OK on venue-like flooring (indoor)
 
 ## Task 2 - Vion auto (flight window)
 
 ### Pre-flight
 
-- [ ] Vion in GUIDED mode, geofence loaded in Mission Planner
-- [ ] Telemetry heartbeat confirmed
-- [ ] scrcpy `ExtinguisherCam` window visible
-- [ ] Operator briefed: Ctrl+C abort, manual fallback ready
+- [ ] Pi: `check_sensors.py` OK (RGB + MAVLink heartbeat)
+- [ ] GCS: Mission Planner heartbeat via telemetry radio
+- [ ] GCS: `python tools\mission_monitor.py` running (optional)
+- [ ] Operator briefed: RC override, emergency switch
 
-### Run
+### Run (primary - onboard Pi)
 
-```powershell
-python missions\task2_vion_auto_extinguish.py
+```bash
+# SSH to Pi
+source .venv/bin/activate
+python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
 ```
 
-For a single-target test before full window:
+With GCS monitor on laptop (replace LAPTOP_IP):
 
-```powershell
-python missions\task2_vion_auto_extinguish.py --max-targets 1
+```bash
+python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1 \
+  --gcs-connection udpout:<LAPTOP_IP>:14550
 ```
 
 ### During flight
 
 - [ ] Declare each extinguished target to judges per CONOPS
-- [ ] Confirm HUD / console shows upload for each target number
-- [ ] Photos appear in `task2_photos/` as `Task_2_{team}_target_{n}.jpg`
-- [ ] Refill water between targets as needed (unlimited refills allowed)
+- [ ] GCS monitor shows GOOD link (optional)
+- [ ] Photos appear in `task2_photos/` on Pi as `Task_2_{team}_target_{n}.jpg`
+- [ ] Refill water between targets as needed
 
 ### If autonomy fails
 
@@ -58,12 +64,3 @@ python missions\task1_vivi_survey.py --team "ValiantAerotech"
 
 - [ ] Verify all Task 2 photos in Google Drive with correct numbering order
 - [ ] Note any safety aborts or shot confirmation timeouts for debrief
-- [ ] Battery data and log any geofence warnings
-
-## CONOPS quick reference
-
-- Autonomous extinguishing: approach >2 m, aim, fire, photo, upload - all autonomous, no partial points
-- Target count unknown - keep looping until window ends or operator stops
-- Only water may touch targets
-
-See [docs/conops.md](../conops.md) for full traceability. Phased testing before competition: [field-test-plan.md](field-test-plan.md).

@@ -71,10 +71,8 @@ class MotionPlanner:
             return False
         if not is_aimed(metric, self._cfg):
             return False
-        # CONOPS: when distance is available, must have approached from beyond 2m
-        if self._max_distance_seen_m is not None:
-            return self._approach_valid
-        return True
+        # CONOPS: must have tracked approach from beyond min distance
+        return self._approach_valid
 
     @property
     def approach_valid(self) -> bool:

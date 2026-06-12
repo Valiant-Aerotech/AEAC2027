@@ -4,6 +4,7 @@
 Usage:
     python missions/task2_vion_auto_extinguish.py
     python missions/task2_vion_auto_extinguish.py --sim
+    python missions/task2_vion_auto_extinguish.py --sim --source webcam --camera 0 --max-targets 1
     python missions/task2_vion_auto_extinguish.py --connection COM5 --baud 57600
 """
 

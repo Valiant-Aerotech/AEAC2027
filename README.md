@@ -1,45 +1,65 @@
 # AEAC2027
 
-Valiant Aerotech competition software for AEAC 2027. Everything in this repo is designed to run on a **fresh GCS laptop** with minimal setup.
+Valiant Aerotech competition software for AEAC 2027.
 
-**New to the team?** Start with [WELCOME.md](WELCOME.md), then open [GitHub Issues](https://github.com/Valiant-Aerotech/AEAC2027/issues).
+**New to the team?** Start with [WELCOME.md](WELCOME.md).
 
 ## Fleet
 
 | Drone | Role | Mission |
 |-------|------|---------|
 | **Vulcan 2** | Heavy lifter (carries Vivi) | Hardware docs only - `hardware/vulcan2/` |
-| **Vion** | Fire suppression (GCS offload) | Task 2 auto + manual - `missions/task2_vion_*.py` |
-| **Vivi** | Surveying drone | Task 1 target report - `missions/task1_vivi_survey.py` |
+| **Vion** | Fire suppression (Pi companion + Pixhawk) | Task 2 - `hardware/vion/rpi/run_mission.py` |
+| **Vivi** | Surveying drone | Task 1 - `missions/task1_vivi_survey.py` |
 
-## Quick start (new laptop)
+## First connect (hardware day)
+
+| Machine | Run first |
+|---------|-----------|
+| GCS laptop + drone | `.\tools\bringup_gcs.ps1` |
+| Raspberry Pi (SSH) | `bash hardware/vion/rpi/first_connect.sh` |
+
+Full checklist: [docs/runbooks/vion-bringup.md](docs/runbooks/vion-bringup.md)
+
+## Quick start (new GCS laptop)
 
 ```powershell
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
-.\tools\setup.ps1
+.\tools\setup_gcs.ps1
 python tools\verify_env.py
-notepad config\vion.yaml    # set your COM port
+notepad config\vion.yaml    # set telemetry radio COM port
 ```
 
 ## Run a mission
 
+```bash
+# Primary (onboard Pi)
+python hardware/vion/rpi/run_mission.py --profile indoor
+```
+
 ```powershell
-python missions\task2_vion_auto_extinguish.py      # Task 2 autonomous
-python missions\task2_vion_manual_photo.py         # Task 2 manual fallback
-python missions\task1_vivi_survey.py               # Task 1 surveying
+# GCS monitor
+python tools\mission_monitor.py
+
+# Dev / manual fallback
+python missions\task2_vion_auto_extinguish.py --sim --source webcam
+python missions\task2_vion_manual_photo.py
+python missions\task1_vivi_survey.py
 ```
 
 ## Repo layout
 
 ```
-missions/          ← only files you run
-src/valiant/       ← library code (never run directly)
-config/            ← per-drone YAML (edit per laptop)
-hardware/          ← FC params, Lua scripts per drone
-tools/             ← setup and verify scripts
-docs/              ← architecture, runbooks, interfaces
-models/            ← ONNX models (see models/README.md)
+missions/          <- GCS entry points (dev / manual)
+hardware/vion/rpi/ <- Pi primary flight entry
+src/valiant/       <- library code
+config/            <- per-drone YAML + vion_calibration.yaml
+tools/             <- setup, bringup, monitor scripts
+docs/runbooks/     <- vion-bringup.md, field-test-plan.md
+models/            <- ONNX models (best.onnx)
 ```
 
-See [WELCOME.md](WELCOME.md) for new members and [ONBOARDING.md](ONBOARDING.md) for full setup. See [docs/architecture.md](docs/architecture.md) for the modular pipeline design. Competition rules map to config in [docs/conops.md](docs/conops.md).
+See [docs/architecture.md](docs/architecture.md) and [docs/conops.md](docs/conops.md).
+
+**Before hardware:** [docs/runbooks/whats-left-before-hardware.md](docs/runbooks/whats-left-before-hardware.md)

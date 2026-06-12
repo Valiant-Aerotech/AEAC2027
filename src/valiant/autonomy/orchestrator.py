@@ -14,6 +14,10 @@ from valiant.autonomy.auto_nav.planner import MotionIntent, MotionPlanner
 from valiant.autonomy.cv.detector import TargetDetector
 from valiant.autonomy.cv.exceptions import BadFrameError, CVError, LowConfidenceError
 from valiant.autonomy.cv.ui import draw_overlay
+from valiant.autonomy.flight.mode_manager import FlightModeManager
+from valiant.autonomy.flight.preflight import check_assets, check_depth_mode, is_armed
+from valiant.autonomy.flight.profile import apply_vion_profile
+from valiant.autonomy.metric_recon.depth_source import InlineDepthSource
 from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
 from valiant.autonomy.packets import CVPacket, MetricPacket
 from valiant.autonomy.conops import (
@@ -28,8 +32,9 @@ from valiant.autonomy.conops import (
 from valiant.autonomy.safety.monitor import SafetyAbort, SafetyMonitor
 from valiant.autonomy.spray.actuation import WaterTrigger
 from valiant.autonomy.spray.aim import is_aimed
+from valiant.autonomy.telemetry_bridge import TelemetryBridge
 from valiant.autonomy.upload.drive import DriveUploader
-from valiant.common.camera import ScrcpyCamera
+from valiant.common.camera import ScrcpyCamera, WebcamCamera
 from valiant.common.config import load_config
 from valiant.common.mavlink import connect, request_sys_status_stream, send_rtl, send_statustext
 
@@ -45,7 +50,7 @@ STATE_ABORTED = "ABORTED"
 
 
 class AutoExtinguisher:
-    """GCS-side autonomous fire extinguishing orchestrator."""
+    """Autonomous fire extinguishing orchestrator (GCS dev or onboard RPi)."""
 
     def __init__(
         self,
@@ -57,10 +62,18 @@ class AutoExtinguisher:
         headless: bool = False,
         phone_ip: str | None = None,
         max_targets: int | None = None,
+        source: str | None = None,
+        camera_index: int = 0,
+        profile: str | None = None,
+        recording_dir: str | None = None,
     ):
         self.cfg = cfg
+        if profile:
+            apply_vion_profile(self.cfg, profile)
         self.sim = sim_mode
         self.headless = headless
+        cam_cfg = cfg.get("camera", {})
+        self.source = source or cam_cfg.get("source", "scrcpy")
         nav = cfg.get("auto_nav", {})
         cv_cfg = cfg.get("cv", {})
         team = cfg.get("team", {})
@@ -73,6 +86,7 @@ class AutoExtinguisher:
         self.photo_save_dir = team.get("photo_save_dir", "task2_photos")
         self.shoot_duration_s = cfg.get("spray", {}).get("duration_s", 2.0)
         self.cv_method = cv_cfg.get("method", "hsv")
+        self.yolo_input_size = cv_cfg.get("yolo_input_size", 320)
         self.camera_down = cfg.get("metric_recon", {}).get("camera_down", True)
         self.require_shot = require_shot_confirmation(cfg)
         self.shot_confirm_timeout_s = shot_confirm_timeout_s(cfg)
@@ -83,6 +97,8 @@ class AutoExtinguisher:
 
         for warning in validate_conops_config(cfg):
             print(f"[CONOPS] Warning: {warning}")
+        for warning in check_assets(cfg):
+            print(f"[PREFLIGHT] Warning: {warning}")
 
         print(f"[INIT] Connecting MAVLink on {connection_string} (sim={sim_mode})...")
         if sim_mode:
@@ -104,12 +120,32 @@ class AutoExtinguisher:
         self.nav = MavlinkDriver(self.master, cfg)
         self.safety = SafetyMonitor(self.master, cfg, sim=sim_mode)
         self.planner = MotionPlanner(cfg)
-        self.metric_recon = MetricReconstructor(self.master, cfg, sim=sim_mode)
+        self._depth_source = InlineDepthSource()
+        self.metric_recon = MetricReconstructor(
+            self.master, cfg, sim=sim_mode, depth_source=self._depth_source
+        )
         self.trigger = WaterTrigger(self.master, cfg)
         self.uploader = DriveUploader(cfg)
         self.detector = TargetDetector(cfg)
+        self.flight_mode = FlightModeManager(self.master, cfg, sim=sim_mode)
+        self.telemetry = TelemetryBridge(cfg)
+        self.telemetry.start()
 
-        self.camera = ScrcpyCamera.from_config(cfg, phone_ip=phone_ip)
+        if self.source == "webcam":
+            self.camera = WebcamCamera(camera_index)
+            print(f"[INIT] Using webcam index {camera_index}")
+        elif self.source == "rpi_local":
+            from valiant.common.rpi_local_camera import RpiLocalCamera
+
+            self.camera = RpiLocalCamera.from_config(
+                cfg,
+                webcam_fallback_index=camera_index,
+                recording_dir=recording_dir,
+            )
+            print("[INIT] Using RPi local camera (RGB + depth when available)")
+        else:
+            self.camera = ScrcpyCamera.from_config(cfg, phone_ip=phone_ip)
+            print("[INIT] Using scrcpy window capture")
 
         self.state = STATE_SEARCHING
         self.frames_without_target = 0
@@ -120,6 +156,8 @@ class AutoExtinguisher:
         self.upload_file_path: str | None = None
         self._last_cv: CVPacket | None = None
         self._last_metric: MetricPacket | None = None
+        self._depth_warned = False
+        self._disarm_warned = False
 
     def send_hud_message(self, message: str) -> None:
         send_statustext(self.master, message, prefix="T2: ")
@@ -182,16 +220,32 @@ class AutoExtinguisher:
 
     def _metric_hud(self, metric: MetricPacket) -> str:
         dist = f"{metric.distance_m:.1f}m" if metric.distance_m is not None else "?"
-        return f"LOCK dist={dist}"
+        src = metric.distance_source or "?"
+        return f"LOCK dist={dist} src={src}"
 
     def loop(self) -> None:
-        print("\n=== GCS AUTO-EXTINGUISH ===")
+        onboard = self.source == "rpi_local"
+        label = "ONBOARD RPi" if onboard else "GCS"
+        print(f"\n=== {label} AUTO-EXTINGUISH ===")
         print(f"CV method: {self.cv_method}")
+        print(f"Flight profile: {self.cfg.get('flight', {}).get('profile', 'outdoor')}")
         print("Pipeline: CV -> MetricRecon -> AutoNav -> Spray -> Upload")
-        print("Waiting for scrcpy window... (Ctrl+C to abort)")
+        if self.source == "webcam":
+            print("Using webcam feed. (Ctrl+C to abort)")
+        elif self.source == "rpi_local":
+            print("Using RPi local sensors. (Ctrl+C to abort)")
+        else:
+            print("Waiting for scrcpy window... (Ctrl+C to abort)")
 
         try:
             while True:
+                if not self.sim:
+                    self.flight_mode.ensure_mode()
+                    if self.flight_mode.check_rc_override():
+                        print("[Flight] RC override detected - stopping nav")
+                        self.nav.stop()
+                        self.set_state(STATE_SEARCHING)
+
                 safety_abort = self.safety.check()
                 if safety_abort:
                     self._handle_safety_abort(safety_abort)
@@ -202,6 +256,26 @@ class AutoExtinguisher:
                     time.sleep(0.5)
                     continue
 
+                if hasattr(self.camera, "get_depth_mm"):
+                    depth_mm = self.camera.get_depth_mm()
+                    self._depth_source.set_frame(depth_mm)
+                    if not self._depth_warned:
+                        depth_ok = depth_mm is not None
+                        if hasattr(self.camera, "depth_available"):
+                            depth_ok = self.camera.depth_available and depth_mm is not None
+                        for w in check_depth_mode(self.cfg, depth_ok):
+                            print(f"[PREFLIGHT] Warning: {w}")
+                        self._depth_warned = True
+
+                if not self.sim and not self._disarm_warned:
+                    armed = is_armed(self.master)
+                    if armed is False:
+                        print(
+                            "[PREFLIGHT] FC not armed - velocity commands have no effect. "
+                            "Arm and hover manually before APPROACHING."
+                        )
+                        self._disarm_warned = True
+
                 frame_h, frame_w = frame.shape[:2]
                 cv_packet = self._run_cv(frame)
                 metric = self._run_metric(cv_packet, frame_w, frame_h)
@@ -210,10 +284,14 @@ class AutoExtinguisher:
                 if hit:
                     self.frames_without_target = 0
                     if metric and time.time() - self.last_hud_alert_time > 1.5:
-                        self.send_hud_message(self._metric_hud(metric))
+                        hud = self._metric_hud(metric)
+                        self.send_hud_message(hud)
+                        self.telemetry.send_statustext(hud)
                         self.last_hud_alert_time = time.time()
                 else:
                     self.frames_without_target += 1
+
+                self.telemetry.update(self.state, metric)
 
                 if self._handle_target_lost():
                     continue
@@ -225,6 +303,7 @@ class AutoExtinguisher:
                         self.state,
                         metric=metric,
                         show_yolo_crop=self.cv_method in ("yolo", "both"),
+                        yolo_crop_size=self.yolo_input_size,
                     )
                     cv2.imshow("GCS Extinguisher View", overlay)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -252,7 +331,6 @@ class AutoExtinguisher:
                         if not self.sim and intent == MotionIntent.APPROACH:
                             self.nav.move_toward_target(
                                 metric, frame_w, frame_h,
-                                approach_speed=self.approach_speed,
                                 camera_down=self.camera_down,
                             )
 
@@ -359,6 +437,7 @@ class AutoExtinguisher:
             if not self.sim:
                 self.nav.stop()
             self.metric_recon.stop()
+            self.telemetry.stop()
             self.trigger.cleanup()
             self.camera.cleanup()
             cv2.destroyAllWindows()
@@ -372,8 +451,14 @@ def run_auto_extinguish(
     headless: bool = False,
     phone_ip: str | None = None,
     max_targets: int | None = None,
+    source: str | None = None,
+    camera_index: int = 0,
+    profile: str | None = None,
+    recording_dir: str | None = None,
+    cfg: dict | None = None,
 ) -> None:
-    cfg = load_config("vion")
+    if cfg is None:
+        cfg = load_config("vion")
     mavlink_cfg = cfg.get("mavlink", {})
     conn = connection or mavlink_cfg.get("connection", "udpin:127.0.0.1:14550")
     baud_rate = baud if baud is not None else mavlink_cfg.get("baud", 57600)
@@ -386,6 +471,10 @@ def run_auto_extinguish(
         headless=headless,
         phone_ip=phone_ip,
         max_targets=max_targets,
+        source=source,
+        camera_index=camera_index,
+        profile=profile,
+        recording_dir=recording_dir,
     )
     extinguisher.loop()
 
@@ -397,6 +486,29 @@ def main() -> None:
     parser.add_argument("--sim", action="store_true")
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--scrcpy-ip", default=None)
+    parser.add_argument(
+        "--source",
+        choices=["webcam", "scrcpy", "rpi_local"],
+        default=None,
+        help="Camera source (default from config/vion.yaml camera.source)",
+    )
+    parser.add_argument(
+        "--camera",
+        type=int,
+        default=0,
+        help="Webcam index when --source webcam or rpi_local dev fallback",
+    )
+    parser.add_argument(
+        "--profile",
+        choices=["indoor", "outdoor"],
+        default=None,
+        help="Flight profile (overrides config flight.profile)",
+    )
+    parser.add_argument(
+        "--recording-dir",
+        default=None,
+        help="Replay depth frames from Pi recording directory",
+    )
     parser.add_argument(
         "--max-targets",
         type=int,
@@ -411,6 +523,10 @@ def main() -> None:
         headless=args.headless,
         phone_ip=args.scrcpy_ip,
         max_targets=args.max_targets,
+        source=args.source,
+        camera_index=args.camera,
+        profile=args.profile,
+        recording_dir=args.recording_dir,
     )
 
 

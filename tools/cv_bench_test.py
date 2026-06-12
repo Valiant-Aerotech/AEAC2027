@@ -69,7 +69,15 @@ def main() -> int:
             if log_file:
                 log_file.write(json.dumps(record) + "\n")
 
-            overlay = draw_overlay(frame, packet, "BENCH", show_yolo_crop=True)
+            method = cfg.get("cv", {}).get("method", "hsv")
+            crop_size = cfg.get("cv", {}).get("yolo_input_size", 320)
+            overlay = draw_overlay(
+                frame,
+                packet,
+                "BENCH",
+                show_yolo_crop=method in ("yolo", "both"),
+                yolo_crop_size=crop_size,
+            )
             cv2.putText(
                 overlay,
                 f"{elapsed_ms:.1f}ms",

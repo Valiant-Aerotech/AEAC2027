@@ -1,27 +1,49 @@
 # Models
 
-ONNX model files are **not committed** to git (see `.gitignore`).
+ONNX weights are **not committed** to git (see `.gitignore`). Place trained files here locally.
 
-**Default detection uses HSV** (`config/vion.yaml` `cv.method: hsv`) - no ONNX required for bench or field tests. YOLO models are optional when `cv.method` is `yolo` or `both`.
-
-## Expected files
+## Active model (Team)
 
 | File | Purpose |
 |------|---------|
-| `dry.onnx` | Un-extinguished purple target detection |
-| `shot.onnx` | Extinguished blue/wetted target detection |
+| `best.onnx` | Dry (purple) target detection - primary YOLO model |
 
-## Obtain models
+Default config in `config/vion.yaml`:
 
-1. **Train new models** (Track C8):
-   ```powershell
-   python -m valiant.autonomy.cv.training.generate_targets
-   python -m valiant.autonomy.cv.training.train
-   ```
+```yaml
+cv:
+  method: yolo
+  models:
+    dry: models/best.onnx
+  yolo_input_size: 320
+```
 
-2. **Copy from old codebase** (interim):
-   Copy `old-codebase/integration/pipelines/task_two/models/best.onnx` to `models/dry.onnx` until dry/shot models are trained.
+Shot confirmation (blue/wetted target after spray) still uses **HSV** when `cv.method` is `yolo`.
 
-## Config
+## Optional files
 
-Model paths are set in `config/vion.yaml` under `cv.models`.
+| File | Purpose |
+|------|---------|
+| `dry.onnx` | Alternate name for dry model (auto-discovered if `best.onnx` missing) |
+| `shot.onnx` | Reserved for a future shot-class YOLO model (not wired yet) |
+
+## Test locally
+
+```powershell
+python tools\yolo_webcam_test.py --camera 0
+python tools\cv_bench_test.py --camera 0
+python tools\metric_bench_test.py --camera 0
+```
+
+Inference uses **onnxruntime** (no PyTorch required at runtime). Hold a purple target in the **center blue box** (320x320 AI view for `best.onnx`). Detections appear as magenta `dry` boxes.
+
+## Train / export new models
+
+```powershell
+python -m valiant.autonomy.cv.training.generate_targets
+python -m valiant.autonomy.cv.training.train
+# Export: yolo export model=<best.pt> format=onnx
+# Copy export to models/best.onnx
+```
+
+Training run artifacts go under `models/runs/` (gitignored).
