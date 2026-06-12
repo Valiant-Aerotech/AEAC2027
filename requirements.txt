@@ -8,7 +8,8 @@ PyYAML>=6.0
 mss>=9.0
 pygetwindow>=0.0.9
 
-# Computer vision models (optional until models are trained)
+# Computer vision - ONNX runtime for field inference; ultralytics for training only
+onnxruntime>=1.16
 ultralytics>=8.0
 
 # Google Drive upload (optional - only needed for gdrive_service_account)

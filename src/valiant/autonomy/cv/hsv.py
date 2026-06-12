@@ -85,3 +85,9 @@ def detect_hsv(
     dry_hit = _largest_contour_hit(dry_mask, min_area=min_area)
     shot_hit = _largest_contour_hit(shot_mask, min_area=min_area)
     return dry_hit, shot_hit
+
+
+def detect_hsv_shot(frame: npt.NDArray[np.uint8], cfg: dict) -> TargetHit | None:
+    """Blue/wetted target only (used for shot confirmation when dry uses YOLO)."""
+    _, shot_hit = detect_hsv(frame, cfg)
+    return shot_hit

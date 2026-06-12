@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cv = ["ultralytics>=8.0"]
+cv = ["onnxruntime>=1.16", "ultralytics>=8.0"]
 gcs = ["mss>=9.0", "pygetwindow>=0.0.9"]
 dev = ["pytest>=7.0"]
 

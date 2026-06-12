@@ -34,12 +34,13 @@ class CVPacket:
 
 ## MetricPacket (Metric Recon -> Auto-Nav)
 
-Built by `MetricReconstructor` from `CVPacket` + frame geometry + optional VL53L1X MAVLink.
+Built by `MetricReconstructor` from `CVPacket` + frame geometry + depth at target pixel or optional VL53L1X MAVLink.
 
 | Field | Source |
 |-------|--------|
 | `pixel_offset` | Target centre vs frame centre |
-| `distance_m` | FOV estimate and/or `DISTANCE_SENSOR` MAVLink |
+| `distance_m` | `depth_at_target` (ArduCam ToF), FOV estimate, and/or `DISTANCE_SENSOR` MAVLink |
+| `distance_source` | `depth_at_target`, `fov`, `fov_fallback`, `vl53l1x`, or null |
 | `wall_distance_m` | Target distance + wall offset |
 | `side_clearance_m` | Lateral margin from frame edge + range |
 
@@ -51,6 +52,7 @@ class MetricPacket:
     distance_m: float | None
     wall_distance_m: float | None
     side_clearance_m: float | None
+    distance_source: str | None
     timestamp: float
 ```
 
@@ -59,8 +61,10 @@ class MetricPacket:
 | method | Behaviour |
 |--------|-----------|
 | `hsv` | Purple/blue HSV only - no ONNX required |
-| `yolo` | YOLO ONNX for dry; falls back to HSV if model missing |
-| `both` | HSV for dry+shot; YOLO supplements dry if HSV finds nothing |
+| `yolo` | `models/best.onnx` for dry (center 224x224 crop); HSV for shot confirm only |
+| `both` | HSV for dry+shot first; YOLO supplements dry if HSV finds nothing |
+
+Model path: `cv.models.dry` (default `models/best.onnx`). Inference via onnxruntime. Input size: `cv.yolo_input_size` (default 320, read from ONNX when possible).
 
 Tune `hsv_dry` / `hsv_shot` / `hsv_min_area_px` for outdoor lighting.
 
@@ -74,7 +78,7 @@ python tools\metric_bench_test.py --video footage.mp4
 
 ## Auto-Nav and Spray (`config/vion.yaml`)
 
-- `metric_recon.rangefinder`: `fov_estimate` (default), `vl53l1x`, or `none`
+- `metric_recon.rangefinder`: `depth_at_target` (Pi), `fov_estimate` (default GCS dev), `vl53l1x`, or `none`
 - `metric_recon.min_approach_distance_m`: CONOPS 2m approach validation
 - `metric_recon.fire_distance_m`: switch from APPROACHING to AIMING
 - `auto_nav.side_clearance_m`: abort if target too close to frame edge

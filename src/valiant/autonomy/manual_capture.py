@@ -8,10 +8,11 @@ import csv
 import time
 
 import cv2
+import numpy as np
 
 from valiant.autonomy.conops import task2_photo_filename
 from valiant.autonomy.upload.drive import DriveUploader
-from valiant.common.camera import ScrcpyCamera
+from valiant.common.camera import ScrcpyCamera, WebcamCamera
 
 
 class _FrameSource:
@@ -20,20 +21,6 @@ class _FrameSource:
 
     def cleanup(self) -> None:
         pass
-
-
-class _WebcamSource(_FrameSource):
-    def __init__(self, camera_index: int):
-        self.cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
-        if not self.cap.isOpened():
-            raise RuntimeError(f"Could not open camera index {camera_index}")
-
-    def get_frame(self):
-        ret, frame = self.cap.read()
-        return frame if ret else None
-
-    def cleanup(self) -> None:
-        self.cap.release()
 
 
 class _ScrcpySource(_FrameSource):
@@ -71,7 +58,7 @@ def capture_task2_photos(
         frame_source: _FrameSource = _ScrcpySource(cfg, phone_ip=phone_ip)
         print("Using scrcpy window capture. Waiting for ExtinguisherCam...")
     else:
-        frame_source = _WebcamSource(camera_index)
+        frame_source = WebcamCamera(camera_index)
 
     uploader = DriveUploader(cfg) if upload and cfg else None
     target_number = 1
@@ -81,30 +68,41 @@ def capture_task2_photos(
             csv.writer(f).writerow(["target_number", "filename", "timestamp", "uploaded"])
 
     print("Task Two manual photo capture started.")
-    print("Press ENTER in the camera window to save a photo. Press Q to quit.")
+    print("Press ENTER in the OpenCV window to save a photo. Press Q or ESC to quit.")
+
+    window_name = "Task Two Manual Capture"
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    quit_keys = {ord("q"), ord("Q"), 27}
 
     try:
         while True:
             frame = frame_source.get_frame()
             if frame is None:
+                display = np.zeros((480, 640, 3), dtype=np.uint8)
+                status = "Waiting for camera feed..."
                 if source == "scrcpy":
-                    time.sleep(0.5)
-                continue
+                    time.sleep(0.1)
+            else:
+                display = frame.copy()
+                status = f"Next: Target {target_number} | ENTER=save | Q=quit"
 
-            display = frame.copy()
             cv2.putText(
                 display,
-                f"Next: Target {target_number} | ENTER=save | Q=quit",
+                status,
                 (20, 40),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.8,
                 (255, 255, 255),
                 2,
             )
-            cv2.imshow("Task Two Manual Capture", display)
+            cv2.imshow(window_name, display)
             key = cv2.waitKey(1) & 0xFF
 
-            if key == 13:
+            if key in quit_keys:
+                print("Quit requested.")
+                break
+
+            if key == 13 and frame is not None:
                 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
                 if cfg:
                     filename = task2_photo_filename(cfg, target_number)
@@ -120,8 +118,9 @@ def capture_task2_photos(
                     csv.writer(f).writerow([target_number, filename, timestamp, uploaded])
                 print(f"Saved: {filepath}")
                 target_number += 1
-            elif key == ord("q"):
-                break
     finally:
+        print("Cleaning up camera...")
         frame_source.cleanup()
+        cv2.destroyWindow(window_name)
         cv2.destroyAllWindows()
+        cv2.waitKey(1)

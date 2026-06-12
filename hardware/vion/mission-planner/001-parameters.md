@@ -28,3 +28,18 @@ Restart shit until it works
 
 ## Scripting
 - `SCR_ENABLE` : `1`
+
+## Holybro H-Flow (indoor optical flow + downward lidar)
+
+Mount rigidly facing down, clear of props. Connect to Pixhawk CAN bus (same as HERE4).
+
+Per Holybro / ArduPilot docs (verify against your firmware version):
+
+- `FLOW_TYPE` : `6` (DroneCAN)
+- `RNGFND1_TYPE` : `24` (DroneCAN rangefinder)
+- Set `FLOW_POS_X/Y/Z` for mount offset from CG
+- Set `RNGFND1_POS_X/Y/Z` to match flow sensor bore-sight
+
+Indoor flight profile uses `GUIDED_NOGPS` on the Pi companion. Monitor `opt_qua` in Mission Planner during bench hover.
+
+Target range for extinguish comes from ArduCam ToF on the Pi, not H-Flow lidar.

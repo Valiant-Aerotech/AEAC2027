@@ -6,15 +6,12 @@ from typing import TYPE_CHECKING
 
 import cv2
 
+from valiant.autonomy.cv.yolo_crop import YOLO_INPUT_SIZE, center_crop_bounds
 from valiant.autonomy.packets import CVPacket, MetricPacket
 
 if TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
-
-CAPTURE_WIDTH = 1280
-CAPTURE_HEIGHT = 720
-R_S = 224
 
 
 def draw_overlay(
@@ -24,6 +21,7 @@ def draw_overlay(
     *,
     metric: MetricPacket | None = None,
     show_yolo_crop: bool = False,
+    yolo_crop_size: int | None = None,
 ) -> npt.NDArray[np.uint8]:
     """Draw detection boxes, crosshair, and state on a copy of the frame."""
     overlay = frame.copy()
@@ -80,22 +78,28 @@ def draw_overlay(
             )
 
     if show_yolo_crop:
-        scale_x = w / CAPTURE_WIDTH
-        scale_y = h / CAPTURE_HEIGHT
-        crop_w = max(1, int(R_S * scale_x))
-        crop_h = max(1, int(R_S * scale_y))
-        start_x = max(0, (w - crop_w) // 2)
-        start_y = max(0, (h - crop_h) // 2)
+        crop_size = yolo_crop_size if yolo_crop_size is not None else YOLO_INPUT_SIZE
+        start_x, start_y, crop_w, crop_h = center_crop_bounds(w, h, crop_size)
         cv2.rectangle(
             overlay,
             (start_x, start_y),
             (start_x + crop_w, start_y + crop_h),
+            (255, 0, 0),
+            2,
+        )
+        cv2.putText(
+            overlay,
+            f"AI view ({crop_size}x{crop_size})",
+            (start_x, max(start_y - 8, 15)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
             (255, 0, 0),
             1,
         )
 
     if metric:
         dist_txt = f"{metric.distance_m:.2f}m" if metric.distance_m is not None else "dist=?"
+        src_txt = metric.distance_source or "?"
         side_txt = (
             f"{metric.side_clearance_m:.2f}m"
             if metric.side_clearance_m is not None
@@ -103,7 +107,7 @@ def draw_overlay(
         )
         cv2.putText(
             overlay,
-            f"metric: {dist_txt}  side: {side_txt}",
+            f"metric: {dist_txt} ({src_txt})  side: {side_txt}",
             (10, h - 20),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,

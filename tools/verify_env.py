@@ -19,6 +19,7 @@ REQUIRED_IMPORTS = [
 OPTIONAL_IMPORTS = [
     ("mss", "mss"),
     ("pygetwindow", "pygetwindow"),
+    ("onnxruntime", "onnxruntime"),
     ("ultralytics", "ultralytics"),
 ]
 

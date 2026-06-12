@@ -1,4 +1,4 @@
-"""scrcpy window capture for GCS-offload camera feed."""
+"""Camera sources for Task 2: scrcpy window capture and local webcam."""
 
 from __future__ import annotations
 
@@ -20,6 +20,23 @@ try:
     HAVE_SCREEN_CAPTURE = True
 except ImportError:
     HAVE_SCREEN_CAPTURE = False
+
+
+class WebcamCamera:
+    """Capture frames from a local USB webcam (bench testing without scrcpy)."""
+
+    def __init__(self, camera_index: int = 0):
+        backend = cv2.CAP_DSHOW if os.name == "nt" else cv2.CAP_ANY
+        self.cap = cv2.VideoCapture(camera_index, backend)
+        if not self.cap.isOpened():
+            raise RuntimeError(f"Could not open camera index {camera_index}")
+
+    def get_frame(self) -> npt.NDArray[np.uint8] | None:
+        ret, frame = self.cap.read()
+        return frame if ret else None
+
+    def cleanup(self) -> None:
+        self.cap.release()
 
 
 class ScrcpyCamera:
@@ -128,4 +145,17 @@ class ScrcpyCamera:
     def cleanup(self) -> None:
         if self.scrcpy_proc:
             self.scrcpy_proc.terminate()
-            self.scrcpy_proc.wait()
+            try:
+                self.scrcpy_proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                self.scrcpy_proc.kill()
+                self.scrcpy_proc.wait()
+            self.scrcpy_proc = None
+
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/IM", "scrcpy.exe", "/F"], capture_output=True)
+
+        try:
+            self.sct.close()
+        except Exception:
+            pass

@@ -51,4 +51,5 @@ class MetricPacket:
     distance_m: float | None = None
     wall_distance_m: float | None = None
     side_clearance_m: float | None = None
+    distance_source: str | None = None
     timestamp: float = field(default_factory=time.time)

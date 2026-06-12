@@ -8,11 +8,21 @@
 - `config/vion.yaml` COM port set for this laptop
 - Emergency RC switch tested (onboard `hardware/vion/lua/safety.lua`)
 
+## Bench without drone
+
+Use a laptop webcam and `--sim` (no MAVLink commands). Hold a purple target in frame for CV to advance the state machine.
+
+```powershell
+.\tools\webcam_bench.ps1
+python missions\task2_vion_auto_extinguish.py --sim --source webcam --camera 0 --max-targets 1
+```
+
 ## Run
 
 ```powershell
 python missions\task2_vion_auto_extinguish.py
 python missions\task2_vion_auto_extinguish.py --sim          # no MAVLink commands
+python missions\task2_vion_auto_extinguish.py --sim --source webcam --camera 0
 python missions\task2_vion_auto_extinguish.py --headless   # no debug window
 python missions\task2_vion_auto_extinguish.py --scrcpy-ip 192.168.1.100:5555
 python missions\task2_vion_auto_extinguish.py --max-targets 1   # single-target test
