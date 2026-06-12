@@ -1,98 +1,105 @@
-# Vion - fire suppression drone (Pixhawk 6C + RPi companion)
-# GCS laptop: calibration, monitor, manual fallback only.
-
-drone: vion
-
-mavlink:
-  connection: "COM5"                    # GCS dev; Pi uses /dev/ttyAMA0 or /dev/ttyUSB0
-  baud: 57600
-  sitl_fallback: "udpin:127.0.0.1:14550"
-
-flight:
-  profile: outdoor                    # outdoor | indoor
-  require_gps: true
-  mode: GUIDED                        # GUIDED | GUIDED_NOGPS
-  arm_check_gps: true
-
-camera:
-  source: scrcpy                      # scrcpy | webcam | rpi_local
-  scrcpy_window_title: ExtinguisherCam
-  phone_ip: null
-  max_fps: 30
-  max_size: 1280
-  video_bit_rate_mbps: 8
-  no_audio: true
-  min_grab_interval_s: 0.0
-  hfov_deg: 66.0
-  vfov_deg: 52.0
-  rpi:
-    rgb_width: 640
-    rgb_height: 480
-    depth_width: 240
-    depth_height: 180
-    recording_dir: null               # replay depth from Pi recordings on dev
-
-calibration:
-  file: config/vion_calibration.yaml  # copy from vion_calibration.yaml.example
-
-cv:
-  method: yolo
-  models:
-    dry: models/best.onnx
-    shot: models/shot.onnx
-  yolo_input_size: 320
-  hsv_dry:  { h_min: 130, h_max: 170, s_min: 50, v_min: 50 }
-  hsv_shot: { h_min: 100, h_max: 130, s_min: 50, v_min: 50 }
-  hsv_min_area_px: 500
-  confidence_threshold: 0.35
-  max_frames_without_target: 45
-
-metric_recon:
-  rangefinder: fov_estimate           # depth_at_target | vl53l1x | fov_estimate | none
-  target_diameter_m: 0.30
-  min_approach_distance_m: 2.0
-  fire_distance_m: 0.8
-  wall_offset_m: 0.0
-  camera_down: true
-  rangefinder_stale_s: 1.0
-  depth_sample_window_px: 5
-  depth_invalid_mm: 0
-  depth_max_mm: 6000
-
-auto_nav:
-  kp_x: 0.0015
-  kp_y: 0.0015
-  kd_x: 0.0004
-  kd_y: 0.0004
-  max_vel: 0.4
-  deadband_px: 50
-  approach_speed: 0.25
-  approach_slow_start_m: 1.5
-  approach_min_speed_factor: 0.25
-  side_clearance_m: 1.0
-  target_lock_area_px: 15000
-  approach_timeout_s: 30
-  lock_duration_s: 1.5
-  lock_timeout_s: 10
-
-spray:
-  method: MAVLINK_SERVO
-  channel: 15
-  pwm_open: 1900
-  pwm_close: 1100
-  duration_s: 2.0
-
-safety:
-  min_battery_pct: 20
-  geofence_abort: true
-  mission_timeout_s: 600
-  rtl_on_abort: false
-
-gcs_monitor:
-  enabled: false
-  connection: "udpout:127.0.0.1:14550"
-  heartbeat_hz: 1.0
-  heartbeat_timeout_s: 2.0
-  degraded_rtt_ms: 200
-  ping_interval_s: 1.0
+# Vion - fire suppression drone (Pixhawk 6C + RPi companion)
+# GCS laptop: calibration, monitor, manual fallback only.
+
+drone: vion
+
+mavlink:
+  connection: "COM5"                    # GCS dev; Pi uses /dev/ttyAMA0 or /dev/ttyUSB0
+  baud: 57600
+  sitl_fallback: "udpin:127.0.0.1:14550"
+
+flight:
+  profile: outdoor                    # outdoor | indoor
+  require_gps: true
+  mode: GUIDED                        # GUIDED | GUIDED_NOGPS
+  arm_check_gps: true
+
+camera:
+  source: scrcpy                      # scrcpy | webcam | rpi_local
+  scrcpy_window_title: ExtinguisherCam
+  phone_ip: null
+  max_fps: 30
+  max_size: 1280
+  video_bit_rate_mbps: 8
+  no_audio: true
+  min_grab_interval_s: 0.0
+  hfov_deg: 66.0
+  vfov_deg: 52.0
+  rpi:
+    rgb_width: 640
+    rgb_height: 480
+    depth_width: 240
+    depth_height: 180
+    recording_dir: null
+    tof:
+      enabled: true
+      connect: CSI                    # CSI | USB
+      camera_index: 0
+      request_timeout_ms: 200
+      min_amplitude: 30
+      max_depth_m: 6.0
+
+calibration:
+  file: config/vion_calibration.yaml  # copy from vion_calibration.yaml.example
+
+cv:
+  method: yolo
+  models:
+    dry: models/best.onnx
+    shot: models/shot.onnx
+  yolo_input_size: 320
+  hsv_dry:  { h_min: 130, h_max: 170, s_min: 50, v_min: 50 }
+  hsv_shot: { h_min: 100, h_max: 130, s_min: 50, v_min: 50 }
+  hsv_min_area_px: 500
+  confidence_threshold: 0.35
+  max_frames_without_target: 45
+
+metric_recon:
+  rangefinder: fov_estimate           # depth_at_target | vl53l1x | fov_estimate | none
+  target_diameter_m: 0.30
+  min_approach_distance_m: 2.0
+  fire_distance_m: 0.8
+  wall_offset_m: 0.0
+  camera_down: true
+  rangefinder_stale_s: 1.0
+  depth_sample_window_px: 5
+  depth_invalid_mm: 0
+  depth_max_mm: 6000
+
+auto_nav:
+  kp_x: 0.0015
+  kp_y: 0.0015
+  kd_x: 0.0004
+  kd_y: 0.0004
+  max_vel: 0.4
+  deadband_px: 50
+  approach_speed: 0.25
+  approach_slow_start_m: 1.5
+  approach_min_speed_factor: 0.25
+  side_clearance_m: 1.0
+  target_lock_area_px: 15000
+  approach_timeout_s: 30
+  lock_duration_s: 1.5
+  lock_timeout_s: 10
+
+spray:
+  method: MAVLINK_SERVO
+  channel: 15
+  pwm_open: 1900
+  pwm_close: 1100
+  duration_s: 2.0
+
+safety:
+  min_battery_pct: 20
+  geofence_abort: true
+  mission_timeout_s: 600
+  rtl_on_abort: false
+
+gcs_monitor:
+  enabled: false
+  connection: "udpout:127.0.0.1:14550"
+  heartbeat_hz: 1.0
+  heartbeat_timeout_s: 2.0
+  degraded_rtt_ms: 200
+  ping_interval_s: 1.0
 

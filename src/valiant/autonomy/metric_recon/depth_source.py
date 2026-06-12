@@ -58,13 +58,30 @@ class RecordingDepthSource:
                 data = json.load(f)
             self._entries = data.get("frames", data if isinstance(data, list) else [])
 
+    def _resolve_depth_path(self, depth_file: str | None) -> Path | None:
+        if not depth_file:
+            return None
+        path = Path(depth_file)
+        if path.is_file():
+            return path
+        candidate = self.recording_dir / depth_file
+        if candidate.is_file():
+            return candidate
+        # legacy: path included logs/calibration prefix
+        if "logs" in depth_file.replace("\\", "/"):
+            trimmed = Path(*Path(depth_file).parts[-2:])
+            legacy = self.recording_dir / trimmed
+            if legacy.is_file():
+                return legacy
+        return candidate if candidate.exists() else None
+
     def get_depth_mm(self) -> np.ndarray | None:
         if not self._entries:
             return None
         entry = self._entries[self._cursor % len(self._entries)]
         self._cursor += 1
-        depth_path = self.recording_dir / entry["depth_file"]
-        if not depth_path.is_file():
+        depth_path = self._resolve_depth_path(entry.get("depth_file"))
+        if depth_path is None or not depth_path.is_file():
             return None
         depth = np.load(str(depth_path))
         if depth.dtype != np.uint16:

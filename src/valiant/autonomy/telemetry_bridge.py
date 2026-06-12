@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 
 from pymavlink import mavutil
 
+from valiant.autonomy.flight.preflight import state_code
+
 if TYPE_CHECKING:
     from valiant.autonomy.packets import MetricPacket
 
@@ -102,12 +104,14 @@ class TelemetryBridge:
 
     def _send_named_values(self) -> None:
         assert self._master is not None
-        self._send_named_float("state_id", float(hash(self._state) % 1000))
+        self._send_named_float("state_id", state_code(self._state))
         metric = self._last_metric
         if metric and metric.distance_m is not None:
             self._send_named_float("dist_m", metric.distance_m)
-        if metric and metric.distance_source:
-            self._send_named_float("dist_src", float(hash(metric.distance_source) % 100))
+        if metric and metric.distance_source == "depth_at_target":
+            self._send_named_float("depth_ok", 1.0)
+        elif metric and metric.distance_source == "fov_fallback":
+            self._send_named_float("depth_ok", 0.0)
 
     def _send_named_float(self, name: str, value: float) -> None:
         assert self._master is not None

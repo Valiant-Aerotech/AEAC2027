@@ -61,3 +61,5 @@ models/            <- ONNX models (best.onnx)
 ```
 
 See [docs/architecture.md](docs/architecture.md) and [docs/conops.md](docs/conops.md).
+
+**Before hardware:** [docs/runbooks/whats-left-before-hardware.md](docs/runbooks/whats-left-before-hardware.md)

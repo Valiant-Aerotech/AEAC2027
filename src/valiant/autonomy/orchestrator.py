@@ -15,6 +15,8 @@ from valiant.autonomy.cv.detector import TargetDetector
 from valiant.autonomy.cv.exceptions import BadFrameError, CVError, LowConfidenceError
 from valiant.autonomy.cv.ui import draw_overlay
 from valiant.autonomy.flight.mode_manager import FlightModeManager
+from valiant.autonomy.flight.preflight import check_assets, check_depth_mode, is_armed
+from valiant.autonomy.flight.profile import apply_vion_profile
 from valiant.autonomy.metric_recon.depth_source import InlineDepthSource
 from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
 from valiant.autonomy.packets import CVPacket, MetricPacket
@@ -67,11 +69,7 @@ class AutoExtinguisher:
     ):
         self.cfg = cfg
         if profile:
-            self.cfg.setdefault("flight", {})["profile"] = profile
-            if profile == "indoor":
-                self.cfg["flight"]["require_gps"] = False
-                self.cfg["flight"]["mode"] = "GUIDED_NOGPS"
-                self.cfg["flight"]["arm_check_gps"] = False
+            apply_vion_profile(self.cfg, profile)
         self.sim = sim_mode
         self.headless = headless
         cam_cfg = cfg.get("camera", {})
@@ -99,6 +97,8 @@ class AutoExtinguisher:
 
         for warning in validate_conops_config(cfg):
             print(f"[CONOPS] Warning: {warning}")
+        for warning in check_assets(cfg):
+            print(f"[PREFLIGHT] Warning: {warning}")
 
         print(f"[INIT] Connecting MAVLink on {connection_string} (sim={sim_mode})...")
         if sim_mode:
@@ -156,6 +156,8 @@ class AutoExtinguisher:
         self.upload_file_path: str | None = None
         self._last_cv: CVPacket | None = None
         self._last_metric: MetricPacket | None = None
+        self._depth_warned = False
+        self._disarm_warned = False
 
     def send_hud_message(self, message: str) -> None:
         send_statustext(self.master, message, prefix="T2: ")
@@ -255,7 +257,24 @@ class AutoExtinguisher:
                     continue
 
                 if hasattr(self.camera, "get_depth_mm"):
-                    self._depth_source.set_frame(self.camera.get_depth_mm())
+                    depth_mm = self.camera.get_depth_mm()
+                    self._depth_source.set_frame(depth_mm)
+                    if not self._depth_warned:
+                        depth_ok = depth_mm is not None
+                        if hasattr(self.camera, "depth_available"):
+                            depth_ok = self.camera.depth_available and depth_mm is not None
+                        for w in check_depth_mode(self.cfg, depth_ok):
+                            print(f"[PREFLIGHT] Warning: {w}")
+                        self._depth_warned = True
+
+                if not self.sim and not self._disarm_warned:
+                    armed = is_armed(self.master)
+                    if armed is False:
+                        print(
+                            "[PREFLIGHT] FC not armed - velocity commands have no effect. "
+                            "Arm and hover manually before APPROACHING."
+                        )
+                        self._disarm_warned = True
 
                 frame_h, frame_w = frame.shape[:2]
                 cv_packet = self._run_cv(frame)

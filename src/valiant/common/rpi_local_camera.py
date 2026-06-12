@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import platform
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
+
+from valiant.common.sensors.arducam_tof import ArducamTofConfig, ArducamTofReader
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -17,7 +20,6 @@ class RpiLocalCamera:
     """Capture RGB frames and optional depth from Pi sensors.
 
     On a non-Pi dev machine, falls back to USB webcam for RGB only (depth None).
-    Full depth capture requires Pi hardware and ArduCam SDK (see hardware/vion/rpi/).
     """
 
     def __init__(
@@ -37,9 +39,11 @@ class RpiLocalCamera:
         self._picam = None
         self._webcam = None
         self._recording_depth = None
+        self._tof: ArducamTofReader | None = None
 
         if self._is_raspberry_pi():
             self._init_pi_camera(rpi_cfg)
+            self._init_tof(rpi_cfg)
         else:
             self._init_webcam_fallback(webcam_fallback_index)
 
@@ -50,9 +54,15 @@ class RpiLocalCamera:
 
     @staticmethod
     def _is_raspberry_pi() -> bool:
-        return platform.system() == "Linux" and "arm" in platform.machine().lower()
+        try:
+            model = Path("/proc/device-tree/model").read_text(encoding="utf-8", errors="ignore")
+            return "raspberry pi" in model.lower()
+        except OSError:
+            return platform.system() == "Linux" and "arm" in platform.machine().lower()
 
     def _init_pi_camera(self, rpi_cfg: dict) -> None:
+        if rpi_cfg.get("rgb_enabled", True) is False:
+            return
         try:
             from picamera2 import Picamera2  # type: ignore[import-untyped]
 
@@ -71,8 +81,14 @@ class RpiLocalCamera:
             print(f"[RpiLocalCamera] Picamera2 failed ({exc}); using webcam fallback")
             self._init_webcam_fallback(0)
 
-        # ArduCam ToF depth is loaded per-frame when SDK is wired on Pi.
-        # Until hardware bring-up, depth stays None and metric recon uses FOV fallback.
+    def _init_tof(self, rpi_cfg: dict) -> None:
+        tof_cfg = ArducamTofConfig.from_dict(rpi_cfg.get("tof", {}))
+        if not tof_cfg.enabled:
+            print("[RpiLocalCamera] ToF disabled in config")
+            return
+        reader = ArducamTofReader(tof_cfg)
+        if reader.start():
+            self._tof = reader
 
     def _init_webcam_fallback(self, camera_index: int) -> None:
         backend = cv2.CAP_DSHOW if platform.system() == "Windows" else cv2.CAP_ANY
@@ -100,6 +116,10 @@ class RpiLocalCamera:
             recording_dir=rec,
         )
 
+    @property
+    def depth_available(self) -> bool:
+        return self._tof is not None and self._tof.is_available
+
     def get_frame(self) -> npt.NDArray[np.uint8] | None:
         if self._picam is not None:
             try:
@@ -115,6 +135,11 @@ class RpiLocalCamera:
         return None
 
     def get_depth_mm(self) -> npt.NDArray[np.uint16] | None:
+        if self._tof is not None:
+            depth = self._tof.capture_depth_mm()
+            if depth is not None:
+                self._depth_mm = depth
+                return depth
         if self._depth_mm is not None:
             return self._depth_mm
         if self._recording_depth is not None:
@@ -122,10 +147,13 @@ class RpiLocalCamera:
         return None
 
     def set_depth_mm(self, depth_mm: npt.NDArray[np.uint16] | None) -> None:
-        """Inject depth from ArduCam driver (called by Pi sensor loop)."""
+        """Inject depth manually (testing) or from external driver."""
         self._depth_mm = depth_mm
 
     def cleanup(self) -> None:
+        if self._tof is not None:
+            self._tof.stop()
+            self._tof = None
         if self._picam is not None:
             try:
                 self._picam.stop()

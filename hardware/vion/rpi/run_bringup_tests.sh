@@ -23,10 +23,10 @@ echo "PASS if Ctrl+C zeroed velocity."
 if [ -n "$GCS_IP" ]; then
   echo ""
   echo "=== Phase D: WiFi monitor test ==="
-  echo "On GCS run: python tools/mission_monitor.py"
+  echo "On GCS run: .\\tools\\run_monitor.ps1"
   read -r -p "Press Enter to start sim with GCS mirror to $GCS_IP..."
   python hardware/vion/rpi/run_mission.py --profile indoor --sim \
-    --gcs-connection "udpout:${GCS_IP}:14550"
+    --gcs-ip "$GCS_IP"
 fi
 
 echo ""

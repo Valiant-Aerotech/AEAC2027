@@ -7,4 +7,9 @@ cd "$REPO_ROOT"
 source .venv/bin/activate
 
 CONN="${MAVLINK_CONN:-/dev/ttyAMA0}"
-python hardware/vion/rpi/check_sensors.py --once --connection "$CONN"
+EXTRA_ARGS=()
+if [ "${SKIP_MAVLINK:-0}" = "1" ]; then
+  EXTRA_ARGS+=(--skip-mavlink)
+fi
+
+python hardware/vion/rpi/check_sensors.py --once --connection "$CONN" "${EXTRA_ARGS[@]}"

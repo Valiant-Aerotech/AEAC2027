@@ -11,24 +11,10 @@ _REPO = Path(__file__).resolve().parents[3]
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
+from valiant.autonomy.flight.profile import apply_vion_profile, gcs_monitor_connection
+from valiant.autonomy.flight.preflight import check_assets
 from valiant.autonomy.orchestrator import run_auto_extinguish  # noqa: E402
 from valiant.common.config import load_config, repo_root  # noqa: E402
-
-
-def _apply_profile_defaults(cfg: dict, profile: str) -> None:
-    flight = cfg.setdefault("flight", {})
-    flight["profile"] = profile
-    cam = cfg.setdefault("camera", {})
-    cam["source"] = "rpi_local"
-    metric = cfg.setdefault("metric_recon", {})
-    metric["rangefinder"] = "depth_at_target"
-    gcs = cfg.setdefault("gcs_monitor", {})
-    gcs["enabled"] = True
-    if profile == "indoor":
-        flight["require_gps"] = False
-        flight["mode"] = "GUIDED_NOGPS"
-        flight["arm_check_gps"] = False
-        cfg.setdefault("safety", {})["geofence_abort"] = False
 
 
 def main() -> int:
@@ -45,13 +31,33 @@ def main() -> int:
         default=None,
         help="Override gcs_monitor.connection UDP target",
     )
+    parser.add_argument(
+        "--gcs-ip",
+        default=None,
+        help="GCS laptop IP for telemetry mirror (shorthand for udpout:IP:14550)",
+    )
+    parser.add_argument(
+        "--no-gcs-monitor",
+        action="store_true",
+        help="Disable UDP telemetry mirror to GCS",
+    )
     args = parser.parse_args()
 
     cfg = load_config("vion")
-    _apply_profile_defaults(cfg, args.profile)
+    apply_vion_profile(
+        cfg,
+        args.profile,
+        source="rpi_local",
+        gcs_ip=args.gcs_ip,
+        enable_gcs_monitor=not args.no_gcs_monitor,
+    )
 
-    if args.gcs_connection:
-        cfg.setdefault("gcs_monitor", {})["connection"] = args.gcs_connection
+    gcs_conn = args.gcs_connection or gcs_monitor_connection(cfg, args.gcs_ip)
+    if gcs_conn:
+        cfg.setdefault("gcs_monitor", {})["connection"] = gcs_conn
+
+    for warning in check_assets(cfg):
+        print(f"[PREFLIGHT] Warning: {warning}")
 
     mavlink_cfg = cfg.get("mavlink", {})
     conn = args.connection or mavlink_cfg.get("connection", "/dev/ttyAMA0")
@@ -64,6 +70,14 @@ def main() -> int:
             "to config/vion_calibration.yaml and calibrate before flight."
         )
         return 1
+
+    if cfg.get("gcs_monitor", {}).get("enabled") and "127.0.0.1" in cfg["gcs_monitor"].get(
+        "connection", ""
+    ):
+        print(
+            "[PREFLIGHT] Warning: gcs_monitor points to localhost. "
+            "Use --gcs-ip <laptop-ip> for GCS visibility."
+        )
 
     run_auto_extinguish(
         connection=conn,

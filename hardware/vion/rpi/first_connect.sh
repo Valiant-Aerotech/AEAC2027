@@ -41,6 +41,11 @@ if [ "$MISSING" -eq 1 ]; then
   echo "   Copy from laptop: scp models/best.onnx <user>@<pi>:~/AEAC2027/models/"
 fi
 
+if ! python -c "import ArducamDepthCamera" 2>/dev/null; then
+  echo "   WARN: ArducamDepthCamera not installed"
+  echo "   Run: bash hardware/vion/rpi/install_arducam_tof.sh (reboot), then pip install ArducamDepthCamera"
+fi
+
 echo ""
 echo "4. MAVLink device..."
 if [ -e /dev/ttyAMA0 ]; then

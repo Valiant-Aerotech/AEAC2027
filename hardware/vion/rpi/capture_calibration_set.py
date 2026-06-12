@@ -51,10 +51,8 @@ def main() -> int:
         frames_meta.append(
             {
                 "distance_m": args.distance,
-                "rgb_file": str(Path(args.output) / f"{args.distance:.1f}m" / rgb_name),
-                "depth_file": str(Path(args.output) / f"{args.distance:.1f}m" / depth_name)
-                if depth is not None
-                else None,
+                "rgb_file": f"{args.distance:.1f}m/{rgb_name}",
+                "depth_file": f"{args.distance:.1f}m/{depth_name}" if depth is not None else None,
             }
         )
         time.sleep(0.2)

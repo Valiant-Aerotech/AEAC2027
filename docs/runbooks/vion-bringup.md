@@ -23,6 +23,8 @@ Script map by phase:
 | E - Preflight | - | `bash hardware/vion/rpi/preflight_indoor.sh` |
 | E - Flight | `.\tools\run_monitor.ps1` | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
 
+**Before hardware day:** [whats-left-before-hardware.md](whats-left-before-hardware.md)
+
 Props off until tethered tests pass.
 
 ---
@@ -116,7 +118,7 @@ python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
 - [ ] GCS laptop on same WiFi as Pi
 - [ ] Props off until tethered tests pass
 
-**Note:** Live ArduCam ToF driver is not fully integrated yet. Depth may show `n/a`; mission uses FOV fallback until driver is wired.
+**Note:** ArduCam ToF requires SDK install on Pi (`install_arducam_tof.sh`). Until then depth shows `n/a` and FOV fallback applies.
 
 ---
 

@@ -47,6 +47,11 @@ def main() -> int:
 
     frame_ok = False
     depth_note = "depth: n/a"
+    tof_note = (
+        "ArduCam ToF: active"
+        if camera.depth_available
+        else "ArduCam ToF: not started"
+    )
     deadline = time.time() + 5.0
     while time.time() < deadline:
         frame = camera.get_frame()
@@ -64,7 +69,7 @@ def main() -> int:
     if args.once:
         camera.cleanup()
         if frame_ok:
-            print(f"[OK] RGB frame captured; {depth_note}")
+            print(f"[OK] RGB frame captured; {tof_note}; {depth_note}")
         else:
             print("[FAIL] no RGB frame in 5s")
         if not mavlink_ok:
@@ -88,16 +93,13 @@ def main() -> int:
             valid = depth[(depth > 0) & (depth < 6000)]
             if valid.size:
                 label = f"depth median: {int(np.median(valid))} mm ({valid.size} px)"
-
-        cv2.putText(
-            frame,
-            label,
-            (10, 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (0, 255, 0),
-            2,
+        tof_note = (
+            "ArduCam ToF: active"
+            if camera.depth_available
+            else "ArduCam ToF: off"
         )
+        cv2.putText(frame, tof_note, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        cv2.putText(frame, label, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         cv2.imshow("Vion Sensor Check", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
