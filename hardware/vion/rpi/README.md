@@ -1,45 +1,38 @@
 # Vion Raspberry Pi companion
 
-Onboard flight computer for Task 2 autonomy: CV, metric recon (ArduCam ToF), PD nav, MAVLink to Pixhawk.
+Onboard flight computer for Task 2 autonomy.
 
-## Wiring
+**Bringup:** [docs/runbooks/vion-bringup.md](../../../docs/runbooks/vion-bringup.md)
 
-| Link | Connection |
-|------|------------|
-| Pi UART to Pixhawk TELEM | `/dev/ttyAMA0` at 57600 (enable UART in boot config) |
-| Holybro H-Flow | DroneCAN on Pixhawk CAN bus (with HERE4); downward facing |
-| AI camera + ArduCam ToF | Pi CSI/USB per mount |
+## Script flow (first time)
 
-GCS laptop connects over WiFi UDP for monitor only (`tools/mission_monitor.py`).
+```bash
+bash hardware/vion/rpi/first_connect.sh          # once
+bash hardware/vion/rpi/session_start.sh          # every session
+bash hardware/vion/rpi/capture_all_calibration.sh
+GCS_IP=<laptop-ip> bash hardware/vion/rpi/run_bringup_tests.sh
+bash hardware/vion/rpi/preflight_indoor.sh       # before props on
+python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
+```
 
 ## Scripts
 
+| Script | Phase | Purpose |
+|--------|-------|---------|
+| `first_connect.sh` | C | First SSH: setup + checks |
+| `setup.sh` | C | venv, deps (called by first_connect) |
+| `session_start.sh` | C5 | Quick `--once` sensor check |
+| `check_sensors.py` | C5 | RGB, depth, MAVLink (`--once` for pass/fail) |
+| `capture_all_calibration.sh` | C6 | 1/2/3 m calibration captures |
+| `capture_calibration_set.py` | C6 | Single distance capture |
+| `run_bringup_tests.sh` | C7-D | Sim + tethered + optional monitor |
+| `preflight_indoor.sh` | E | Props-on checklist |
+| `run_mission.py` | E | Autonomous flight |
+
+## GCS pairing scripts
+
 | Script | Purpose |
 |--------|---------|
-| `setup.sh` | Pi venv, package install, calibration template |
-| `check_sensors.py` | RGB preview, depth stats, MAVLink heartbeat |
-| `capture_calibration_set.py` | Save RGB+depth at tape distances |
-| `run_mission.py` | Primary autonomous entry |
-
-## First-time flow
-
-```bash
-cd AEAC2027
-sudo bash hardware/vion/rpi/setup.sh
-source .venv/bin/activate
-python hardware/vion/rpi/check_sensors.py
-python hardware/vion/rpi/capture_calibration_set.py --distance 1.0
-python hardware/vion/rpi/capture_calibration_set.py --distance 2.0
-python hardware/vion/rpi/capture_calibration_set.py --distance 3.0
-# copy logs/calibration to GCS, run tools/validate_calibration.py
-python hardware/vion/rpi/run_mission.py --profile indoor --sim
-python hardware/vion/rpi/run_mission.py --profile indoor
-```
-
-## Indoor flight
-
-- `flight.profile: indoor` sets `GUIDED_NOGPS`, disables GPS requirement
-- H-Flow provides optical flow + downward lidar for EKF (not target range)
-- ArduCam ToF on Pi provides `depth_at_target` for approach and fire distance
-
-See `docs/runbooks/indoor-flight.md` and `hardware/vion/mission-planner/001-parameters.md`.
+| `tools/deploy_to_pi.ps1` | Copy model + calibration to Pi |
+| `tools/run_calibration_pipeline.ps1` | Pull captures, validate, push yaml |
+| `tools/run_monitor.ps1` | Start mission monitor |

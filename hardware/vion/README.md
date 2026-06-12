@@ -2,6 +2,8 @@
 
 Pixhawk 6C fire suppression drone with Raspberry Pi companion for Task 2 autonomy.
 
+**First-time bringup:** [docs/runbooks/vion-bringup.md](../../docs/runbooks/vion-bringup.md)
+
 ## Contents
 
 - `lua/` - onboard ArduPilot Lua scripts (safety, payload, arm, stabilize, throttle)
@@ -16,24 +18,22 @@ Pixhawk 6C fire suppression drone with Raspberry Pi companion for Task 2 autonom
 | RPi AI camera | YOLO target detection |
 | ArduCam ToF (on Pi) | Target distance (`depth_at_target`) |
 
-Extinguish accuracy uses Pi camera + ToF only. H-Flow is for platform stability indoors.
+## Dual MAVLink links
 
-## Lua scripts
-
-| Script | Purpose |
-|--------|---------|
-| `safety.lua` | Emergency RC switch to LAND/disarm |
-| `payload.lua` | Water payload servo control |
-| `arm.lua` | Arm helper |
-| `stabilize.lua` | Stabilize mode helper |
-| `throttle_two.lua` | Watchdog + emergency handling |
-
-Load scripts per Mission Planner docs in `mission-planner/003-setup.md`.
+| Link | Purpose |
+|------|---------|
+| GCS telemetry radio -> Pixhawk | Mission Planner, params, spray test, H-Flow bench |
+| Pi UART -> Pixhawk TELEM | Autonomous mission control |
+| Pi WiFi -> GCS UDP | Read-only monitor |
 
 ## Software entry points
 
 | Platform | Command |
 |----------|---------|
-| RPi (competition) | `python hardware/vion/rpi/run_mission.py --profile indoor` |
-| GCS (dev/fallback) | `python missions/task2_vion_auto_extinguish.py` |
+| GCS first connect | `.\tools\bringup_gcs.ps1` |
+| RPi first SSH | `bash hardware/vion/rpi/first_connect.sh` |
+| RPi flight | `python hardware/vion/rpi/run_mission.py --profile indoor` |
 | GCS monitor | `python tools/mission_monitor.py` |
+| GCS dev fallback | `python missions/task2_vion_auto_extinguish.py` |
+
+Load Lua scripts per [mission-planner/003-setup.md](mission-planner/003-setup.md).

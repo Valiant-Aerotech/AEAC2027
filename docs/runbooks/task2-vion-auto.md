@@ -1,68 +1,64 @@
 # Runbook - Task 2 Vion Auto Extinguish
 
-## Prerequisites
+## Primary path (onboard RPi)
 
-- Vion armed and in GUIDED mode (operator responsibility)
-- Mission Planner telemetry link active
-- Phone connected for scrcpy (`ExtinguisherCam` window)
-- `config/vion.yaml` COM port set for this laptop
-- Emergency RC switch tested (onboard `hardware/vion/lua/safety.lua`)
+Competition autonomous runs on the Pi companion, not the GCS laptop.
 
-## Bench without drone
+```bash
+# on Pi
+source .venv/bin/activate
+python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
+```
 
-Use a laptop webcam and `--sim` (no MAVLink commands). Hold a purple target in frame for CV to advance the state machine.
+GCS monitor (optional, same WiFi):
+
+```powershell
+python tools\mission_monitor.py
+```
+
+First-time setup: [vion-bringup.md](vion-bringup.md)
+
+## GCS dev / legacy path (scrcpy)
+
+For bench without Pi:
 
 ```powershell
 .\tools\webcam_bench.ps1
 python missions\task2_vion_auto_extinguish.py --sim --source webcam --camera 0 --max-targets 1
 ```
 
-## Run
+## Prerequisites (onboard flight)
+
+- Pi `check_sensors.py` passes (RGB + MAVLink heartbeat)
+- `config/vion_calibration.yaml` on Pi (10% gate via `tools\validate_calibration.py`)
+- Vion in GUIDED_NOGPS for indoor (`--profile indoor`)
+- Holybro H-Flow configured; `opt_qua` OK on venue-like floor
+- Emergency RC switch tested (`hardware/vion/lua/safety.lua`)
+- Spotter + RC override ready
+
+## Run (GCS legacy)
 
 ```powershell
 python missions\task2_vion_auto_extinguish.py
-python missions\task2_vion_auto_extinguish.py --sim          # no MAVLink commands
 python missions\task2_vion_auto_extinguish.py --sim --source webcam --camera 0
-python missions\task2_vion_auto_extinguish.py --headless   # no debug window
-python missions\task2_vion_auto_extinguish.py --scrcpy-ip 192.168.1.100:5555
-python missions\task2_vion_auto_extinguish.py --max-targets 1   # single-target test
+python missions\task2_vion_auto_extinguish.py --max-targets 1
 ```
-
-CONOPS rules: `config/conops.yaml`. Multi-target loop runs until Ctrl+C or `--max-targets`.
 
 ## Abort conditions
 
 | Trigger | Behavior | Config key |
 |---------|----------|------------|
 | Ctrl+C | Zero velocity, clean shutdown | - |
+| RC mode change | Nav stop, return to SEARCHING | flight.mode |
 | Target lost 30 frames | Return to SEARCHING | `cv.max_frames_without_target` |
 | Approach / aim timeout | Return to SEARCHING | `auto_nav.approach_timeout_s`, `lock_timeout_s` |
 | Side clearance too low | Stop, return to SEARCHING | `auto_nav.side_clearance_m` |
 | Battery below 20% | Full mission abort | `safety.min_battery_pct` |
 | Geofence breach | Full mission abort | `safety.geofence_abort` |
-| Mission timeout (10 min) | Full mission abort | `safety.mission_timeout_s` |
-
-Full safety aborts stop the orchestrator loop, send zero velocity, and optionally command RTL when `safety.rtl_on_abort: true`.
-
-## scrcpy latency tuning
-
-Edit `camera` in `config/vion.yaml`:
-
-- `max_fps` - higher is smoother but more CPU (try 30 or 60)
-- `max_size` - lower resolution reduces capture latency (try 960 or 1280)
-- `video_bit_rate_mbps` - 4-12 typical; lower can reduce lag on weak USB
-- `min_grab_interval_s` - set 0.033 to cap grabs at ~30 Hz if CPU is high
-
-If the scrcpy window is slow to appear, wait until `ExtinguisherCam` is visible before arming.
-
-## Upload
-
-Photos save to `task2_photos/` then copy to `task2_photos/uploaded/`. For real Google Drive:
-
-1. Place service account JSON at `config/gdrive_credentials.json` (gitignored)
-2. Set `upload.method: gdrive_service_account` and `upload.folder_id` in `config/defaults.yaml`
-3. `pip install google-api-python-client google-auth`
+| GCS WiFi lost | Mission continues on Pi | gcs_monitor (read-only) |
 
 ## Fallback
 
-If autonomy fails, use `missions/task2_vion_manual_photo.py` with `--source scrcpy --upload`.
+```powershell
+python missions\task2_vion_manual_photo.py --source scrcpy --upload
+```

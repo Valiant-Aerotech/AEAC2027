@@ -26,22 +26,27 @@ Phased validation from bench to competition. Each phase has pass criteria before
 
 ## Phase 1 - GCS link + actuation (drone tethered or props off)
 
-**Goal:** MAVLink, spray servo, and scrcpy work with Vion powered but not flying.
+**Goal:** MAVLink, spray servo, and Pi companion link work with Vion powered but not flying.
+
+Bringup checklist: [vion-bringup.md](vion-bringup.md)
 
 | # | Test | Setup | Pass criteria |
 |---|------|-------|---------------|
-| 1.1 | Telemetry | Mission Planner + `config/vion.yaml` COM port | Heartbeat, GUIDED mode selectable |
-| 1.2 | STATUSTEXT HUD | Run orchestrator briefly | T2: messages appear in MP HUD |
-| 1.3 | Spray servo | `spray/actuation.py` bench or MP servo test | SERVO15 opens/closes on command |
-| 1.4 | scrcpy feed | Phone to goggles, run auto mission | ExtinguisherCam window, frames in overlay |
-| 1.5 | scrcpy latency | Tune `camera.max_fps`, `max_size` in vion.yaml | Subjective: target motion usable for CV, CPU stable |
-| 1.6 | Rangefinder (if mounted) | `metric_recon.rangefinder: vl53l1x`, mavproxy listen | DISTANCE_SENSOR updates in metric_bench_test |
+| 1.1 | Telemetry | Mission Planner + telemetry radio COM @ 57600 | Heartbeat, GUIDED_NOGPS selectable (indoor) |
+| 1.2 | Pi MAVLink | `check_sensors.py` on Pi | Heartbeat on `/dev/ttyAMA0` |
+| 1.3 | STATUSTEXT HUD | Pi `run_mission.py --sim` | T2: messages in MP HUD |
+| 1.4 | Spray servo | MP servo test or orchestrator | SERVO15 opens/closes |
+| 1.5 | H-Flow | MP status, bench hover | `opt_qua` reasonable on venue floor |
+| 1.6 | Depth cal | Pi capture 1/2/3 m; GCS `validate_calibration.py` | Within 10% gate |
+| 1.7 | GCS monitor | Pi `--gcs-connection udpout:<LAPTOP_IP>:14550` | `mission_monitor.py` shows GOOD |
 
 ---
 
 ## Phase 2 - Hover / slow approach (manual pilot + auto nav)
 
 **Goal:** Auto-nav velocity commands behave safely with a human on the sticks ready to override.
+
+Run on Pi: `python hardware/vion/rpi/run_mission.py --profile indoor`
 
 | # | Test | Setup | Pass criteria |
 |---|------|-------|---------------|

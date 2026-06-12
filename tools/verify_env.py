@@ -56,9 +56,19 @@ def check_structure() -> None:
     root = Path(__file__).resolve().parents[1]
     expected = [
         "missions/task2_vion_auto_extinguish.py",
+        "hardware/vion/rpi/run_mission.py",
+        "hardware/vion/rpi/first_connect.sh",
+        "hardware/vion/rpi/run_bringup_tests.sh",
+        "hardware/vion/rpi/preflight_indoor.sh",
         "src/valiant/autonomy/orchestrator.py",
         "config/vion.yaml",
-        "docs/architecture.md",
+        "config/vion_calibration.yaml.example",
+        "docs/runbooks/vion-bringup.md",
+        "hardware/vion/mission-planner/002-pi-telem-params.md",
+        "tools/bringup_gcs.ps1",
+        "tools/check_mavlink_gcs.py",
+        "tools/test_spray_gcs.py",
+        "tools/run_calibration_pipeline.ps1",
     ]
     for rel in expected:
         path = root / rel

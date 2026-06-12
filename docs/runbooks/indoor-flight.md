@@ -2,6 +2,7 @@
 
 Indoor Task 2 uses target-relative visual servo with no GPS. Pixhawk holds attitude via EKF; Holybro H-Flow provides optical flow and downward lidar for hover stability.
 
+**First-time setup:** [vion-bringup.md](vion-bringup.md)
 ## Config
 
 ```yaml

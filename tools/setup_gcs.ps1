@@ -12,8 +12,12 @@ if (-not (Test-Path "config\vion_calibration.yaml")) {
 }
 
 Write-Host ""
-Write-Host "GCS dev commands:"
-Write-Host "  python tools\metric_bench_test.py --camera 0"
-Write-Host "  python tools\replay_rpi_recording.py --recording-dir logs\calibration"
-Write-Host "  python tools\validate_calibration.py"
+Write-Host "GCS bringup (first drone connect):" -ForegroundColor Cyan
+Write-Host "  .\tools\bringup_gcs.ps1"
+Write-Host ""
+Write-Host "GCS dev commands:" -ForegroundColor Cyan
 Write-Host "  python tools\mission_monitor.py"
+Write-Host "  python tools\validate_calibration.py"
+Write-Host "  python tools\replay_rpi_recording.py --recording-dir logs\calibration"
+Write-Host ""
+Write-Host "Docs: docs\runbooks\vion-bringup.md"

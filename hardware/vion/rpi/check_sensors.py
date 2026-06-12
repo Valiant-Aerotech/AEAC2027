@@ -26,18 +26,54 @@ def main() -> int:
     parser.add_argument("--baud", type=int, default=57600)
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--skip-mavlink", action="store_true")
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Single-frame pass/fail check (no GUI loop)",
+    )
     args = parser.parse_args()
 
     cfg = load_config("vion")
     camera = RpiLocalCamera.from_config(cfg, webcam_fallback_index=args.camera)
 
-    master = None
+    mavlink_ok = args.skip_mavlink
     if not args.skip_mavlink:
         try:
-            master = connect(args.connection, args.baud, wait_heartbeat=True)
+            connect(args.connection, args.baud, wait_heartbeat=True)
             print("[OK] MAVLink heartbeat received")
+            mavlink_ok = True
         except Exception as exc:
-            print(f"[WARN] MAVLink not available: {exc}")
+            print(f"[FAIL] MAVLink not available: {exc}")
+
+    frame_ok = False
+    depth_note = "depth: n/a"
+    deadline = time.time() + 5.0
+    while time.time() < deadline:
+        frame = camera.get_frame()
+        if frame is None:
+            time.sleep(0.1)
+            continue
+        frame_ok = True
+        depth = camera.get_depth_mm()
+        if depth is not None:
+            valid = depth[(depth > 0) & (depth < 6000)]
+            if valid.size:
+                depth_note = f"depth median: {int(np.median(valid))} mm"
+        break
+
+    if args.once:
+        camera.cleanup()
+        if frame_ok:
+            print(f"[OK] RGB frame captured; {depth_note}")
+        else:
+            print("[FAIL] no RGB frame in 5s")
+        if not mavlink_ok:
+            print("[FAIL] MAVLink heartbeat")
+            return 1
+        return 0 if frame_ok else 1
+
+    if not mavlink_ok:
+        print("[WARN] continuing without MAVLink for preview")
 
     print("Sensor check. Press Q to quit.")
     while True:

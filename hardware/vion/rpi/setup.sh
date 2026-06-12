@@ -17,10 +17,15 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e ".[cv]"
 
-if grep -q "^#enable_uart=1" /boot/firmware/config.txt 2>/dev/null; then
-  echo "NOTE: enable UART in /boot/firmware/config.txt (enable_uart=1) for Pixhawk TELEM"
-elif grep -q "^#enable_uart=1" /boot/config.txt 2>/dev/null; then
-  echo "NOTE: enable UART in /boot/config.txt (enable_uart=1) for Pixhawk TELEM"
+UART_NEEDS_ENABLE=0
+for cfg in /boot/firmware/config.txt /boot/config.txt; do
+  if [ -f "$cfg" ] && grep -q "^#enable_uart=1" "$cfg" 2>/dev/null; then
+    UART_NEEDS_ENABLE=1
+    echo "NOTE: enable UART in $cfg (enable_uart=1) for Pixhawk TELEM"
+  fi
+done
+if [ "$UART_NEEDS_ENABLE" -eq 1 ]; then
+  echo "  Or: sudo raspi-config -> Interface Options -> Serial Port -> hardware Yes, login No"
 fi
 
 if [ ! -f config/vion_calibration.yaml ]; then
@@ -29,9 +34,16 @@ if [ ! -f config/vion_calibration.yaml ]; then
 fi
 
 echo ""
-echo "Next steps:"
+echo "First-time Pi? Run: bash hardware/vion/rpi/first_connect.sh"
+echo ""
+echo "Every session:"
 echo "  source .venv/bin/activate"
 echo "  python hardware/vion/rpi/check_sensors.py"
+echo ""
+echo "Before flight:"
 echo "  python hardware/vion/rpi/capture_calibration_set.py --distance 2.0"
-echo "  python tools/validate_calibration.py"
+echo "  python tools/validate_calibration.py   # on GCS after copying logs/calibration"
 echo "  python hardware/vion/rpi/run_mission.py --profile indoor --sim"
+echo "  python hardware/vion/rpi/run_mission.py --profile indoor"
+echo ""
+echo "Docs: docs/runbooks/vion-bringup.md"
