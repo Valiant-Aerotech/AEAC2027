@@ -29,7 +29,7 @@ from valiant.autonomy.safety.monitor import SafetyAbort, SafetyMonitor
 from valiant.autonomy.spray.actuation import WaterTrigger
 from valiant.autonomy.spray.aim import is_aimed
 from valiant.autonomy.upload.drive import DriveUploader
-from valiant.common.camera import ScrcpyCamera
+from valiant.common.camera_factory import camera_depth_mm, camera_depth_ok, create_camera
 from valiant.common.config import load_config
 from valiant.common.mavlink import connect, request_sys_status_stream, send_rtl, send_statustext
 
@@ -45,7 +45,7 @@ STATE_ABORTED = "ABORTED"
 
 
 class AutoExtinguisher:
-    """GCS-side autonomous fire extinguishing orchestrator."""
+    """Onboard or GCS autonomous fire extinguishing orchestrator."""
 
     def __init__(
         self,
@@ -57,10 +57,13 @@ class AutoExtinguisher:
         headless: bool = False,
         phone_ip: str | None = None,
         max_targets: int | None = None,
+        hand_test: bool = False,
+        gcs_ip: str | None = None,
     ):
         self.cfg = cfg
         self.sim = sim_mode
         self.headless = headless
+        self.hand_test = hand_test
         nav = cfg.get("auto_nav", {})
         cv_cfg = cfg.get("cv", {})
         team = cfg.get("team", {})
@@ -109,7 +112,14 @@ class AutoExtinguisher:
         self.uploader = DriveUploader(cfg)
         self.detector = TargetDetector(cfg)
 
-        self.camera = ScrcpyCamera.from_config(cfg, phone_ip=phone_ip)
+        self.camera = create_camera(cfg, phone_ip=phone_ip)
+        self._telemetry = None
+        if gcs_ip:
+            from valiant.autonomy.telemetry_bridge import TelemetryBridge
+
+            port = int(cfg.get("gcs_monitor", {}).get("port", 14560))
+            self._telemetry = TelemetryBridge(gcs_ip, port=port)
+            print(f"[Telemetry] GCS monitor -> {gcs_ip}:{port}")
 
         self.state = STATE_SEARCHING
         self.frames_without_target = 0
@@ -155,9 +165,28 @@ class AutoExtinguisher:
     def _run_metric(self, cv_packet: CVPacket | None, frame_w: int, frame_h: int) -> MetricPacket | None:
         if cv_packet is None or not cv_packet.has_dry_target:
             return None
-        metric = self.metric_recon.reconstruct(cv_packet, frame_w, frame_h)
+        metric = self.metric_recon.reconstruct(
+            cv_packet,
+            frame_w,
+            frame_h,
+            depth_mm=camera_depth_mm(self.camera),
+        )
         self._last_metric = metric
         return metric
+
+    def _publish_telemetry(self, cv_packet: CVPacket | None, metric: MetricPacket | None) -> None:
+        if self._telemetry is None:
+            return
+        self._telemetry.send(
+            state=self.state,
+            distance_m=metric.distance_m if metric else None,
+            distance_min_m=metric.distance_min_m if metric else None,
+            distance_max_m=metric.distance_max_m if metric else None,
+            distance_source=metric.distance_source if metric else "",
+            depth_ok=camera_depth_ok(self.camera),
+            target_seen=bool(cv_packet and cv_packet.has_dry_target),
+            hand_test=self.hand_test,
+        )
 
     def _handle_safety_abort(self, abort: SafetyAbort) -> None:
         print(f"[SAFETY] Mission abort: {abort.reason}")
@@ -181,14 +210,28 @@ class AutoExtinguisher:
         return True
 
     def _metric_hud(self, metric: MetricPacket) -> str:
-        dist = f"{metric.distance_m:.1f}m" if metric.distance_m is not None else "?"
-        return f"LOCK dist={dist}"
+        if metric.distance_min_m is not None and metric.distance_max_m is not None:
+            dist = f"{metric.distance_min_m:.1f}-{metric.distance_max_m:.1f}m"
+        elif metric.distance_m is not None:
+            dist = f"{metric.distance_m:.1f}m"
+        else:
+            dist = "?"
+        return f"LOCK dist={dist} src={metric.distance_source or '?'}"
+
+    def _allow_motion(self) -> bool:
+        return not self.sim and not self.hand_test
 
     def loop(self) -> None:
-        print("\n=== GCS AUTO-EXTINGUISH ===")
+        host = "ONBOARD" if self.cfg.get("camera", {}).get("source") == "rpi_local" else "GCS"
+        print(f"\n=== {host} AUTO-EXTINGUISH ===")
         print(f"CV method: {self.cv_method}")
+        if self.hand_test:
+            print("HAND-TEST: props off — perception + comms only, no velocity or spray")
         print("Pipeline: CV -> MetricRecon -> AutoNav -> Spray -> Upload")
-        print("Waiting for scrcpy window... (Ctrl+C to abort)")
+        if host == "GCS":
+            print("Waiting for scrcpy window... (Ctrl+C to abort)")
+        else:
+            print("Onboard Pi camera active (Ctrl+C to abort)")
 
         try:
             while True:
@@ -206,6 +249,7 @@ class AutoExtinguisher:
                 cv_packet = self._run_cv(frame)
                 metric = self._run_metric(cv_packet, frame_w, frame_h)
                 hit = cv_packet.primary_dry if cv_packet else None
+                self._publish_telemetry(cv_packet, metric)
 
                 if hit:
                     self.frames_without_target = 0
@@ -249,7 +293,9 @@ class AutoExtinguisher:
                         if self.planner.should_switch_to_aiming(metric, hit.area):
                             self.set_state(STATE_AIMING)
                             continue
-                        if not self.sim and intent == MotionIntent.APPROACH:
+                        if not self._allow_motion() and intent == MotionIntent.APPROACH:
+                            pass
+                        elif self._allow_motion() and intent == MotionIntent.APPROACH:
                             self.nav.move_toward_target(
                                 metric, frame_w, frame_h,
                                 approach_speed=self.approach_speed,
@@ -267,7 +313,9 @@ class AutoExtinguisher:
                                 self.nav.stop()
                             self.set_state(STATE_SEARCHING)
                             continue
-                        if not self.sim:
+                        if not self._allow_motion():
+                            pass
+                        else:
                             self.nav.hold_center(
                                 metric, frame_w, frame_h, camera_down=self.camera_down
                             )
@@ -276,15 +324,22 @@ class AutoExtinguisher:
                                 self.lock_start_time = time.time()
                             elif time.time() - self.lock_start_time >= self.lock_duration_s:
                                 if self.planner.can_fire(metric, lock_duration_met=True):
-                                    if not self.sim:
+                                    if self._allow_motion():
                                         self.nav.stop()
-                                    self.set_state(STATE_FIRING)
+                                    if self.hand_test:
+                                        print("[HAND-TEST] Would fire here (spray skipped)")
+                                        self.set_state(STATE_SEARCHING)
+                                    else:
+                                        self.set_state(STATE_FIRING)
                                 else:
                                     print("[Spray] Aim lock met but approach-from-2m not validated")
                         else:
                             self.lock_start_time = None
 
                 elif self.state == STATE_FIRING:
+                    if self.hand_test:
+                        self.set_state(STATE_SEARCHING)
+                        continue
                     if metric and not is_aimed(metric, self.cfg):
                         print("[Spray] Fire aborted - lost aim")
                         self.set_state(STATE_AIMING)
@@ -356,11 +411,13 @@ class AutoExtinguisher:
         except KeyboardInterrupt:
             print("\nAborted by user.")
         finally:
-            if not self.sim:
+            if self._allow_motion():
                 self.nav.stop()
             self.metric_recon.stop()
             self.trigger.cleanup()
             self.camera.cleanup()
+            if self._telemetry is not None:
+                self._telemetry.close()
             cv2.destroyAllWindows()
 
 
@@ -372,11 +429,24 @@ def run_auto_extinguish(
     headless: bool = False,
     phone_ip: str | None = None,
     max_targets: int | None = None,
+    hand_test: bool = False,
+    gcs_ip: str | None = None,
+    profile: str | None = None,
 ) -> None:
     cfg = load_config("vion")
+    if profile:
+        from valiant.autonomy.flight.profile import apply_flight_profile
+
+        cfg = apply_flight_profile(cfg, profile)
     mavlink_cfg = cfg.get("mavlink", {})
-    conn = connection or mavlink_cfg.get("connection", "udpin:127.0.0.1:14550")
+    if connection:
+        conn = connection
+    elif cfg.get("camera", {}).get("source") == "rpi_local":
+        conn = mavlink_cfg.get("rpi_connection", "/dev/ttyAMA0")
+    else:
+        conn = mavlink_cfg.get("connection", "udpin:127.0.0.1:14550")
     baud_rate = baud if baud is not None else mavlink_cfg.get("baud", 57600)
+    monitor_ip = gcs_ip or cfg.get("gcs_monitor", {}).get("ip")
 
     extinguisher = AutoExtinguisher(
         cfg,
@@ -386,6 +456,8 @@ def run_auto_extinguish(
         headless=headless,
         phone_ip=phone_ip,
         max_targets=max_targets,
+        hand_test=hand_test,
+        gcs_ip=monitor_ip,
     )
     extinguisher.loop()
 
@@ -403,6 +475,13 @@ def main() -> None:
         default=None,
         help="Stop after N targets (default: unlimited per conops.yaml)",
     )
+    parser.add_argument(
+        "--hand-test",
+        action="store_true",
+        help="Props-off bench: perception + MAVLink + GCS monitor only",
+    )
+    parser.add_argument("--gcs-ip", default=None, help="GCS laptop IP for telemetry mirror")
+    parser.add_argument("--profile", default=None, help="Flight profile overlay (e.g. vivi)")
     args = parser.parse_args()
     run_auto_extinguish(
         connection=args.connection,
@@ -411,6 +490,9 @@ def main() -> None:
         headless=args.headless,
         phone_ip=args.scrcpy_ip,
         max_targets=args.max_targets,
+        hand_test=args.hand_test,
+        gcs_ip=args.gcs_ip,
+        profile=args.profile,
     )
 
 

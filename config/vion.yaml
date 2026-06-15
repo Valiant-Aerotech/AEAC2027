@@ -1,23 +1,35 @@
-# Vion - fire suppression drone (Pixhawk 6C, GCS offload)
-# Edit mavlink.connection for each laptop (check Device Manager for COM port)
+# Vion - fire suppression drone
+# Onboard Pi path: camera.source=rpi_local (see flight_profiles.vivi for Vivi bench)
 
 drone: vion
 
 mavlink:
-  connection: "COM5"                    # CHANGE per laptop; use udpin:127.0.0.1:14550 for SITL
+  connection: "COM5"                    # GCS scrcpy path only
+  rpi_connection: "/dev/ttyAMA0"        # Pi UART to FC TELEM port
   baud: 57600
   sitl_fallback: "udpin:127.0.0.1:14550"
 
+gcs_monitor:
+  port: 14560
+  ip: null                              # set via --gcs-ip on Pi
+
 camera:
+  source: scrcpy                        # scrcpy | rpi_local
   scrcpy_window_title: ExtinguisherCam
-  phone_ip: null                        # set for wireless adb, e.g. "192.168.1.100:5555"
-  max_fps: 30                           # lower for less CPU, higher for smoother CV
-  max_size: 1280                        # scrcpy max dimension (lower = less latency)
+  phone_ip: null
+  max_fps: 30
+  max_size: 1280
   video_bit_rate_mbps: 8
   no_audio: true
-  min_grab_interval_s: 0.0              # optional throttle on mss window grabs
+  min_grab_interval_s: 0.0
   hfov_deg: 66.0
   vfov_deg: 52.0
+  rpi:
+    width: 640
+    height: 480
+    tof:
+      enabled: true
+      amplitude_min: 30
 
 cv:
   method: hsv                           # hsv | yolo | both
@@ -26,18 +38,32 @@ cv:
     shot: models/shot.onnx
   hsv_dry:  { h_min: 130, h_max: 170, s_min: 50, v_min: 50 }
   hsv_shot: { h_min: 100, h_max: 130, s_min: 50, v_min: 50 }
-  hsv_min_area_px: 500                  # ignore small colour blobs
+  hsv_min_area_px: 500
   confidence_threshold: 0.35
-  max_frames_without_target: 45         # ~1.5 s at 30 fps; tune on real feed
+  max_frames_without_target: 45
 
 metric_recon:
-  rangefinder: fov_estimate              # vl53l1x | fov_estimate | none
-  target_diameter_m: 0.30                # competition target size for FOV range
-  min_approach_distance_m: 2.0           # CONOPS: must detect from beyond 2m
-  fire_distance_m: 0.8                   # switch to aim / allow fire when closer
+  mode: rangefinder                     # rangefinder | depth_at_target
+  rangefinder: fov_estimate             # vl53l1x | fov_estimate | none
+  target_diameter_min_m: 0.05           # CONOPS 5 cm
+  target_diameter_max_m: 0.30           # CONOPS 30 cm
+  target_diameter_m: 0.30               # legacy single-value fallback
+  min_approach_distance_m: 2.0
+  fire_distance_m: 0.8
   wall_offset_m: 0.0
   camera_down: true
   rangefinder_stale_s: 1.0
+
+flight_profiles:
+  vivi:
+    camera:
+      source: rpi_local
+    metric_recon:
+      mode: depth_at_target
+      rangefinder: fov_estimate
+      camera_down: false                # adjust to your Vivi camera mount
+    mavlink:
+      rpi_connection: "/dev/ttyAMA0"
 
 auto_nav:
   kp_x: 0.0015

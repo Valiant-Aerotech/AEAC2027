@@ -49,6 +49,9 @@ class MetricPacket:
     target_px: tuple[int, int]
     pixel_offset: tuple[float, float]
     distance_m: float | None = None
+    distance_min_m: float | None = None
+    distance_max_m: float | None = None
+    distance_source: str = ""
     wall_distance_m: float | None = None
     side_clearance_m: float | None = None
     timestamp: float = field(default_factory=time.time)

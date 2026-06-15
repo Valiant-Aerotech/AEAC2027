@@ -38,22 +38,22 @@ def load_config(drone: str) -> dict[str, Any]:
     if conops_path.is_file():
         with open(conops_path, encoding="utf-8") as f:
             conops_cfg = yaml.safe_load(f) or {}
-        cfg = _deep_merge(cfg, conops_cfg)
+        cfg = deep_merge(cfg, conops_cfg)
 
     if drone_path.is_file():
         with open(drone_path, encoding="utf-8") as f:
             drone_cfg = yaml.safe_load(f) or {}
-        cfg = _deep_merge(cfg, drone_cfg)
+        cfg = deep_merge(cfg, drone_cfg)
 
     cfg["drone"] = drone
     return apply_conops_to_runtime(cfg)
 
 
-def _deep_merge(base: dict, override: dict) -> dict:
+def deep_merge(base: dict, override: dict) -> dict:
     result = dict(base)
     for key, value in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _deep_merge(result[key], value)
+            result[key] = deep_merge(result[key], value)
         else:
             result[key] = value
     return result

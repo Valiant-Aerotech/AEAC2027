@@ -36,10 +36,12 @@ class MotionPlanner:
         self._approach_valid = False
 
     def update_approach_tracking(self, metric: MetricPacket) -> None:
-        if metric.distance_m is None:
+        # Conservative: farthest bound must reach 2 m for CONOPS approach proof
+        observed = metric.distance_max_m if metric.distance_max_m is not None else metric.distance_m
+        if observed is None:
             return
-        if self._max_distance_seen_m is None or metric.distance_m > self._max_distance_seen_m:
-            self._max_distance_seen_m = metric.distance_m
+        if self._max_distance_seen_m is None or observed > self._max_distance_seen_m:
+            self._max_distance_seen_m = observed
         if self._max_distance_seen_m >= self.min_approach_distance_m:
             self._approach_valid = True
 
@@ -51,7 +53,8 @@ class MotionPlanner:
     def should_switch_to_aiming(self, metric: MetricPacket, bbox_area: int) -> bool:
         if bbox_area >= self.target_lock_area_px:
             return True
-        if metric.distance_m is not None and metric.distance_m <= self.fire_distance_m:
+        close = metric.distance_min_m if metric.distance_min_m is not None else metric.distance_m
+        if close is not None and close <= self.fire_distance_m:
             return True
         return False
 
@@ -71,10 +74,10 @@ class MotionPlanner:
             return False
         if not is_aimed(metric, self._cfg):
             return False
-        # CONOPS: when distance is available, must have approached from beyond 2m
-        if self._max_distance_seen_m is not None:
-            return self._approach_valid
-        return True
+        # CONOPS: must prove approach from beyond 2 m; never fire without distance evidence
+        if metric.distance_m is None and metric.distance_max_m is None:
+            return False
+        return self._approach_valid
 
     @property
     def approach_valid(self) -> bool:
