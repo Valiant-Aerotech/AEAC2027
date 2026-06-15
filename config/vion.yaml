@@ -61,9 +61,23 @@ flight_profiles:
     metric_recon:
       mode: depth_at_target
       rangefinder: fov_estimate
-      camera_down: false                # adjust to your Vivi camera mount
+      camera_down: false
     mavlink:
       rpi_connection: "/dev/ttyAMA0"
+    gimbal:
+      enabled: true
+      channel: 9                         # CHANGE: your Kakute AUX servo output
+      pwm_min: 1000                      # stowed / 0 deg — tune on bench
+      pwm_max: 2000                      # 90 deg pitch — tune on bench
+      pwm_neutral: 1500
+      axis: pitch
+      kp: 0.8
+      deadband_px: 40
+      min_interval_s: 0.1
+    spray:
+      method: none
+    safety:
+      geofence_abort: false
 
 auto_nav:
   kp_x: 0.0015

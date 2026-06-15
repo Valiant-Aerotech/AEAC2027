@@ -15,6 +15,7 @@ class MavlinkDriver:
         self.master = master
         self.servo = VisualServo(master, cfg)
         self.cfg = cfg
+        self._gimbal_pitch = bool(cfg.get("gimbal", {}).get("enabled", False))
 
     def move_toward_target(
         self,
@@ -27,14 +28,27 @@ class MavlinkDriver:
     ) -> None:
         px, py = packet.target_px
         vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
+        if self._gimbal_pitch:
+            self.servo.send_velocity_body(approach_speed, vel_right, 0.0)
+            return
         if camera_down:
             self.servo.send_velocity_body(-vel_vertical, vel_right, approach_speed)
         else:
             self.servo.send_velocity_body(approach_speed, vel_right, vel_vertical)
 
-    def hold_center(self, packet: MetricPacket, frame_w: int, frame_h: int, *, camera_down: bool = True) -> None:
+    def hold_center(
+        self,
+        packet: MetricPacket,
+        frame_w: int,
+        frame_h: int,
+        *,
+        camera_down: bool = True,
+    ) -> None:
         px, py = packet.target_px
         vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
+        if self._gimbal_pitch:
+            self.servo.send_velocity_body(0.0, vel_right, 0.0)
+            return
         if camera_down:
             self.servo.send_velocity_body(-vel_vertical, vel_right, 0.0)
         else:

@@ -28,6 +28,7 @@ from valiant.autonomy.conops import (
 from valiant.autonomy.safety.monitor import SafetyAbort, SafetyMonitor
 from valiant.autonomy.spray.actuation import WaterTrigger
 from valiant.autonomy.spray.aim import is_aimed
+from valiant.autonomy.gimbal.servo_gimbal import GimbalController
 from valiant.autonomy.upload.drive import DriveUploader
 from valiant.common.camera_factory import camera_depth_mm, camera_depth_ok, create_camera
 from valiant.common.config import load_config
@@ -105,6 +106,7 @@ class AutoExtinguisher:
             request_sys_status_stream(self.master, rate_hz=2)
 
         self.nav = MavlinkDriver(self.master, cfg)
+        self.gimbal = GimbalController(self.master, cfg)
         self.safety = SafetyMonitor(self.master, cfg, sim=sim_mode)
         self.planner = MotionPlanner(cfg)
         self.metric_recon = MetricReconstructor(self.master, cfg, sim=sim_mode)
@@ -221,12 +223,21 @@ class AutoExtinguisher:
     def _allow_motion(self) -> bool:
         return not self.sim and not self.hand_test
 
+    def _spray_enabled(self) -> bool:
+        method = str(self.cfg.get("spray", {}).get("method", "MAVLINK_SERVO")).lower()
+        return method not in ("none", "")
+
+    def _aim_gimbal(self, hit, frame_h: int) -> None:
+        if not self.gimbal.enabled or hit is None:
+            return
+        self.gimbal.center_pitch(hit.cy, frame_h, send=not self.sim)
+
     def loop(self) -> None:
         host = "ONBOARD" if self.cfg.get("camera", {}).get("source") == "rpi_local" else "GCS"
         print(f"\n=== {host} AUTO-EXTINGUISH ===")
         print(f"CV method: {self.cv_method}")
         if self.hand_test:
-            print("HAND-TEST: props off — perception + comms only, no velocity or spray")
+            print("HAND-TEST: props off — no drone velocity/spray; gimbal + perception active")
         print("Pipeline: CV -> MetricRecon -> AutoNav -> Spray -> Upload")
         if host == "GCS":
             print("Waiting for scrcpy window... (Ctrl+C to abort)")
@@ -293,6 +304,7 @@ class AutoExtinguisher:
                         if self.planner.should_switch_to_aiming(metric, hit.area):
                             self.set_state(STATE_AIMING)
                             continue
+                        self._aim_gimbal(hit, frame_h)
                         if not self._allow_motion() and intent == MotionIntent.APPROACH:
                             pass
                         elif self._allow_motion() and intent == MotionIntent.APPROACH:
@@ -319,6 +331,7 @@ class AutoExtinguisher:
                             self.nav.hold_center(
                                 metric, frame_w, frame_h, camera_down=self.camera_down
                             )
+                        self._aim_gimbal(hit, frame_h)
                         if is_aimed(metric, self.cfg):
                             if self.lock_start_time is None:
                                 self.lock_start_time = time.time()
@@ -329,6 +342,9 @@ class AutoExtinguisher:
                                     if self.hand_test:
                                         print("[HAND-TEST] Would fire here (spray skipped)")
                                         self.set_state(STATE_SEARCHING)
+                                    elif not self._spray_enabled():
+                                        self.confirm_frame = frame
+                                        self.set_state(STATE_CAPTURING)
                                     else:
                                         self.set_state(STATE_FIRING)
                                 else:
@@ -415,6 +431,7 @@ class AutoExtinguisher:
                 self.nav.stop()
             self.metric_recon.stop()
             self.trigger.cleanup()
+            self.gimbal.cleanup()
             self.camera.cleanup()
             if self._telemetry is not None:
                 self._telemetry.close()
