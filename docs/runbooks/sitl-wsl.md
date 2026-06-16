@@ -30,10 +30,18 @@ python -c "from pymavlink import mavutil; m=mavutil.mavlink_connection('tcp:127.
 
 ## Run SITL
 
-**Terminal 1 (WSL or Windows):**
+**From repo root** (not `tools/`):
 
 ```powershell
+cd A:\Code\Valiant-Aerotech\AEAC2027
 .\tools\launch_sitl.ps1
+```
+
+If you see `No such file or directory` for the `.sh` path, update `launch_sitl.ps1` (uses `wslpath`) or run directly in WSL:
+
+```bash
+cd ~/ardupilot
+./Tools/autotest/sim_vehicle.py -v ArduCopter --console --map
 ```
 
 In the SITL console after startup:
@@ -47,10 +55,13 @@ arm throttle
 
 ## Run mission against SITL
 
-**Terminal 2:**
+**No physical drone required** — SITL is a software flight controller on your laptop.
+
+**Terminal 2** (from repo root):
 
 ```powershell
-.\tools\run_sitl_mission.ps1 -Profile sitl -Scenario tests\fixtures\sitl_approach.json
+cd A:\Code\Valiant-Aerotech\AEAC2027
+.\tools\run_sitl_mission.ps1 -Profile sitl
 ```
 
 Or with recorded video:
