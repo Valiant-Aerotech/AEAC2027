@@ -30,7 +30,12 @@ from valiant.autonomy.spray.actuation import WaterTrigger
 from valiant.autonomy.spray.aim import is_aimed
 from valiant.autonomy.gimbal.servo_gimbal import GimbalController
 from valiant.autonomy.upload.drive import DriveUploader
-from valiant.common.camera_factory import camera_depth_mm, camera_depth_ok, create_camera
+from valiant.common.camera_factory import (
+    camera_depth_mm,
+    camera_depth_ok,
+    camera_synthetic_cv,
+    create_camera,
+)
 from valiant.common.config import load_config
 from valiant.common.mavlink import connect, request_sys_status_stream, send_rtl, send_statustext
 
@@ -55,14 +60,17 @@ class AutoExtinguisher:
         connection_string: str,
         baudrate: int,
         sim_mode: bool = False,
+        sitl_mode: bool = False,
         headless: bool = False,
         phone_ip: str | None = None,
         max_targets: int | None = None,
         hand_test: bool = False,
         gcs_ip: str | None = None,
+        video_path: str | None = None,
     ):
         self.cfg = cfg
         self.sim = sim_mode
+        self.sitl = sitl_mode
         self.headless = headless
         self.hand_test = hand_test
         nav = cfg.get("auto_nav", {})
@@ -88,14 +96,14 @@ class AutoExtinguisher:
         for warning in validate_conops_config(cfg):
             print(f"[CONOPS] Warning: {warning}")
 
-        print(f"[INIT] Connecting MAVLink on {connection_string} (sim={sim_mode})...")
-        if sim_mode:
+        print(f"[INIT] Connecting MAVLink on {connection_string} (sim={sim_mode}, sitl={sitl_mode})...")
+        if sim_mode and not sitl_mode:
             self.master = mavutil.mavlink_connection(connection_string, baud=baudrate)
         else:
             self.master = connect(connection_string, baudrate, wait_heartbeat=True)
             print("[INIT] Heartbeat received")
 
-        if not sim_mode:
+        if not sim_mode or sitl_mode:
             self.master.mav.request_data_stream_send(
                 self.master.target_system,
                 self.master.target_component,
@@ -107,14 +115,14 @@ class AutoExtinguisher:
 
         self.nav = MavlinkDriver(self.master, cfg)
         self.gimbal = GimbalController(self.master, cfg)
-        self.safety = SafetyMonitor(self.master, cfg, sim=sim_mode)
+        self.safety = SafetyMonitor(self.master, cfg, sim=sim_mode and not sitl_mode)
         self.planner = MotionPlanner(cfg)
-        self.metric_recon = MetricReconstructor(self.master, cfg, sim=sim_mode)
+        self.metric_recon = MetricReconstructor(self.master, cfg, sim=sim_mode and not sitl_mode)
         self.trigger = WaterTrigger(self.master, cfg)
         self.uploader = DriveUploader(cfg)
         self.detector = TargetDetector(cfg)
 
-        self.camera = create_camera(cfg, phone_ip=phone_ip)
+        self.camera = create_camera(cfg, phone_ip=phone_ip, video_path=video_path)
         self._telemetry = None
         if gcs_ip:
             from valiant.autonomy.telemetry_bridge import TelemetryBridge
@@ -132,6 +140,10 @@ class AutoExtinguisher:
         self.upload_file_path: str | None = None
         self._last_cv: CVPacket | None = None
         self._last_metric: MetricPacket | None = None
+        self._stop_loop = False
+
+    def request_stop(self) -> None:
+        self._stop_loop = True
 
     def send_hud_message(self, message: str) -> None:
         send_statustext(self.master, message, prefix="T2: ")
@@ -150,6 +162,10 @@ class AutoExtinguisher:
                 self.planner.reset_approach()
 
     def _run_cv(self, frame) -> CVPacket | None:
+        synthetic = camera_synthetic_cv(self.camera)
+        if synthetic is not None:
+            self._last_cv = synthetic
+            return synthetic
         try:
             packet = self.detector.detect(frame)
             self._last_cv = packet
@@ -179,6 +195,8 @@ class AutoExtinguisher:
     def _publish_telemetry(self, cv_packet: CVPacket | None, metric: MetricPacket | None) -> None:
         if self._telemetry is None:
             return
+        vel = self.nav.servo.last_vel_body if self._allow_motion() else (0.0, 0.0, 0.0)
+        gimbal_pwm = self.gimbal.current_pwm if self.gimbal.enabled else None
         self._telemetry.send(
             state=self.state,
             distance_m=metric.distance_m if metric else None,
@@ -188,12 +206,15 @@ class AutoExtinguisher:
             depth_ok=camera_depth_ok(self.camera),
             target_seen=bool(cv_packet and cv_packet.has_dry_target),
             hand_test=self.hand_test,
+            sitl=self.sitl,
+            vel_body=vel,
+            gimbal_pwm=gimbal_pwm,
         )
 
     def _handle_safety_abort(self, abort: SafetyAbort) -> None:
         print(f"[SAFETY] Mission abort: {abort.reason}")
         self.send_hud_message(f"ABORT {abort.reason}"[:50])
-        if not self.sim:
+        if not self.sim or self.sitl:
             self.nav.stop()
             if abort.trigger_rtl:
                 send_rtl(self.master)
@@ -206,7 +227,7 @@ class AutoExtinguisher:
         if self.state not in (STATE_APPROACHING, STATE_AIMING):
             return False
         print(f"Target lost for {self.max_frames_without_target} frames")
-        if not self.sim:
+        if not self.sim or self.sitl:
             self.nav.stop()
         self.set_state(STATE_SEARCHING)
         return True
@@ -221,7 +242,7 @@ class AutoExtinguisher:
         return f"LOCK dist={dist} src={metric.distance_source or '?'}"
 
     def _allow_motion(self) -> bool:
-        return not self.sim and not self.hand_test
+        return (not self.sim or self.sitl) and not self.hand_test
 
     def _spray_enabled(self) -> bool:
         method = str(self.cfg.get("spray", {}).get("method", "MAVLINK_SERVO")).lower()
@@ -230,22 +251,34 @@ class AutoExtinguisher:
     def _aim_gimbal(self, hit, frame_h: int) -> None:
         if not self.gimbal.enabled or hit is None:
             return
-        self.gimbal.center_pitch(hit.cy, frame_h, send=not self.sim)
+        self.gimbal.center_pitch(hit.cy, frame_h, send=(not self.sim or self.sitl))
 
     def loop(self) -> None:
-        host = "ONBOARD" if self.cfg.get("camera", {}).get("source") == "rpi_local" else "GCS"
+        source = self.cfg.get("camera", {}).get("source", "scrcpy")
+        if self.sitl:
+            host = "SITL"
+        elif source == "rpi_local":
+            host = "ONBOARD"
+        else:
+            host = "GCS"
         print(f"\n=== {host} AUTO-EXTINGUISH ===")
         print(f"CV method: {self.cv_method}")
+        if self.sitl:
+            print("SITL: ArduPilot sim — motion enabled (arm GUIDED in SITL console)")
         if self.hand_test:
             print("HAND-TEST: props off — no drone velocity/spray; gimbal + perception active")
         print("Pipeline: CV -> MetricRecon -> AutoNav -> Spray -> Upload")
         if host == "GCS":
             print("Waiting for scrcpy window... (Ctrl+C to abort)")
+        elif source in ("video", "synthetic"):
+            print(f"Replay camera ({source}) active (Ctrl+C to abort)")
         else:
             print("Onboard Pi camera active (Ctrl+C to abort)")
 
         try:
             while True:
+                if self._stop_loop:
+                    break
                 safety_abort = self.safety.check()
                 if safety_abort:
                     self._handle_safety_abort(safety_abort)
@@ -281,7 +314,7 @@ class AutoExtinguisher:
                         metric=metric,
                         show_yolo_crop=self.cv_method in ("yolo", "both"),
                     )
-                    cv2.imshow("GCS Extinguisher View", overlay)
+                    cv2.imshow("Valiant Mission View", overlay)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         break
 
@@ -297,7 +330,7 @@ class AutoExtinguisher:
                         intent = self.planner.intent_for_approaching(metric)
                         if intent == MotionIntent.ABORT:
                             print("[Nav] Abort - insufficient side clearance")
-                            if not self.sim:
+                            if not self.sim or self.sitl:
                                 self.nav.stop()
                             self.set_state(STATE_SEARCHING)
                             continue
@@ -321,7 +354,7 @@ class AutoExtinguisher:
                     if metric:
                         intent = self.planner.intent_for_aiming(metric)
                         if intent == MotionIntent.ABORT:
-                            if not self.sim:
+                            if not self.sim or self.sitl:
                                 self.nav.stop()
                             self.set_state(STATE_SEARCHING)
                             continue
@@ -443,38 +476,58 @@ def run_auto_extinguish(
     connection: str | None = None,
     baud: int | None = None,
     sim: bool = False,
+    sitl: bool = False,
     headless: bool = False,
     phone_ip: str | None = None,
     max_targets: int | None = None,
     hand_test: bool = False,
     gcs_ip: str | None = None,
     profile: str | None = None,
+    video_path: str | None = None,
+    scenario_path: str | None = None,
 ) -> None:
     cfg = load_config("vion")
     if profile:
         from valiant.autonomy.flight.profile import apply_flight_profile
 
         cfg = apply_flight_profile(cfg, profile)
+    if scenario_path:
+        cfg.setdefault("camera", {})["source"] = "synthetic"
+        cfg["camera"]["synthetic_scenario"] = scenario_path
+    if sitl:
+        cfg.setdefault("camera", {})
+        if not video_path and not scenario_path:
+            if cfg["camera"].get("source") == "scrcpy":
+                cfg["camera"]["source"] = "synthetic"
+                cfg["camera"].setdefault(
+                    "synthetic_scenario", "tests/fixtures/sitl_approach.json"
+                )
     mavlink_cfg = cfg.get("mavlink", {})
     if connection:
         conn = connection
+    elif sitl:
+        conn = mavlink_cfg.get("sitl_connection", "tcp:127.0.0.1:5760")
     elif cfg.get("camera", {}).get("source") == "rpi_local":
         conn = mavlink_cfg.get("rpi_connection", "/dev/ttyAMA0")
     else:
         conn = mavlink_cfg.get("connection", "udpin:127.0.0.1:14550")
     baud_rate = baud if baud is not None else mavlink_cfg.get("baud", 57600)
     monitor_ip = gcs_ip or cfg.get("gcs_monitor", {}).get("ip")
+    if sitl and not monitor_ip:
+        monitor_ip = "127.0.0.1"
 
     extinguisher = AutoExtinguisher(
         cfg,
         connection_string=conn,
         baudrate=baud_rate,
         sim_mode=sim,
+        sitl_mode=sitl,
         headless=headless,
         phone_ip=phone_ip,
         max_targets=max_targets,
         hand_test=hand_test,
         gcs_ip=monitor_ip,
+        video_path=video_path,
     )
     extinguisher.loop()
 
@@ -483,9 +536,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Vion Task 2 autonomous fire extinguishing")
     parser.add_argument("--connection", default=None)
     parser.add_argument("--baud", type=int, default=None)
-    parser.add_argument("--sim", action="store_true")
+    parser.add_argument("--sim", action="store_true", help="Dry-run: no MAVLink motion")
+    parser.add_argument("--sitl", action="store_true", help="ArduPilot SITL (tcp:5760, motion on)")
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--scrcpy-ip", default=None)
+    parser.add_argument("--video", default=None, help="Video file for replay camera")
+    parser.add_argument("--scenario", default=None, help="Synthetic target JSON scenario")
     parser.add_argument(
         "--max-targets",
         type=int,
@@ -500,16 +556,21 @@ def main() -> None:
     parser.add_argument("--gcs-ip", default=None, help="GCS laptop IP for telemetry mirror")
     parser.add_argument("--profile", default=None, help="Flight profile overlay (e.g. vivi)")
     args = parser.parse_args()
+    if args.sim and args.sitl:
+        parser.error("--sim and --sitl are mutually exclusive")
     run_auto_extinguish(
         connection=args.connection,
         baud=args.baud,
         sim=args.sim,
+        sitl=args.sitl,
         headless=args.headless,
         phone_ip=args.scrcpy_ip,
         max_targets=args.max_targets,
         hand_test=args.hand_test,
         gcs_ip=args.gcs_ip,
         profile=args.profile,
+        video_path=args.video,
+        scenario_path=args.scenario,
     )
 
 

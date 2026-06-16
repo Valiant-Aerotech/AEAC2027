@@ -41,6 +41,9 @@ class TelemetryBridge:
         depth_ok: bool = False,
         target_seen: bool = False,
         hand_test: bool = False,
+        sitl: bool = False,
+        vel_body: tuple[float, float, float] | None = None,
+        gimbal_pwm: int | None = None,
         extra: dict[str, Any] | None = None,
     ) -> None:
         now = time.time()
@@ -58,6 +61,11 @@ class TelemetryBridge:
             "depth_ok": depth_ok,
             "target_seen": target_seen,
             "hand_test": hand_test,
+            "sitl": sitl,
+            "vel_x": vel_body[0] if vel_body else None,
+            "vel_y": vel_body[1] if vel_body else None,
+            "vel_z": vel_body[2] if vel_body else None,
+            "gimbal_pwm": gimbal_pwm,
         }
         if extra:
             payload.update(extra)

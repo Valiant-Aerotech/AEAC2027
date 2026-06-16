@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GCS read-only mission monitor (UDP telemetry from Pi)."""
+"""GCS read-only mission monitor (UDP telemetry from Pi or SITL host)."""
 
 from __future__ import annotations
 
@@ -17,9 +17,12 @@ def main() -> None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", args.port))
     sock.settimeout(1.0)
-    print(f"Listening for Pi telemetry on UDP :{args.port} (Ctrl+C to stop)")
-    print(f"{'time':>8}  {'state':<12}  {'dist':>12}  {'src':<12}  tgt  depth  hand")
-    print("-" * 70)
+    print(f"Listening for telemetry on UDP :{args.port} (Ctrl+C to stop)")
+    print(
+        f"{'time':>8}  {'state':<12}  {'dist':>12}  {'vel':>14}  "
+        f"{'gimbal':>6}  tgt  sitl"
+    )
+    print("-" * 78)
 
     while True:
         try:
@@ -39,14 +42,23 @@ def main() -> None:
             dist_s = f"{dist:.1f}m"
         else:
             dist_s = "?"
+        vx = msg.get("vel_x")
+        vy = msg.get("vel_y")
+        vz = msg.get("vel_z")
+        if vx is not None:
+            vel_s = f"{vx:.2f},{vy:.2f},{vz:.2f}"
+        else:
+            vel_s = "?"
+        pwm = msg.get("gimbal_pwm")
+        pwm_s = str(pwm) if pwm is not None else "?"
         print(
             f"{time.strftime('%H:%M:%S'):>8}  "
             f"{msg.get('state', '?'):<12}  "
             f"{dist_s:>12}  "
-            f"{msg.get('distance_source', ''):<12}  "
+            f"{vel_s:>14}  "
+            f"{pwm_s:>6}  "
             f"{'Y' if msg.get('target_seen') else 'n'}    "
-            f"{'Y' if msg.get('depth_ok') else 'n'}    "
-            f"{'Y' if msg.get('hand_test') else 'n'}  "
+            f"{'Y' if msg.get('sitl') else 'n'}  "
             f"<- {addr[0]}"
         )
 

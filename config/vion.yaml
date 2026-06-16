@@ -6,6 +6,7 @@ drone: vion
 mavlink:
   connection: "COM5"                    # GCS scrcpy path only
   rpi_connection: "/dev/ttyAMA0"        # Pi UART to FC TELEM port
+  sitl_connection: "tcp:127.0.0.1:5760"
   baud: 57600
   sitl_fallback: "udpin:127.0.0.1:14550"
 
@@ -78,6 +79,31 @@ flight_profiles:
       method: none
     safety:
       geofence_abort: false
+
+  sitl:
+    camera:
+      source: synthetic
+      synthetic_scenario: tests/fixtures/sitl_approach.json
+      synthetic_depth_m: 3.0
+      width: 640
+      height: 480
+    mavlink:
+      connection: "tcp:127.0.0.1:5760"
+    spray:
+      method: none
+    safety:
+      geofence_abort: false
+    gimbal:
+      enabled: true
+      channel: 9
+      pwm_min: 1000
+      pwm_max: 2000
+      pwm_neutral: 1500
+      kp: 0.8
+      deadband_px: 40
+    metric_recon:
+      mode: depth_at_target
+      camera_down: false
 
 auto_nav:
   kp_x: 0.0015

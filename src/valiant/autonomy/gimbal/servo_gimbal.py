@@ -39,6 +39,10 @@ class GimbalController:
         if self.active:
             self._send_pwm(self.pwm_neutral, force=True)
 
+    @property
+    def current_pwm(self) -> int:
+        return self._current_pwm
+
     def center_pitch(self, cy: int, frame_h: int, *, send: bool = True) -> int:
         """Adjust gimbal PWM from vertical pixel error. Returns commanded PWM."""
         if not self.enabled:

@@ -22,6 +22,7 @@ class VisualServo:
         self._last_err_x = 0.0
         self._last_err_y = 0.0
         self._last_time = time.time()
+        self.last_vel_body = (0.0, 0.0, 0.0)
 
     def compute_velocity(self, cx: int, cy: int, frame_w: int, frame_h: int):
         now = time.time()
@@ -42,6 +43,7 @@ class VisualServo:
         return vel_right, vel_vertical
 
     def send_velocity_body(self, vel_x: float, vel_y: float, vel_z: float = 0.0) -> None:
+        self.last_vel_body = (vel_x, vel_y, vel_z)
         type_mask = (
             mavutil.mavlink.POSITION_TARGET_TYPEMASK_X_IGNORE
             | mavutil.mavlink.POSITION_TARGET_TYPEMASK_Y_IGNORE
@@ -65,4 +67,5 @@ class VisualServo:
         )
 
     def stop(self) -> None:
+        self.last_vel_body = (0.0, 0.0, 0.0)
         self.send_velocity_body(0.0, 0.0, 0.0)

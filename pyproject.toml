@@ -22,3 +22,8 @@ dev = ["pytest>=7.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+markers = [
+    "sitl: requires ArduPilot SITL on tcp:127.0.0.1:5760",
+]
