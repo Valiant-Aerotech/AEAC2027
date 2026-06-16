@@ -221,16 +221,19 @@ class SitlMotionStack:
                     alt_offset_m=self._cfg.alt_offset_m,
                 )
             if state == "AIMING":
-                if (
-                    wall_range is not None
-                    and wall_range > self._cfg.wall_standoff_m + 0.4
-                ):
+                needs_creep = False
+                if wall_range is not None and wall_range > self._cfg.wall_standoff_m + 0.4:
+                    needs_creep = True
+                elif metric is not None and metric.distance_m is not None:
+                    if metric.distance_m > self._cfg.fire_distance_m + 0.12:
+                        needs_creep = True
+                if needs_creep:
                     spd = min(approach_speed, self._cfg.creep_speed)
                     return MotionCommand(
                         RULE_FOLLOW,
                         approach_speed=spd,
                         vz=vz,
-                        reason="aiming creep to wall",
+                        reason="aiming creep to target",
                     )
                 return MotionCommand(
                     RULE_HOLD, use_hold_center=True, vz=vz, reason="aiming lock"

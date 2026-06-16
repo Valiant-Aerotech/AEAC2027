@@ -93,6 +93,7 @@ class AutoExtinguisher:
         self._sitl_first_dry_logged = False
         self._sitl_approaching_logged = False
         self._sitl_motion = None
+        self._last_remediate_log = 0.0
         nav = cfg.get("auto_nav", {})
         cv_cfg = cfg.get("cv", {})
         team = cfg.get("team", {})
@@ -277,6 +278,67 @@ class AutoExtinguisher:
             gimbal_pwm=gimbal_pwm,
             extra=extra,
         )
+
+    def _scaled_approach_speed(self, metric: MetricPacket | None, *, creep: bool = False) -> float:
+        from valiant.autonomy.auto_nav.approach_motion import effective_approach_speed
+
+        dist = metric.distance_m if metric else None
+        return effective_approach_speed(self.cfg, dist, creep=creep)
+
+    def _log_remediation(self, blockers: tuple[str, ...]) -> None:
+        if time.time() - self._last_remediate_log < 3.0:
+            return
+        self._last_remediate_log = time.time()
+        print(f"[Nav] Working toward fire prerequisites: {', '.join(blockers)}")
+
+    def _apply_approach_motion(
+        self,
+        hit,
+        metric: MetricPacket,
+        frame_w: int,
+        frame_h: int,
+        *,
+        creep: bool = False,
+    ) -> None:
+        """Forward approach with scaled speed (onboard + SITL)."""
+        if self.sitl:
+            self._sitl_apply_motion(hit, metric, frame_w, frame_h)
+            return
+        if not self._allow_motion():
+            return
+        spd = self._scaled_approach_speed(metric, creep=creep)
+        if spd <= 0.01:
+            self.nav.hold_center(metric, frame_w, frame_h, camera_down=self.camera_down)
+        else:
+            self.nav.move_toward_target(
+                metric,
+                frame_w,
+                frame_h,
+                approach_speed=spd,
+                camera_down=self.camera_down,
+            )
+
+    def _resume_approach_if_blocked(
+        self,
+        metric: MetricPacket,
+        *,
+        wall_range_m: float | None,
+        wall_standoff_m: float,
+    ) -> bool:
+        """If fire prerequisites need approach, drop to APPROACHING and return True."""
+        blockers = self.planner.fire_blockers(
+            metric,
+            lock_duration_met=True,
+            wall_range_m=wall_range_m,
+            wall_standoff_m=wall_standoff_m,
+        )
+        if not self.planner.needs_approach_remediation(blockers):
+            return False
+        self._log_remediation(blockers)
+        self.lock_start_time = None
+        if self.state == STATE_AIMING:
+            self.set_state(STATE_APPROACHING)
+        return True
 
     def _sitl_stop_motion(self) -> None:
         if not self._allow_motion():
@@ -669,20 +731,11 @@ class AutoExtinguisher:
                             self.set_state(STATE_SEARCHING)
                             continue
                         self._aim_gimbal(hit, frame_h)
-                        if self.sitl and intent == MotionIntent.APPROACH:
-                            self._sitl_apply_motion(hit, metric, frame_w, frame_h)
-                        elif self._allow_motion() and intent == MotionIntent.APPROACH:
-                            approach_spd = self.approach_speed
-                            if approach_spd <= 0.01:
-                                self.nav.hold_center(
-                                    metric, frame_w, frame_h, camera_down=self.camera_down
-                                )
+                        if intent == MotionIntent.APPROACH:
+                            if self.sitl:
+                                self._sitl_apply_motion(hit, metric, frame_w, frame_h)
                             else:
-                                self.nav.move_toward_target(
-                                    metric, frame_w, frame_h,
-                                    approach_speed=approach_spd,
-                                    camera_down=self.camera_down,
-                                )
+                                self._apply_approach_motion(hit, metric, frame_w, frame_h)
                     elif self.sitl:
                         self._sitl_apply_motion(hit, metric, frame_w, frame_h)
 
@@ -691,27 +744,24 @@ class AutoExtinguisher:
                         self.set_state(STATE_SEARCHING)
                         continue
                     if metric:
+                        self.planner.update_approach_tracking(metric)
                         intent = self.planner.intent_for_aiming(metric, bbox_area=hit.area if hit else 0)
                         if intent == MotionIntent.ABORT:
                             self._sitl_stop_motion()
                             self.set_state(STATE_SEARCHING)
                             continue
                         self._aim_gimbal(hit, frame_h)
-                        if self.sitl:
-                            self._sitl_apply_motion(hit, metric, frame_w, frame_h)
-                        elif self._allow_motion():
-                            self.nav.hold_center(
-                                metric, frame_w, frame_h, camera_down=self.camera_down
-                            )
+                        standoff = float(self.cfg.get("sitl", {}).get("wall_standoff_m", 1.2))
+                        wall_rng = self._sitl_wall_range_m() if self.sitl else None
+
                         if is_aimed(metric, self.cfg):
                             if self.lock_start_time is None:
                                 self.lock_start_time = time.time()
                             elif time.time() - self.lock_start_time >= self.lock_duration_s:
-                                standoff = float(self.cfg.get("sitl", {}).get("wall_standoff_m", 1.2))
                                 if self.planner.can_fire(
                                     metric,
                                     lock_duration_met=True,
-                                    wall_range_m=self._sitl_wall_range_m() if self.sitl else None,
+                                    wall_range_m=wall_rng,
                                     wall_standoff_m=standoff,
                                 ):
                                     self._sitl_stop_motion()
@@ -723,17 +773,36 @@ class AutoExtinguisher:
                                         self.set_state(STATE_CAPTURING)
                                     else:
                                         self.set_state(STATE_FIRING)
-                                else:
-                                    wall_rng = self._sitl_wall_range_m()
-                                    if wall_rng is not None and wall_rng > standoff + 0.35:
-                                        print(
-                                            f"[Spray] Aim lock met but still {wall_rng:.1f}m "
-                                            f"from wall (need ~{standoff:.1f}m)"
+                                elif self._resume_approach_if_blocked(
+                                    metric, wall_range_m=wall_rng, wall_standoff_m=standoff
+                                ):
+                                    if hit:
+                                        self._apply_approach_motion(
+                                            hit, metric, frame_w, frame_h, creep=True
                                         )
-                                    else:
-                                        print("[Spray] Aim lock met but approach-from-2m not validated")
+                                    continue
                         else:
                             self.lock_start_time = None
+
+                        if hit:
+                            if self.sitl:
+                                self._sitl_apply_motion(hit, metric, frame_w, frame_h)
+                            elif self._allow_motion():
+                                blockers = self.planner.fire_blockers(
+                                    metric,
+                                    lock_duration_met=self.lock_start_time is not None
+                                    and time.time() - self.lock_start_time >= self.lock_duration_s,
+                                    wall_range_m=wall_rng,
+                                    wall_standoff_m=standoff,
+                                )
+                                if self.planner.needs_approach_remediation(blockers):
+                                    self._apply_approach_motion(
+                                        hit, metric, frame_w, frame_h, creep=True
+                                    )
+                                else:
+                                    self.nav.hold_center(
+                                        metric, frame_w, frame_h, camera_down=self.camera_down
+                                    )
                     elif self.sitl:
                         self._sitl_apply_motion(hit, metric, frame_w, frame_h)
 

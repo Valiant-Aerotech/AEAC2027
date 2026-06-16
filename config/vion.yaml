@@ -208,18 +208,22 @@ flight_profiles:
       side_clearance_m: 0.65
 
 auto_nav:
-  kp_x: 0.0015
-  kp_y: 0.0015
-  kd_x: 0.0004                          # light damping to reduce oscillation
-  kd_y: 0.0004
-  max_vel: 0.4
+  kp_x: 0.0006                           # tuned from SITL — softer lateral gain
+  kp_y: 0.0006
+  kd_x: 0.0014                           # damping to cut oscillation near target
+  kd_y: 0.0014
+  vel_smooth: 0.42                       # low-pass on velocity commands
+  max_vel: 0.15                          # cap lateral correction (m/s)
   deadband_px: 50
-  approach_speed: 0.25
+  approach_speed: 0.10                   # forward creep during approach (m/s)
+  creep_speed: 0.10                      # minimum forward speed when remediating
+  approach_slow_zone_m: 2.5              # taper approach inside this range (m)
+  closing_rate_m_s: 0.05                 # brake if closing faster than this
   side_clearance_m: 1.0
   target_lock_area_px: 15000
-  approach_timeout_s: 30
+  approach_timeout_s: 90
   lock_duration_s: 1.5
-  lock_timeout_s: 10
+  lock_timeout_s: 30
 
 spray:
   method: MAVLINK_SERVO

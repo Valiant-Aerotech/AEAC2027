@@ -7,6 +7,10 @@ from enum import Enum
 from valiant.autonomy.packets import MetricPacket
 from valiant.autonomy.spray.aim import is_aimed
 
+# Blockers that mean "move closer / prove approach" rather than hold in place.
+APPROACH_REMEDIATION_BLOCKERS = frozenset({"approach_not_proven", "too_far_wall", "too_far_metric"})
+CENTER_REMEDIATION_BLOCKERS = frozenset({"not_aimed"})
+
 
 class MotionIntent(Enum):
     APPROACH = "approach"
@@ -106,7 +110,43 @@ class MotionPlanner:
             return False
         if wall_range_m is not None and wall_range_m > wall_standoff_m + 0.35:
             return False
+        close = metric.distance_min_m if metric.distance_min_m is not None else metric.distance_m
+        if close is not None and close > self.fire_distance_m + 0.12:
+            return False
         return True
+
+    def fire_blockers(
+        self,
+        metric: MetricPacket,
+        *,
+        lock_duration_met: bool,
+        wall_range_m: float | None = None,
+        wall_standoff_m: float = 1.2,
+    ) -> tuple[str, ...]:
+        """Why fire/capture is not allowed yet (empty = ready)."""
+        blockers: list[str] = []
+        if not lock_duration_met:
+            blockers.append("lock_duration")
+        if not is_aimed(metric, self._cfg):
+            blockers.append("not_aimed")
+        if metric.distance_m is None and metric.distance_max_m is None:
+            blockers.append("no_distance")
+        if not self._approach_valid:
+            blockers.append("approach_not_proven")
+        if wall_range_m is not None and wall_range_m > wall_standoff_m + 0.35:
+            blockers.append("too_far_wall")
+        close = metric.distance_min_m if metric.distance_min_m is not None else metric.distance_m
+        if close is not None and close > self.fire_distance_m + 0.12:
+            blockers.append("too_far_metric")
+        return tuple(blockers)
+
+    @staticmethod
+    def needs_approach_remediation(blockers: tuple[str, ...]) -> bool:
+        return any(b in APPROACH_REMEDIATION_BLOCKERS for b in blockers)
+
+    @staticmethod
+    def needs_center_remediation(blockers: tuple[str, ...]) -> bool:
+        return any(b in CENTER_REMEDIATION_BLOCKERS for b in blockers)
 
     @property
     def approach_valid(self) -> bool:
