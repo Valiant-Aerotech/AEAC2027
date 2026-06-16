@@ -39,6 +39,8 @@ cd A:\Code\Valiant-Aerotech\AEAC2027
 .\tools\launch_sitl.ps1
 ```
 
+Home position is read from [`tests/fixtures/sitl_home.json`](../../tests/fixtures/sitl_home.json) (default: Newfoundland coordinates).
+
 If you see `No such file or directory` for the `.sh` path, update `launch_sitl.ps1` (uses `wslpath`) or run directly in WSL:
 
 ```bash
@@ -47,15 +49,6 @@ cd ~/ardupilot
 ```
 
 The ArduCopter window shows `SERIAL0 on TCP port 5760` — that is normal. AEAC connects directly; MAVProxy is **not** required.
-
-Arm and set GUIDED from **Windows** (Terminal 2, or before mission):
-
-```powershell
-$env:PYTHONPATH="src"
-python tools\sitl_arm_guided.py
-```
-
-(`run_sitl_mission.ps1` calls this automatically.)
 
 Optional: install MAVProxy in WSL if you want ArduPilot's map/console UI:
 
@@ -68,34 +61,50 @@ python3 -m pip install --user --break-system-packages MAVProxy
 
 **No physical drone required** — SITL is a software flight controller on your laptop.
 
+### Daily driver (timeline synthetic — fast iteration)
+
 **Terminal 2** (from repo root):
 
 ```powershell
 cd A:\Code\Valiant-Aerotech\AEAC2027
-.\tools\run_sitl_mission.ps1 -Profile sitl
+.\tools\run_sitl_mission.ps1
 ```
+
+Default `-Profile sitl` uses **scripted bbox timelines** (not physics-linked CV). You still get the full **Valiant SITL** dashboard (FOV + wall side + top-down), **2-target** suppress-and-retreat flow, green extinguished markers, and real MAVLink motion in SITL — without waiting for gimbal/pose-linked perception.
+
+| Label | Mode |
+|-------|------|
+| `SIM` (top-right of dashboard) | Timeline synthetic (`sitl` profile) |
+| `PHYSICS` | Pose-linked camera (`-Physics`) |
+
+Legacy single-target timeline: `tests/fixtures/sitl_approach.json` via `-Scenario`.
 
 Or with recorded video:
 
 ```powershell
-.\tools\run_sitl_mission.ps1 -Profile sitl -Video recordings\purple_bench.mp4
+.\tools\run_sitl_mission.ps1 -Video recordings\purple_bench.mp4
 ```
 
-### Physics-linked SITL (ArduPilot gravity + real motion)
+### Cold vs warm start
 
-Targets sit on a **wall** 5 m ahead; three OpenCV windows:
+| Run | Command | Typical startup |
+|-----|---------|-----------------|
+| **Cold** (first after `launch_sitl.ps1`) | `.\tools\run_sitl_mission.ps1` | EKF wait + arm + takeoff (~30–90 s), then mission |
+| **Warm** (SITL still armed/airborne) | `.\tools\run_sitl_mission.ps1 -SkipPreflight` | Mission loop starts immediately |
+
+Arm, GUIDED, and takeoff are handled **inside the orchestrator** (single MAVLink session). No separate arm script is required.
+
+### Physics-linked SITL (geometry validation)
+
+Pose-linked CV: bbox comes from live SITL position + gimbal. Same dashboard and mission flow as `SIM`, but perception is harder (real geometry).
 
 | Window | Shows |
 |--------|--------|
-| Valiant Mission View | Camera + velocity arrows |
-| SITL Top-Down | Drone, heading, wall line, targets (map) |
-| SITL Wall View | Side profile: drone altitude vs wall + target |
+| Valiant SITL | Combined grid: FOV (50%) + wall side + top-down |
 
 ```powershell
 .\tools\run_sitl_mission.ps1 -Physics
 ```
-
-One MAVLink session: orchestrator arms, **takeoff to 3 m**, then runs the mission (no separate arm script). If the first connect fails, it retries automatically.
 
 Already airborne from a prior run? `.\tools\run_sitl_mission.ps1 -Physics -SkipPreflight`
 
@@ -128,6 +137,8 @@ With SITL running:
 .\tools\run_sitl_tests.ps1
 ```
 
+Tests include timeline synthetic reaching `APPROACHING` and `COMPLETE` (spray disabled).
+
 ## Troubleshooting
 
 | Issue | Fix |
@@ -137,5 +148,7 @@ With SITL running:
 | `you need to install empy` | In **WSL**: `sudo apt install -y python3-empy` |
 | `mavproxy.py` not found | Expected — use `launch_sitl.ps1` (`--no-mavproxy`). Or install MAVProxy in WSL if you want map/console |
 | No heartbeat on tcp:5760 | Wait for SITL to finish boot; check WSL2 localhost forwarding |
-| Vehicle does not move | Must be GUIDED + armed in SITL |
-| CV never detects | Use `-Scenario` synthetic JSON or purple test video |
+| First run arm timeout | Wait for EKF/GPS in SITL window; retry once, or use warm `-SkipPreflight` on second run |
+| Vehicle does not move | Must be GUIDED + armed; check monitor for `cmd` velocity |
+| CV never detects (timeline) | Use default `-Profile sitl` or `-Scenario tests\fixtures\sitl_approach.json` |
+| Physics target slow to appear | Gimbal slews after takeoff; use timeline profile for fast tests |

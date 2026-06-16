@@ -14,12 +14,28 @@ sitl:
   takeoff_alt_m: 3.0                    # NAV_TAKEOFF before velocity commands (SITL)
   velocity_local_ned: false             # BODY_NED — ArduCopter GUIDED default for offboard vel
   preflight_timeout_s: 75               # arm + takeoff (cold EKF can take ~30s)
-  ekf_wait_s: 60                        # wait for EKF3/GPS before first arm
+  ekf_wait_s: 45                        # wait for EKF3/GPS before first arm
+  backoff_m: 1.5                        # reverse when wall_range below this (m)
+  max_north_m: 6.0                      # geofence north of home (m)
+  max_east_m: 2.0                       # geofence |east| from home (m)
+  search_yaw_rate: 0.35                 # rad/s peak yaw scan during SEARCHING
+  max_backup_speed: 0.12                 # cap reverse speed (m/s)
+  approach_lane_y: 0.0                  # east lane centre for approach (m)
   home: tests/fixtures/sitl_home.json   # 47°34'33.9"N 52°44'03.5"W
   map:
     manifest: tests/fixtures/sitl_map/manifest.json
     view_radius_m: 24.0                 # top-down window half-width (metres)
     radius_m: 2000                      # satellite mosaic download radius
+  search_speed: 0.14                    # SEARCHING reposition (m/s)
+  wall_standoff_m: 1.0                   # stop / back up before wall plane (m)
+  creep_speed: 0.10                     # slow advance toward target when far
+  home_south_limit_m: -1.0               # never linger south of home
+  approach_slow_zone_m: 2.5              # taper approach speed inside this range (m)
+  min_ground_clearance_m: 2.0            # minimum altitude AGL during approach (m)
+  altitude_kp: 0.18                      # NED vz gain to level with target height
+  max_vz: 0.08                           # cap vertical speed (m/s)
+  retreat_alt_m: 2.5                     # climb to this after each kill (m AGL)
+  retreat_home_north_m: 1.0               # back south to this N before next search
 
 gcs_monitor:
   port: 14560
@@ -90,11 +106,12 @@ flight_profiles:
       method: none
     safety:
       geofence_abort: false
+      check_battery: false
 
   sitl:
     camera:
       source: synthetic
-      synthetic_scenario: tests/fixtures/sitl_approach.json
+      synthetic_scenario: tests/fixtures/sitl_synthetic_multi.json
       synthetic_depth_m: 3.0
       width: 640
       height: 480
@@ -104,6 +121,18 @@ flight_profiles:
       method: none
     safety:
       geofence_abort: false
+      check_battery: false
+    sitl:
+      wall_standoff_m: 1.2
+      backoff_m: 1.5
+      search_speed: 0.10
+      creep_speed: 0.10
+      approach_slow_zone_m: 3.0
+      min_ground_clearance_m: 2.0
+      altitude_kp: 0.16
+      max_vz: 0.08
+      retreat_alt_m: 2.5
+      retreat_home_north_m: 1.0
     gimbal:
       enabled: true
       channel: 9
@@ -112,6 +141,15 @@ flight_profiles:
       pwm_neutral: 1500
       kp: 0.8
       deadband_px: 40
+    auto_nav:
+      approach_timeout_s: 90
+      kp_x: 0.0006
+      kp_y: 0.0006
+      kd_x: 0.0014
+      kd_y: 0.0014
+      vel_smooth: 0.42
+      max_vel: 0.15
+      approach_speed: 0.10
     metric_recon:
       mode: depth_at_target
       camera_down: false
@@ -130,14 +168,28 @@ flight_profiles:
       method: none
     safety:
       geofence_abort: false
+      check_battery: false
+    sitl:
+      wall_standoff_m: 1.2
+      backoff_m: 1.5
+      search_speed: 0.10
+      creep_speed: 0.10
+      approach_slow_zone_m: 3.0
+      approach_lane_y: 0.3
+      min_ground_clearance_m: 2.0
+      altitude_kp: 0.16
+      max_vz: 0.08
+      retreat_alt_m: 2.5
+      retreat_home_north_m: 1.0
     gimbal:
       enabled: true
       channel: 9
       pwm_min: 1000
       pwm_max: 2000
       pwm_neutral: 1500
-      kp: 0.8
-      deadband_px: 40
+      kp: 0.35
+      deadband_px: 55
+      min_interval_s: 0.12
     metric_recon:
       mode: depth_at_target
       camera_down: false
@@ -145,6 +197,15 @@ flight_profiles:
       max_frames_without_target: 60
     auto_nav:
       approach_timeout_s: 90
+      kp_x: 0.0006
+      kp_y: 0.0006
+      kd_x: 0.0014
+      kd_y: 0.0014
+      vel_smooth: 0.42
+      max_vel: 0.15
+      deadband_px: 55
+      approach_speed: 0.10
+      side_clearance_m: 0.65
 
 auto_nav:
   kp_x: 0.0015

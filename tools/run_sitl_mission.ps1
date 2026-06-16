@@ -25,15 +25,13 @@ elseif ($HardAngles) {
     $Profile = "sitl"
     $Scenario = "tests\fixtures\sitl_approach_hard.json"
 }
-elseif (-not $Scenario) {
-    $Scenario = "tests\fixtures\sitl_approach.json"
-}
 
+$maxTargets = if ($Physics -or $Profile -eq "sitl") { "2" } else { "1" }
 $missionArgs = @(
     "missions\task2_vion_auto_extinguish.py",
     "--sitl",
     "--profile", $Profile,
-    "--max-targets", "1"
+    "--max-targets", $maxTargets
 )
 if ($Video) {
     $missionArgs += @("--video", $Video)
@@ -74,6 +72,7 @@ if (-not $NoMonitor) {
     }
 }
 
+Write-Host "SITL mission profile=$Profile (daily driver: -Profile sitl; geometry: -Physics)"
 Write-Host "Starting SITL mission (arm/takeoff inside orchestrator): $($missionArgs -join ' ')"
 python @missionArgs
 if ($LASTEXITCODE -ne 0) {

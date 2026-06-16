@@ -9,7 +9,6 @@ from valiant.autonomy.spray.aim import is_aimed
 
 
 class MotionIntent(Enum):
-    STOP = "stop"
     APPROACH = "approach"
     HOLD_AIM = "hold_aim"
     ABORT = "abort"
@@ -59,7 +58,17 @@ class MotionPlanner:
             return True
         return metric.side_clearance_m >= self.side_clearance_m
 
-    def should_switch_to_aiming(self, metric: MetricPacket, bbox_area: int) -> bool:
+    def should_switch_to_aiming(
+        self,
+        metric: MetricPacket,
+        bbox_area: int,
+        *,
+        wall_range_m: float | None = None,
+        aim_wall_range_m: float | None = None,
+    ) -> bool:
+        if wall_range_m is not None and aim_wall_range_m is not None:
+            if wall_range_m > aim_wall_range_m:
+                return False
         if bbox_area >= self.target_lock_area_px:
             return True
         close = metric.distance_min_m if metric.distance_min_m is not None else metric.distance_m
@@ -78,7 +87,14 @@ class MotionPlanner:
             return MotionIntent.ABORT
         return MotionIntent.HOLD_AIM
 
-    def can_fire(self, metric: MetricPacket, *, lock_duration_met: bool) -> bool:
+    def can_fire(
+        self,
+        metric: MetricPacket,
+        *,
+        lock_duration_met: bool,
+        wall_range_m: float | None = None,
+        wall_standoff_m: float = 1.2,
+    ) -> bool:
         if not lock_duration_met:
             return False
         if not is_aimed(metric, self._cfg):
@@ -86,7 +102,11 @@ class MotionPlanner:
         # CONOPS: must prove approach from beyond 2 m; never fire without distance evidence
         if metric.distance_m is None and metric.distance_max_m is None:
             return False
-        return self._approach_valid
+        if not self._approach_valid:
+            return False
+        if wall_range_m is not None and wall_range_m > wall_standoff_m + 0.35:
+            return False
+        return True
 
     @property
     def approach_valid(self) -> bool:

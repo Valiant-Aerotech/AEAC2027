@@ -1,6 +1,8 @@
 {
   "hfov_deg": 66,
   "vfov_deg": 52,
+  "initial_gimbal_pwm": 1680,
+  "approach_lane_y": 0.3,
   "comment": "Task-2 style: vertical wall ahead (north), purple target on wall. NED: x=north, y=east, z=down.",
   "wall": {
     "x_m": 5.0,

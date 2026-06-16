@@ -13,13 +13,17 @@ from valiant.autonomy.packets import CVPacket, TargetHit
 from valiant.common.config import repo_root
 from valiant.common.sitl_physics import (
     VehiclePose,
+    active_targets,
     body_elevation_deg,
     gimbal_pitch_deg_to_pwm,
-    nearest_target_ned,
+    nearest_active_target_ned,
     project_target_ned,
     pwm_to_gimbal_pitch_deg,
     relative_target_body,
+    target_display_color,
 )
+
+EXTINGUISHED_BGR = (80, 200, 100)
 
 
 class PhysicsSyntheticCamera:
@@ -54,10 +58,12 @@ class PhysicsSyntheticCamera:
         self._gimbal_pwm_min = gimbal_pwm_min
         self._gimbal_pwm_max = gimbal_pwm_max
         self._gimbal_pwm_neutral = gimbal_pwm_neutral
-        self._gimbal_pwm = gimbal_pwm_neutral
+        initial_pwm = self._scene.get("initial_gimbal_pwm")
+        self._gimbal_pwm = int(initial_pwm) if initial_pwm is not None else gimbal_pwm_neutral
         self._pose = VehiclePose()
         self._last_cv: CVPacket | None = None
         self._last_depth_mm: np.ndarray | None = None
+        self._engaged_target_id: str | None = None
         wall = self._scene.get("wall")
         wall_s = f", wall x={wall.get('x_m')}m" if wall else ""
         print(
@@ -90,9 +96,21 @@ class PhysicsSyntheticCamera:
     def set_gimbal_pwm(self, pwm: int) -> None:
         self._gimbal_pwm = pwm
 
+    def mark_extinguished_engaged(self) -> None:
+        """Turn the engaged target green after a validated kill."""
+        if not self._engaged_target_id:
+            return
+        for spec in self._targets:
+            if spec.get("id") == self._engaged_target_id:
+                spec["extinguished"] = True
+                spec["extinguished_color"] = list(EXTINGUISHED_BGR)
+                print(f"[Camera] Target {self._engaged_target_id!r} marked extinguished")
+                break
+        self._engaged_target_id = None
+
     def gimbal_pwm_hint(self, pose: VehiclePose) -> int | None:
-        """PWM to point gimbal at nearest world target (SEARCHING / lost target)."""
-        target = nearest_target_ned(pose, self._targets)
+        """PWM to point gimbal at nearest active world target."""
+        target = nearest_active_target_ned(pose, self._targets)
         if target is None:
             return self._gimbal_pwm_neutral
         rel_body = relative_target_body(pose, target)
@@ -133,6 +151,21 @@ class PhysicsSyntheticCamera:
             if proj and 0 <= proj.cx < self.width:
                 cv2.circle(frame, (proj.cx, proj.cy), 4, (70, 70, 90), 1)
 
+    def _project_spec(self, spec: dict, pitch_deg: float):
+        pos = spec.get("position_ned")
+        if not pos or len(pos) < 3:
+            return None
+        return project_target_ned(
+            (float(pos[0]), float(pos[1]), float(pos[2])),
+            self._pose,
+            gimbal_pitch_deg=pitch_deg,
+            target_diameter_m=float(spec.get("diameter_m", 0.20)),
+            frame_w=self.width,
+            frame_h=self.height,
+            hfov_deg=self.hfov_deg,
+            vfov_deg=self.vfov_deg,
+        )
+
     def get_frame(self) -> np.ndarray | None:
         pitch_deg = pwm_to_gimbal_pitch_deg(
             self._gimbal_pwm,
@@ -146,41 +179,53 @@ class PhysicsSyntheticCamera:
         depth_plane = np.full((self.height, self.width), 65535, dtype=np.uint16)
         self._draw_wall_guides(frame, pitch_deg)
 
-        best: tuple[dict, object] | None = None
+        visible: list[tuple[dict, object]] = []
         for spec in self._targets:
-            pos = spec.get("position_ned")
-            if not pos or len(pos) < 3:
-                continue
-            projected = project_target_ned(
-                (float(pos[0]), float(pos[1]), float(pos[2])),
-                self._pose,
-                gimbal_pitch_deg=pitch_deg,
-                target_diameter_m=float(spec.get("diameter_m", 0.20)),
-                frame_w=self.width,
-                frame_h=self.height,
-                hfov_deg=self.hfov_deg,
-                vfov_deg=self.vfov_deg,
-            )
+            projected = self._project_spec(spec, pitch_deg)
             if projected is None or not projected.visible:
                 continue
+            visible.append((spec, projected))
+            color = target_display_color(spec)
+            cx, cy = projected.cx, projected.cy
+            bw = projected.bbox_w
+            cv2.circle(frame, (cx, cy), max(bw // 2, 8), color, -1)
+
+        active_visible = [(s, p) for s, p in visible if not s.get("extinguished")]
+        best: tuple[dict, object] | None = None
+        for spec, projected in active_visible:
             if best is None or projected.depth_m < best[1].depth_m:
                 best = (spec, projected)
 
         if best is None:
+            self._engaged_target_id = None
             self._last_cv = CVPacket(dry=[], method="physics")
             self._last_depth_mm = None
-            cv2.putText(
-                frame,
-                "no target in FOV — gimbal slewing",
-                (10, self.height - 12),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.45,
-                (80, 80, 100),
-                1,
-            )
+            if not active_targets(self._targets):
+                cv2.putText(
+                    frame,
+                    "ALL TARGETS EXTINGUISHED",
+                    (10, self.height - 12),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.48,
+                    EXTINGUISHED_BGR,
+                    1,
+                    cv2.LINE_AA,
+                )
+            else:
+                cv2.putText(
+                    frame,
+                    "NO TARGET — repositioning",
+                    (10, self.height - 12),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.48,
+                    (90, 100, 120),
+                    1,
+                    cv2.LINE_AA,
+                )
             return frame
 
         spec, projected = best
+        self._engaged_target_id = str(spec.get("id", ""))
         cx, cy = projected.cx, projected.cy
         bw, bh = projected.bbox_w, projected.bbox_h
         x1 = max(0, cx - bw // 2)
@@ -188,15 +233,12 @@ class PhysicsSyntheticCamera:
         x2 = min(self.width, cx + bw // 2)
         y2 = min(self.height, cy + bh // 2)
         area = max((x2 - x1) * (y2 - y1), 1)
-        color = tuple(spec.get("color", [180, 50, 180]))
         hit = TargetHit(cx=cx, cy=cy, area=area, bbox=(x1, y1, x2, y2), confidence=1.0)
         self._last_cv = CVPacket(dry=[hit], method="physics")
 
         mm = int(projected.depth_m * 1000)
         depth_plane[...] = mm
         self._last_depth_mm = depth_plane
-
-        cv2.circle(frame, (cx, cy), max(bw // 2, 10), color, -1)
         return frame
 
     @property

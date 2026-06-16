@@ -21,11 +21,14 @@ class VisualServo:
         self.kd_y = nav.get("kd_y", 0.0)
         self.max_vel = nav.get("max_vel", 0.5)
         self.deadband_px = nav.get("deadband_px", 40)
+        self._vel_smooth = float(nav.get("vel_smooth", 0.0))
         self._use_local_ned = bool(sitl.get("velocity_local_ned", True))
         self._yaw_rad = 0.0
         self._last_err_x = 0.0
         self._last_err_y = 0.0
         self._last_time = time.time()
+        self._smooth_right = 0.0
+        self._smooth_vertical = 0.0
         self.last_vel_body = (0.0, 0.0, 0.0)
 
     def set_yaw_rad(self, yaw_rad: float) -> None:
@@ -45,6 +48,19 @@ class VisualServo:
 
         vel_right = self.kp_x * err_x + self.kd_x * derr_x
         vel_vertical = self.kp_y * err_y + self.kd_y * derr_y
+
+        if abs(err_x) < self.deadband_px:
+            vel_right *= abs(err_x) / max(self.deadband_px, 1)
+        if abs(err_y) < self.deadband_px:
+            vel_vertical *= abs(err_y) / max(self.deadband_px, 1)
+
+        if self._vel_smooth > 0.0:
+            a = min(max(self._vel_smooth, 0.0), 1.0)
+            vel_right = a * vel_right + (1.0 - a) * self._smooth_right
+            vel_vertical = a * vel_vertical + (1.0 - a) * self._smooth_vertical
+            self._smooth_right = vel_right
+            self._smooth_vertical = vel_vertical
+
         vel_right = max(-self.max_vel, min(self.max_vel, vel_right))
         vel_vertical = max(-self.max_vel, min(self.max_vel, vel_vertical))
         return vel_right, vel_vertical
@@ -96,6 +112,8 @@ class VisualServo:
 
     def stop(self) -> None:
         self.last_vel_body = (0.0, 0.0, 0.0)
+        self._smooth_right = 0.0
+        self._smooth_vertical = 0.0
         self.send_velocity_body(0.0, 0.0, 0.0)
 
     def resend_last_velocity(self) -> None:
@@ -103,3 +121,39 @@ class VisualServo:
         if abs(vx) + abs(vy) + abs(vz) < 1e-6:
             return
         self.send_velocity_body(vx, vy, vz)
+
+    def send_yaw_rate(self, yaw_rate: float) -> None:
+        """Command yaw rate only (SEARCH scan) while holding position."""
+        type_mask = (
+            mavutil.mavlink.POSITION_TARGET_TYPEMASK_X_IGNORE
+            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_Y_IGNORE
+            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_Z_IGNORE
+            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_VX_IGNORE
+            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_VY_IGNORE
+            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_VZ_IGNORE
+            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_AX_IGNORE
+            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_AY_IGNORE
+            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_AZ_IGNORE
+            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_YAW_IGNORE
+        )
+        from valiant.common.mavlink_io import mavlink_io
+
+        with mavlink_io(self.mav):
+            self.mav.mav.set_position_target_local_ned_send(
+                0,
+                self.mav.target_system,
+                self.mav.target_component,
+                mavutil.mavlink.MAV_FRAME_BODY_NED,
+                type_mask,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                yaw_rate,
+            )

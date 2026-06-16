@@ -28,6 +28,7 @@ class SafetyMonitor:
         self.cfg = cfg.get("safety", {})
         self.sim = sim
         self.min_battery_pct = self.cfg.get("min_battery_pct", 20)
+        self.check_battery = self.cfg.get("check_battery", True)
         self.geofence_abort = self.cfg.get("geofence_abort", True)
         self.mission_timeout_s = self.cfg.get("mission_timeout_s", 600)
         self.rtl_on_abort = self.cfg.get("rtl_on_abort", False)
@@ -85,7 +86,8 @@ class SafetyMonitor:
             return SafetyAbort("geofence breach", trigger_rtl=self.rtl_on_abort)
 
         if (
-            not self.sim
+            self.check_battery
+            and not self.sim
             and self._battery_pct is not None
             and self._battery_pct < self.min_battery_pct
         ):

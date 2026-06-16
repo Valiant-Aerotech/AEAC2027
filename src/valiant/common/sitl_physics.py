@@ -80,12 +80,18 @@ def relative_target_body(pose: VehiclePose, target_ned: tuple[float, float, floa
     return r_bn.T @ rel_ned
 
 
+def active_targets(targets: list[dict]) -> list[dict]:
+    """Targets not yet marked extinguished in the physics scenario."""
+    return [t for t in targets if not t.get("extinguished")]
+
+
 def nearest_target_ned(
-    pose: VehiclePose, targets: list[dict]
+    pose: VehiclePose, targets: list[dict], *, active_only: bool = False
 ) -> tuple[float, float, float] | None:
+    pool = active_targets(targets) if active_only else targets
     best: tuple[float, float, float] | None = None
     best_d = float("inf")
-    for spec in targets:
+    for spec in pool:
         pos = spec.get("position_ned")
         if not pos or len(pos) < 3:
             continue
@@ -95,6 +101,20 @@ def nearest_target_ned(
             best_d = d
             best = (tx, ty, tz)
     return best
+
+
+def nearest_active_target_ned(
+    pose: VehiclePose, targets: list[dict]
+) -> tuple[float, float, float] | None:
+    """Closest non-extinguished target (3D distance)."""
+    return nearest_target_ned(pose, targets, active_only=True)
+
+
+def target_display_color(spec: dict) -> tuple[int, int, int]:
+    if spec.get("extinguished"):
+        c = spec.get("extinguished_color", [80, 200, 100])
+        return tuple(int(x) for x in c)
+    return tuple(spec.get("color", [180, 50, 180]))
 
 
 def _rot_body_from_ned(roll: float, pitch: float, yaw: float) -> np.ndarray:

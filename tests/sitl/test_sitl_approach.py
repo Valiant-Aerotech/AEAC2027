@@ -9,7 +9,12 @@ import pytest
 
 from valiant.autonomy.auto_nav.mavlink_driver import MavlinkDriver
 from valiant.autonomy.flight.profile import apply_flight_profile
-from valiant.autonomy.orchestrator import AutoExtinguisher, STATE_APPROACHING
+from valiant.autonomy.orchestrator import (
+    AutoExtinguisher,
+    STATE_APPROACHING,
+    STATE_CAPTURING,
+    STATE_COMPLETE,
+)
 from valiant.autonomy.packets import MetricPacket
 from valiant.common.config import load_config
 from valiant.common.synthetic_target_camera import SyntheticTargetCamera
@@ -71,6 +76,49 @@ def test_sitl_orchestrator_reaches_approaching(sitl_master):
     loop_thread.start()
 
     assert reached.wait(timeout=25), f"state stuck at {ext.state}"
+    ext.request_stop()
+    loop_thread.join(timeout=5)
+    ext.metric_recon.stop()
+    ext.trigger.cleanup()
+    ext.gimbal.cleanup()
+    ext.camera.cleanup()
+
+
+def test_sitl_orchestrator_reaches_complete(sitl_master):
+    """Timeline synthetic: full SEARCHING -> COMPLETE (spray disabled)."""
+    cfg = apply_flight_profile(load_config("vion"), "sitl")
+    cfg["camera"]["source"] = "synthetic"
+    cfg["camera"]["synthetic_scenario"] = "tests/fixtures/sitl_approach.json"
+
+    ext = AutoExtinguisher(
+        cfg,
+        connection_string="tcp:127.0.0.1:5760",
+        baudrate=57600,
+        sitl_mode=True,
+        headless=True,
+        max_targets=1,
+        gcs_ip="127.0.0.1",
+    )
+
+    reached = threading.Event()
+    terminal_states = {STATE_COMPLETE, STATE_CAPTURING}
+
+    def watch():
+        deadline = time.time() + 150
+        while time.time() < deadline:
+            if ext.state in terminal_states:
+                reached.set()
+                break
+            time.sleep(0.1)
+
+    watcher = threading.Thread(target=watch, daemon=True)
+    watcher.start()
+
+    loop_thread = threading.Thread(target=ext.loop, daemon=True)
+    loop_thread.start()
+
+    assert reached.wait(timeout=140), f"state stuck at {ext.state}"
+    assert ext.state == STATE_COMPLETE, f"expected COMPLETE, got {ext.state}"
     ext.request_stop()
     loop_thread.join(timeout=5)
     ext.metric_recon.stop()
