@@ -60,9 +60,9 @@ camera:
       amplitude_min: 30
 
 cv:
-  method: hsv                           # hsv | yolo | both
+  method: yolo                          # yolo (trained dry) + HSV shot; or hsv | both
   models:
-    dry: models/dry.onnx
+    dry: models/dry.onnx               # or models/dry.pt / models/best.pt
     shot: models/shot.onnx
   hsv_dry:  { h_min: 130, h_max: 170, s_min: 50, v_min: 50 }
   hsv_shot: { h_min: 100, h_max: 130, s_min: 50, v_min: 50 }

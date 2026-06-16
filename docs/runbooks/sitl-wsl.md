@@ -1,5 +1,8 @@
 # SITL on WSL2 (Windows)
 
+> **Start here:** [sitl-overview.md](sitl-overview.md) — what is simulated, code map, profiles.  
+> This page is WSL install + troubleshooting detail.
+
 Software-in-the-loop testing with **ArduPilot SITL** + AEAC orchestrator. No physical drone required.
 
 Inspired by [Stanley](https://github.com/Matchstic/stanley) patterns; we use **pymavlink** + WSL `sim_vehicle.py` (not dronekit-sitl).

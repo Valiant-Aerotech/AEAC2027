@@ -49,8 +49,25 @@ def train(
         name=output_name,
     )
     print(f"Training complete: {results}")
-    print("Export ONNX: yolo export model=<best.pt> format=onnx")
-    print("Copy exported models to models/dry.onnx and models/shot.onnx")
+    weights = repo_root() / "models" / "runs" / output_name / "weights" / "best.pt"
+    if weights.is_file():
+        dest_pt = repo_root() / "models" / "dry.pt"
+        dest_pt.parent.mkdir(parents=True, exist_ok=True)
+        import shutil
+
+        shutil.copy2(weights, dest_pt)
+        print(f"Copied weights -> {dest_pt}")
+        from ultralytics import YOLO
+
+        exported = YOLO(str(dest_pt)).export(format="onnx", imgsz=imgsz)
+        onnx_path = Path(str(exported))
+        if onnx_path.is_file():
+            dest_onnx = repo_root() / "models" / "dry.onnx"
+            shutil.copy2(onnx_path, dest_onnx)
+            print(f"Exported ONNX -> {dest_onnx}")
+    else:
+        print(f"Export manually: yolo export model={weights} format=onnx")
+        print("Copy to models/dry.onnx or models/dry.pt")
 
 
 def main() -> None:

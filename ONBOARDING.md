@@ -2,6 +2,15 @@
 
 New recruit? Start with [WELCOME.md](WELCOME.md).
 
+## Which branch?
+
+| Goal | Branch |
+|------|--------|
+| Task 2 autonomy, SITL, CV, motion | **`onboard-pi`** |
+| Task 1 only, hardware docs, stable baseline | **`main`** |
+
+Details: [docs/branches.md](docs/branches.md).
+
 Welcome. This guide gets you from a fresh Windows laptop to running a mission.
 
 ## Prerequisites
@@ -73,6 +82,17 @@ python tools\conops_check.py
 python tools\cv_regression_test.py --video footage.mp4
 python -m valiant.autonomy.cv.training.generate_targets --count 20
 ```
+
+### Full virtual mission (SITL — `onboard-pi` only)
+
+No Pixhawk, no COM port. Requires WSL + ArduPilot build (one-time):
+
+```powershell
+.\tools\launch_sitl.ps1
+.\tools\run_sitl_mission.ps1
+```
+
+See [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md).
 
 Tune purple/blue thresholds in `config/vion.yaml` under `cv.hsv_dry` and `cv.hsv_shot`. For distance tuning see `metric_recon` (FOV estimate) and `auto_nav` (approach speed, side clearance). Safety abort thresholds live under `safety` in the same file - see [docs/runbooks/task2-vion-auto.md](docs/runbooks/task2-vion-auto.md).
 

@@ -41,6 +41,15 @@ def main() -> int:
         return 1
 
     print("CV bench test running. Press Q to quit.")
+    print(f"Detection method: {cfg.get('cv', {}).get('method', 'hsv')}")
+    model_path = None
+    from valiant.autonomy.cv.detector import _resolve_model_path
+
+    model_path = _resolve_model_path(cfg)
+    if model_path:
+        print(f"YOLO weights: {model_path}")
+    elif cfg.get("cv", {}).get("method", "hsv") in ("yolo", "both"):
+        print("WARNING: no model in models/ (dry.pt, dry.onnx, best.pt) — will fall back to HSV")
     frame_count = 0
 
     try:

@@ -8,7 +8,10 @@ PyYAML>=6.0
 mss>=9.0
 pygetwindow>=0.0.9
 
-# Computer vision models (optional until models are trained)
+pyserial>=3.5                 # COM serial for pymavlink (GCS / FC)
+
+# Computer vision models (YOLO dry detector — ONNX uses onnxruntime, .pt uses ultralytics)
+onnxruntime>=1.16
 ultralytics>=8.0
 
 # Google Drive upload (optional - only needed for gdrive_service_account)
