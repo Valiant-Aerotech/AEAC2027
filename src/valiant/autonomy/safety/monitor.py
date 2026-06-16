@@ -43,26 +43,32 @@ class SafetyMonitor:
         if self.sim or self.master is None:
             return
 
-        while True:
-            msg = self.master.recv_match(blocking=False)
-            if msg is None:
-                break
-            msg_type = msg.get_type()
-            if msg_type == "SYS_STATUS":
-                remaining = getattr(msg, "battery_remaining", -1)
-                if remaining >= 0:
-                    self._battery_pct = int(remaining)
-            elif msg_type == "FENCE_STATUS" and self.geofence_abort:
-                breach_status = getattr(msg, "breach_status", 0)
-                if breach_status != 0:
-                    self._geofence_breached = True
-            elif msg_type == "STATUSTEXT" and self.geofence_abort:
-                text = getattr(msg, "text", "")
-                if isinstance(text, bytes):
-                    text = text.decode(errors="ignore")
-                lowered = text.lower()
-                if any(keyword in lowered for keyword in self._GEOFENCE_KEYWORDS):
-                    self._geofence_breached = True
+        from valiant.common.mavlink_io import mavlink_io
+
+        with mavlink_io(self.master):
+            while True:
+                msg = self.master.recv_match(
+                    type=["SYS_STATUS", "FENCE_STATUS", "STATUSTEXT"],
+                    blocking=False,
+                )
+                if msg is None:
+                    break
+                msg_type = msg.get_type()
+                if msg_type == "SYS_STATUS":
+                    remaining = getattr(msg, "battery_remaining", -1)
+                    if remaining >= 0:
+                        self._battery_pct = int(remaining)
+                elif msg_type == "FENCE_STATUS" and self.geofence_abort:
+                    breach_status = getattr(msg, "breach_status", 0)
+                    if breach_status != 0:
+                        self._geofence_breached = True
+                elif msg_type == "STATUSTEXT" and self.geofence_abort:
+                    text = getattr(msg, "text", "")
+                    if isinstance(text, bytes):
+                        text = text.decode(errors="ignore")
+                    lowered = text.lower()
+                    if any(keyword in lowered for keyword in self._GEOFENCE_KEYWORDS):
+                        self._geofence_breached = True
 
     def check(self) -> SafetyAbort | None:
         """Return an abort reason or None if safe to continue."""

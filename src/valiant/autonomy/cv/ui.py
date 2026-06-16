@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 import cv2
@@ -17,6 +18,36 @@ CAPTURE_HEIGHT = 720
 R_S = 224
 
 
+def _draw_velocity_arrow(
+    overlay: npt.NDArray[np.uint8],
+    origin: tuple[int, int],
+    vel_body: tuple[float, float, float],
+    *,
+    scale: float,
+    color: tuple[int, int, int],
+    label: str,
+) -> None:
+    """Body frame: x=forward, y=right, z=down — arrow on image (forward = up)."""
+    vx, vy, _vz = vel_body
+    mag = math.hypot(vx, vy)
+    if mag < 0.03:
+        return
+    ox, oy = origin
+    # Forward motion draws arrow upward; right motion draws to the right.
+    end_x = int(ox + vy * scale)
+    end_y = int(oy - vx * scale)
+    cv2.arrowedLine(overlay, (ox, oy), (end_x, end_y), color, 2, tipLength=0.25)
+    cv2.putText(
+        overlay,
+        label,
+        (ox + 8, oy - 8),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.45,
+        color,
+        1,
+    )
+
+
 def draw_overlay(
     frame: npt.NDArray[np.uint8],
     packet: CVPacket | None,
@@ -24,6 +55,8 @@ def draw_overlay(
     *,
     metric: MetricPacket | None = None,
     show_yolo_crop: bool = False,
+    vel_cmd_body: tuple[float, float, float] | None = None,
+    vel_actual_body: tuple[float, float, float] | None = None,
 ) -> npt.NDArray[np.uint8]:
     """Draw detection boxes, crosshair, and state on a copy of the frame."""
     overlay = frame.copy()
@@ -113,4 +146,25 @@ def draw_overlay(
 
     cv2.line(overlay, (w // 2 - 20, h // 2), (w // 2 + 20, h // 2), (128, 128, 128), 1)
     cv2.line(overlay, (w // 2, h // 2 - 20), (w // 2, h // 2 + 20), (128, 128, 128), 1)
+
+    arrow_origin = (w // 2, h - 50)
+    if vel_cmd_body is not None:
+        _draw_velocity_arrow(
+            overlay,
+            arrow_origin,
+            vel_cmd_body,
+            scale=70.0,
+            color=(0, 255, 120),
+            label="cmd",
+        )
+    if vel_actual_body is not None:
+        _draw_velocity_arrow(
+            overlay,
+            (arrow_origin[0] - 12, arrow_origin[1] + 12),
+            vel_actual_body,
+            scale=70.0,
+            color=(255, 180, 0),
+            label="sim",
+        )
+
     return overlay

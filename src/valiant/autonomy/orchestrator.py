@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import time
 
@@ -37,7 +38,14 @@ from valiant.common.camera_factory import (
     create_camera,
 )
 from valiant.common.config import load_config
-from valiant.common.mavlink import connect, request_sys_status_stream, send_rtl, send_statustext
+from valiant.common.mavlink import (
+    connect,
+    request_sitl_telemetry_streams,
+    request_sys_status_stream,
+    send_gcs_heartbeat,
+    send_rtl,
+    send_statustext,
+)
 
 STATE_SEARCHING = "SEARCHING"
 STATE_APPROACHING = "APPROACHING"
@@ -67,12 +75,18 @@ class AutoExtinguisher:
         hand_test: bool = False,
         gcs_ip: str | None = None,
         video_path: str | None = None,
+        skip_sitl_preflight: bool = False,
     ):
         self.cfg = cfg
         self.sim = sim_mode
         self.sitl = sitl_mode
         self.headless = headless
         self.hand_test = hand_test
+        self._skip_sitl_preflight = skip_sitl_preflight
+        self._sitl_preflight_done = False
+        self._last_gcs_heartbeat = 0.0
+        self._last_pose_log = 0.0
+        self._last_guided_check = 0.0
         nav = cfg.get("auto_nav", {})
         cv_cfg = cfg.get("cv", {})
         team = cfg.get("team", {})
@@ -112,6 +126,8 @@ class AutoExtinguisher:
                 1,
             )
             request_sys_status_stream(self.master, rate_hz=2)
+            if sitl_mode:
+                request_sitl_telemetry_streams(self.master)
 
         self.nav = MavlinkDriver(self.master, cfg)
         self.gimbal = GimbalController(self.master, cfg)
@@ -141,6 +157,23 @@ class AutoExtinguisher:
         self._last_cv: CVPacket | None = None
         self._last_metric: MetricPacket | None = None
         self._stop_loop = False
+        self._sitl_pose = None
+        self._sitl_map = None
+        self._sitl_map_view_radius = 24.0
+        if self.sitl:
+            from valiant.common.sitl_map_asset import SitlMapAsset
+            from valiant.common.sitl_physics import VehiclePose
+
+            map_cfg = cfg.get("sitl", {}).get("map", {})
+            manifest = map_cfg.get("manifest")
+            if manifest:
+                self._sitl_map = SitlMapAsset.load(manifest)
+                if self._sitl_map is None:
+                    print(f"[SITL] Map not found ({manifest}) — run: python tools/download_sitl_map.py")
+                else:
+                    print(f"[SITL] Satellite map loaded ({manifest})")
+            self._sitl_map_view_radius = float(map_cfg.get("view_radius_m", 24.0))
+            self._sitl_pose = VehiclePose()
 
     def request_stop(self) -> None:
         self._stop_loop = True
@@ -150,6 +183,8 @@ class AutoExtinguisher:
 
     def set_state(self, new_state: str) -> None:
         if self.state != new_state:
+            if new_state == STATE_SEARCHING and self.state in (STATE_APPROACHING, STATE_AIMING):
+                self._sitl_stop_motion()
             msg = f"STATE: {self.state} -> {new_state}"
             print(f">>> {msg}")
             self.send_hud_message(msg)
@@ -158,8 +193,12 @@ class AutoExtinguisher:
             if new_state == STATE_SEARCHING:
                 self.lock_start_time = None
                 self.planner.reset_approach()
+                if self.gimbal.enabled and (not self.sim or self.sitl):
+                    self.gimbal.reset()
             if new_state == STATE_APPROACHING:
                 self.planner.reset_approach()
+                if self.sitl and self._allow_motion():
+                    self.nav.start_velocity_stream()
 
     def _run_cv(self, frame) -> CVPacket | None:
         synthetic = camera_synthetic_cv(self.camera)
@@ -197,6 +236,13 @@ class AutoExtinguisher:
             return
         vel = self.nav.servo.last_vel_body if self._allow_motion() else (0.0, 0.0, 0.0)
         gimbal_pwm = self.gimbal.current_pwm if self.gimbal.enabled else None
+        extra = None
+        if self.sitl and self._sitl_pose is not None and self._sitl_pose.ok:
+            extra = {
+                "pos_x": round(self._sitl_pose.x, 2),
+                "pos_y": round(self._sitl_pose.y, 2),
+                "alt_m": round(-self._sitl_pose.z, 2),
+            }
         self._telemetry.send(
             state=self.state,
             distance_m=metric.distance_m if metric else None,
@@ -209,13 +255,19 @@ class AutoExtinguisher:
             sitl=self.sitl,
             vel_body=vel,
             gimbal_pwm=gimbal_pwm,
+            extra=extra,
         )
+
+    def _sitl_stop_motion(self) -> None:
+        if not self._allow_motion():
+            return
+        self.nav.stop()
 
     def _handle_safety_abort(self, abort: SafetyAbort) -> None:
         print(f"[SAFETY] Mission abort: {abort.reason}")
         self.send_hud_message(f"ABORT {abort.reason}"[:50])
         if not self.sim or self.sitl:
-            self.nav.stop()
+            self._sitl_stop_motion()
             if abort.trigger_rtl:
                 send_rtl(self.master)
                 print("[SAFETY] RTL commanded")
@@ -227,8 +279,6 @@ class AutoExtinguisher:
         if self.state not in (STATE_APPROACHING, STATE_AIMING):
             return False
         print(f"Target lost for {self.max_frames_without_target} frames")
-        if not self.sim or self.sitl:
-            self.nav.stop()
         self.set_state(STATE_SEARCHING)
         return True
 
@@ -240,6 +290,44 @@ class AutoExtinguisher:
         else:
             dist = "?"
         return f"LOCK dist={dist} src={metric.distance_source or '?'}"
+
+    def _refresh_sitl_pose(self) -> None:
+        if not self.sitl or self._sitl_pose is None:
+            return
+        from valiant.common.sitl_physics import drain_vehicle_pose
+
+        self._sitl_pose = drain_vehicle_pose(self.master, self._sitl_pose)
+
+    def _ensure_sitl_guided(self) -> None:
+        if not self.sitl or self.hand_test:
+            return
+        now = time.time()
+        if now - self._last_guided_check < 2.0:
+            return
+        self._last_guided_check = now
+        mode = self.master.flightmode
+        if mode == "GUIDED":
+            return
+        print(f"[SITL] FC mode is {mode!r} — re-commanding GUIDED")
+        mapping = self.master.mode_mapping()
+        if "GUIDED" not in mapping:
+            return
+        self.master.set_mode(mapping["GUIDED"])
+
+    def _actual_vel_body(self) -> tuple[float, float, float] | None:
+        if not self.sitl or self._sitl_pose is None or not self._sitl_pose.ok:
+            return None
+        pose = self._sitl_pose
+        cy, sy = math.cos(pose.yaw), math.sin(pose.yaw)
+        vx = pose.vx * cy + pose.vy * sy
+        vy = -pose.vx * sy + pose.vy * cy
+        return (vx, vy, pose.vz)
+
+    def _overlay_velocities(self) -> tuple[tuple[float, float, float] | None, tuple[float, float, float] | None]:
+        if not self._allow_motion():
+            return None, None
+        cmd = self.nav.servo.last_vel_body
+        return cmd, self._actual_vel_body()
 
     def _allow_motion(self) -> bool:
         return (not self.sim or self.sitl) and not self.hand_test
@@ -263,14 +351,34 @@ class AutoExtinguisher:
             host = "GCS"
         print(f"\n=== {host} AUTO-EXTINGUISH ===")
         print(f"CV method: {self.cv_method}")
-        if self.sitl:
-            print("SITL: ArduPilot sim — motion enabled (arm GUIDED in SITL console)")
+        if self.sitl and not self._sitl_preflight_done:
+            print("[SITL] ArduPilot sim — motion enabled (preflight in loop)")
         if self.hand_test:
             print("HAND-TEST: props off — no drone velocity/spray; gimbal + perception active")
         print("Pipeline: CV -> MetricRecon -> AutoNav -> Spray -> Upload")
+        if self.sitl and not self.hand_test and not self._sitl_preflight_done:
+            if not self._skip_sitl_preflight:
+                from valiant.autonomy.sitl_preflight import arm_guided_takeoff
+
+                takeoff_alt = float(self.cfg.get("sitl", {}).get("takeoff_alt_m", 3.0))
+                preflight_timeout = float(self.cfg.get("sitl", {}).get("preflight_timeout_s", 75.0))
+                ekf_wait = float(self.cfg.get("sitl", {}).get("ekf_wait_s", 60.0))
+                arm_guided_takeoff(
+                    self.master,
+                    takeoff_alt_m=takeoff_alt,
+                    timeout_s=preflight_timeout,
+                    ekf_wait_s=ekf_wait,
+                )
+                request_sitl_telemetry_streams(self.master)
+                send_gcs_heartbeat(self.master)
+            else:
+                print("[SITL] Skipping preflight (assume already armed/airborne)")
+            self._sitl_preflight_done = True
+        if self.sitl and not self.hand_test:
+            self.nav.start_velocity_stream()
         if host == "GCS":
             print("Waiting for scrcpy window... (Ctrl+C to abort)")
-        elif source in ("video", "synthetic"):
+        elif source in ("video", "synthetic", "synthetic_physics"):
             print(f"Replay camera ({source}) active (Ctrl+C to abort)")
         else:
             print("Onboard Pi camera active (Ctrl+C to abort)")
@@ -284,6 +392,32 @@ class AutoExtinguisher:
                     self._handle_safety_abort(safety_abort)
                     break
 
+                if self.sitl and time.time() - self._last_gcs_heartbeat > 1.0:
+                    send_gcs_heartbeat(self.master)
+                    self._last_gcs_heartbeat = time.time()
+
+                if self.state in (STATE_APPROACHING, STATE_AIMING):
+                    self._ensure_sitl_guided()
+
+                self._refresh_sitl_pose()
+                if (
+                    self.sitl
+                    and self._sitl_pose is not None
+                    and self._sitl_pose.ok
+                    and time.time() - self._last_pose_log > 2.0
+                ):
+                    p = self._sitl_pose
+                    print(
+                        f"[SITL] pos N={p.x:.2f} E={p.y:.2f} alt={-p.z:.2f}m "
+                        f"vel_n={p.vx:.2f}"
+                    )
+                    self._last_pose_log = time.time()
+                if self._sitl_pose is not None and self._sitl_pose.ok:
+                    self.nav.servo.set_yaw_rad(self._sitl_pose.yaw)
+                if hasattr(self.camera, "set_vehicle_pose") and self._sitl_pose is not None and self._sitl_pose.ok:
+                    self.camera.set_vehicle_pose(self._sitl_pose)
+                if hasattr(self.camera, "set_gimbal_pwm"):
+                    self.camera.set_gimbal_pwm(self.gimbal.current_pwm)
                 frame = self.camera.get_frame()
                 if frame is None:
                     time.sleep(0.5)
@@ -303,23 +437,58 @@ class AutoExtinguisher:
                 else:
                     self.frames_without_target += 1
 
+                if self.state in (STATE_APPROACHING, STATE_AIMING) and not hit:
+                    self._sitl_stop_motion()
+
+                if (
+                    hasattr(self.camera, "gimbal_pwm_hint")
+                    and self._sitl_pose is not None
+                    and self._sitl_pose.ok
+                    and self.gimbal.enabled
+                    and self.state in (STATE_SEARCHING, STATE_APPROACHING)
+                    and (self.state == STATE_SEARCHING or hit is None)
+                ):
+                    hint = self.camera.gimbal_pwm_hint(self._sitl_pose)
+                    if hint is not None:
+                        self.gimbal.command_pwm(hint, send=(not self.sim or self.sitl))
+
                 if self._handle_target_lost():
                     continue
 
                 if not self.headless:
+                    vel_cmd, vel_sim = self._overlay_velocities()
                     overlay = draw_overlay(
                         frame,
                         cv_packet,
                         self.state,
                         metric=metric,
                         show_yolo_crop=self.cv_method in ("yolo", "both"),
+                        vel_cmd_body=vel_cmd,
+                        vel_actual_body=vel_sim,
                     )
                     cv2.imshow("Valiant Mission View", overlay)
+                    if hasattr(self.camera, "world_scene") and self._sitl_pose is not None:
+                        from valiant.autonomy.cv.sitl_map_view import (
+                            render_topdown,
+                            render_wall_side,
+                        )
+
+                        scene = self.camera.world_scene
+                        top = render_topdown(
+                            scene,
+                            self._sitl_pose,
+                            vel_cmd=vel_cmd,
+                            map_asset=self._sitl_map,
+                            view_radius_m=self._sitl_map_view_radius,
+                        )
+                        side = render_wall_side(scene, self._sitl_pose)
+                        cv2.imshow("SITL Top-Down", top)
+                        cv2.imshow("SITL Wall View", side)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         break
 
                 if self.state == STATE_SEARCHING:
-                    if metric:
+                    if metric and hit:
                         self.set_state(STATE_APPROACHING)
 
                 elif self.state == STATE_APPROACHING:
@@ -327,15 +496,14 @@ class AutoExtinguisher:
                         self.set_state(STATE_SEARCHING)
                         continue
                     if metric and hit:
-                        intent = self.planner.intent_for_approaching(metric)
-                        if intent == MotionIntent.ABORT:
-                            print("[Nav] Abort - insufficient side clearance")
-                            if not self.sim or self.sitl:
-                                self.nav.stop()
-                            self.set_state(STATE_SEARCHING)
-                            continue
                         if self.planner.should_switch_to_aiming(metric, hit.area):
                             self.set_state(STATE_AIMING)
+                            continue
+                        intent = self.planner.intent_for_approaching(metric, bbox_area=hit.area)
+                        if intent == MotionIntent.ABORT:
+                            print("[Nav] Abort - insufficient side clearance")
+                            self._sitl_stop_motion()
+                            self.set_state(STATE_SEARCHING)
                             continue
                         self._aim_gimbal(hit, frame_h)
                         if not self._allow_motion() and intent == MotionIntent.APPROACH:
@@ -352,10 +520,9 @@ class AutoExtinguisher:
                         self.set_state(STATE_SEARCHING)
                         continue
                     if metric:
-                        intent = self.planner.intent_for_aiming(metric)
+                        intent = self.planner.intent_for_aiming(metric, bbox_area=hit.area if hit else 0)
                         if intent == MotionIntent.ABORT:
-                            if not self.sim or self.sitl:
-                                self.nav.stop()
+                            self._sitl_stop_motion()
                             self.set_state(STATE_SEARCHING)
                             continue
                         if not self._allow_motion():
@@ -370,8 +537,7 @@ class AutoExtinguisher:
                                 self.lock_start_time = time.time()
                             elif time.time() - self.lock_start_time >= self.lock_duration_s:
                                 if self.planner.can_fire(metric, lock_duration_met=True):
-                                    if self._allow_motion():
-                                        self.nav.stop()
+                                    self._sitl_stop_motion()
                                     if self.hand_test:
                                         print("[HAND-TEST] Would fire here (spray skipped)")
                                         self.set_state(STATE_SEARCHING)
@@ -460,8 +626,7 @@ class AutoExtinguisher:
         except KeyboardInterrupt:
             print("\nAborted by user.")
         finally:
-            if self._allow_motion():
-                self.nav.stop()
+            self._sitl_stop_motion()
             self.metric_recon.stop()
             self.trigger.cleanup()
             self.gimbal.cleanup()
@@ -485,6 +650,7 @@ def run_auto_extinguish(
     profile: str | None = None,
     video_path: str | None = None,
     scenario_path: str | None = None,
+    skip_sitl_preflight: bool = False,
 ) -> None:
     cfg = load_config("vion")
     if profile:
@@ -506,7 +672,11 @@ def run_auto_extinguish(
     if connection:
         conn = connection
     elif sitl:
-        conn = mavlink_cfg.get("sitl_connection", "tcp:127.0.0.1:5760")
+        conn = (
+            mavlink_cfg.get("sitl_connection")
+            or mavlink_cfg.get("connection")
+            or "tcp:127.0.0.1:5760"
+        )
     elif cfg.get("camera", {}).get("source") == "rpi_local":
         conn = mavlink_cfg.get("rpi_connection", "/dev/ttyAMA0")
     else:
@@ -528,6 +698,7 @@ def run_auto_extinguish(
         hand_test=hand_test,
         gcs_ip=monitor_ip,
         video_path=video_path,
+        skip_sitl_preflight=skip_sitl_preflight,
     )
     extinguisher.loop()
 
@@ -555,6 +726,11 @@ def main() -> None:
     )
     parser.add_argument("--gcs-ip", default=None, help="GCS laptop IP for telemetry mirror")
     parser.add_argument("--profile", default=None, help="Flight profile overlay (e.g. vivi)")
+    parser.add_argument(
+        "--skip-sitl-preflight",
+        action="store_true",
+        help="Skip SITL arm/takeoff (already airborne)",
+    )
     args = parser.parse_args()
     if args.sim and args.sitl:
         parser.error("--sim and --sitl are mutually exclusive")
@@ -571,6 +747,7 @@ def main() -> None:
         profile=args.profile,
         video_path=args.video,
         scenario_path=args.scenario,
+        skip_sitl_preflight=args.skip_sitl_preflight,
     )
 
 

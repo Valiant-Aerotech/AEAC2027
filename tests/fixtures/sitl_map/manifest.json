@@ -1,0 +1,15 @@
+{
+  "home_lat_deg": 47.5760833,
+  "home_lon_deg": -52.7343056,
+  "radius_m": 2000.0,
+  "zoom": 16,
+  "width_px": 2560,
+  "height_px": 2560,
+  "meters_per_pixel": 1.6114133712646168,
+  "home_px_x": 1283.2342744180933,
+  "home_px_y": 1310.562909482047,
+  "x_tile_min": 23163,
+  "y_tile_min": 22891,
+  "image": "satellite.jpg",
+  "attribution": "Tiles \u00a9 Esri \u2014 Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+}

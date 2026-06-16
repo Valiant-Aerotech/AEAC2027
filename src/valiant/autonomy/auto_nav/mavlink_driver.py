@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pymavlink import mavutil
 
+from valiant.autonomy.auto_nav.mavlink_stream import VelocityStream
 from valiant.autonomy.auto_nav.visual_servo import VisualServo
 from valiant.autonomy.packets import MetricPacket
 
@@ -16,6 +17,13 @@ class MavlinkDriver:
         self.servo = VisualServo(master, cfg)
         self.cfg = cfg
         self._gimbal_pitch = bool(cfg.get("gimbal", {}).get("enabled", False))
+        self._vel_stream = VelocityStream(self.servo)
+
+    def start_velocity_stream(self) -> None:
+        self._vel_stream.start()
+
+    def stop_velocity_stream(self) -> None:
+        self._vel_stream.stop()
 
     def move_toward_target(
         self,
@@ -26,6 +34,7 @@ class MavlinkDriver:
         approach_speed: float = 0.3,
         camera_down: bool = True,
     ) -> None:
+        self._vel_stream.start()
         px, py = packet.target_px
         vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
         if self._gimbal_pitch:
@@ -55,4 +64,5 @@ class MavlinkDriver:
             self.servo.send_velocity_body(0.0, vel_right, vel_vertical)
 
     def stop(self) -> None:
+        self._vel_stream.stop()
         self.servo.stop()

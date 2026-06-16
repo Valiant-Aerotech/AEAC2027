@@ -43,6 +43,24 @@ class GimbalController:
     def current_pwm(self) -> int:
         return self._current_pwm
 
+    def command_pwm(self, pwm: int, *, send: bool = True) -> int:
+        pwm = max(self.pwm_min, min(self.pwm_max, int(pwm)))
+        self._current_pwm = pwm
+        if send and self.active:
+            self._send_pwm(pwm, force=True)
+        return pwm
+
+    def point_pitch_deg(self, pitch_deg: float, *, send: bool = True) -> int:
+        from valiant.common.sitl_physics import gimbal_pitch_deg_to_pwm
+
+        pwm = gimbal_pitch_deg_to_pwm(
+            pitch_deg,
+            pwm_min=self.pwm_min,
+            pwm_max=self.pwm_max,
+            pwm_neutral=self.pwm_neutral,
+        )
+        return self.command_pwm(pwm, send=send)
+
     def center_pitch(self, cy: int, frame_h: int, *, send: bool = True) -> int:
         """Adjust gimbal PWM from vertical pixel error. Returns commanded PWM."""
         if not self.enabled:
@@ -65,19 +83,22 @@ class GimbalController:
         if not force and now - self._last_send < self.min_interval_s:
             return
         self._last_send = now
-        self.master.mav.command_long_send(
-            self.master.target_system,
-            self.master.target_component,
-            mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
-            0,
-            self.channel,
-            float(pwm),
-            0,
-            0,
-            0,
-            0,
-            0,
-        )
+        from valiant.common.mavlink_io import mavlink_io
+
+        with mavlink_io(self.master):
+            self.master.mav.command_long_send(
+                self.master.target_system,
+                self.master.target_component,
+                mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
+                0,
+                self.channel,
+                float(pwm),
+                0,
+                0,
+                0,
+                0,
+                0,
+            )
 
     def cleanup(self) -> None:
         if self.active:

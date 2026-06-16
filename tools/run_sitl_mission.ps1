@@ -1,14 +1,33 @@
 param(
     [string]$Profile = "sitl",
     [string]$Video = "",
-    [string]$Scenario = "tests\fixtures\sitl_approach.json",
+    [string]$Scenario = "",
+    [switch]$Physics,
+    [switch]$HardAngles,
     [switch]$NoMonitor,
-    [switch]$Headless
+    [switch]$Headless,
+    [switch]$SkipPreflight,
+    [switch]$SkipArm
 )
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 $env:PYTHONPATH = "src"
+
+if ($SkipArm) {
+    $SkipPreflight = $true
+}
+
+if ($Physics) {
+    $Profile = "sitl_physics"
+}
+elseif ($HardAngles) {
+    $Profile = "sitl"
+    $Scenario = "tests\fixtures\sitl_approach_hard.json"
+}
+elseif (-not $Scenario) {
+    $Scenario = "tests\fixtures\sitl_approach.json"
+}
 
 $missionArgs = @(
     "missions\task2_vion_auto_extinguish.py",
@@ -19,20 +38,44 @@ $missionArgs = @(
 if ($Video) {
     $missionArgs += @("--video", $Video)
 }
-elseif ($Scenario) {
+elseif ($Scenario -and $Profile -ne "sitl_physics") {
     $missionArgs += @("--scenario", $Scenario)
 }
 if ($Headless) {
     $missionArgs += "--headless"
 }
-
-if (-not $NoMonitor) {
-    Start-Process powershell -ArgumentList @(
-        "-NoExit", "-Command",
-        "cd '$Root'; `$env:PYTHONPATH='src'; python tools\mission_monitor.py"
-    )
-    Start-Sleep -Seconds 1
+if ($SkipPreflight) {
+    $missionArgs += "--skip-sitl-preflight"
 }
 
-Write-Host "Starting SITL mission: $($missionArgs -join ' ')"
+if (-not $NoMonitor) {
+    $monitorPort = 14560
+    $portBusy = $false
+    try {
+        $probe = New-Object System.Net.Sockets.UdpClient
+        $probe.Client.SetSocketOption(
+            [System.Net.Sockets.SocketOptionLevel]::Socket,
+            [System.Net.Sockets.SocketOptionName]::ReuseAddress, $true)
+        $probe.Client.Bind(([System.Net.IPEndPoint]::new([System.Net.IPAddress]::Any, $monitorPort)))
+        $probe.Close()
+    }
+    catch {
+        $portBusy = $true
+    }
+    if ($portBusy) {
+        Write-Host "Telemetry monitor already on UDP $monitorPort — skipping new window" -ForegroundColor Yellow
+    }
+    else {
+        Start-Process powershell -ArgumentList @(
+            "-NoExit", "-Command",
+            "cd '$Root'; `$env:PYTHONPATH='src'; python tools\mission_monitor.py --port $monitorPort"
+        )
+        Start-Sleep -Seconds 1
+    }
+}
+
+Write-Host "Starting SITL mission (arm/takeoff inside orchestrator): $($missionArgs -join ' ')"
 python @missionArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Mission exited with code $LASTEXITCODE"
+}

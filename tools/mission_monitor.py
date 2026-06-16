@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import socket
+import sys
 import time
 
 
@@ -15,14 +16,25 @@ def main() -> None:
     args = parser.parse_args()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("0.0.0.0", args.port))
+    try:
+        sock.bind(("0.0.0.0", args.port))
+    except OSError as exc:
+        in_use = getattr(exc, "winerror", None) == 10048 or getattr(exc, "errno", None) in (98, 10048)
+        if in_use:
+            print(
+                f"UDP :{args.port} already in use — another mission monitor is running.",
+                file=sys.stderr,
+            )
+            print("Close the other monitor window or use -NoMonitor on run_sitl_mission.ps1")
+            raise SystemExit(0) from exc
+        raise
     sock.settimeout(1.0)
     print(f"Listening for telemetry on UDP :{args.port} (Ctrl+C to stop)")
     print(
-        f"{'time':>8}  {'state':<12}  {'dist':>12}  {'vel':>14}  "
+        f"{'time':>8}  {'state':<12}  {'dist':>12}  {'pos':>14}  {'vel':>14}  "
         f"{'gimbal':>6}  tgt  sitl"
     )
-    print("-" * 78)
+    print("-" * 92)
 
     while True:
         try:
@@ -51,10 +63,18 @@ def main() -> None:
             vel_s = "?"
         pwm = msg.get("gimbal_pwm")
         pwm_s = str(pwm) if pwm is not None else "?"
+        px = msg.get("pos_x")
+        py = msg.get("pos_y")
+        alt = msg.get("alt_m")
+        if px is not None and py is not None:
+            pos_s = f"{px:.1f},{py:.1f},{alt or 0:.1f}"
+        else:
+            pos_s = "?"
         print(
             f"{time.strftime('%H:%M:%S'):>8}  "
             f"{msg.get('state', '?'):<12}  "
             f"{dist_s:>12}  "
+            f"{pos_s:>14}  "
             f"{vel_s:>14}  "
             f"{pwm_s:>6}  "
             f"{'Y' if msg.get('target_seen') else 'n'}    "

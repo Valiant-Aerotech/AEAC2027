@@ -30,6 +30,10 @@ def create_camera(cfg: dict, *, phone_ip: str | None = None, video_path: str | N
         from valiant.common.synthetic_target_camera import SyntheticTargetCamera
 
         return SyntheticTargetCamera.from_config(merged)
+    if source == "synthetic_physics":
+        from valiant.common.physics_synthetic_camera import PhysicsSyntheticCamera
+
+        return PhysicsSyntheticCamera.from_config(merged)
     return ScrcpyCamera.from_config(merged, phone_ip=phone_ip)
 
 

@@ -20,10 +20,6 @@ data/training/
 models/runs/
 *.log
 
-# Models (large files - see models/README.md)
-models/*.onnx
-models/*.pt
-
 # IDE / OS
 .idea/
 .vscode/

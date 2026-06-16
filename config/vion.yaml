@@ -10,6 +10,17 @@ mavlink:
   baud: 57600
   sitl_fallback: "udpin:127.0.0.1:14550"
 
+sitl:
+  takeoff_alt_m: 3.0                    # NAV_TAKEOFF before velocity commands (SITL)
+  velocity_local_ned: false             # BODY_NED — ArduCopter GUIDED default for offboard vel
+  preflight_timeout_s: 75               # arm + takeoff (cold EKF can take ~30s)
+  ekf_wait_s: 60                        # wait for EKF3/GPS before first arm
+  home: tests/fixtures/sitl_home.json   # 47°34'33.9"N 52°44'03.5"W
+  map:
+    manifest: tests/fixtures/sitl_map/manifest.json
+    view_radius_m: 24.0                 # top-down window half-width (metres)
+    radius_m: 2000                      # satellite mosaic download radius
+
 gcs_monitor:
   port: 14560
   ip: null                              # set via --gcs-ip on Pi
@@ -104,6 +115,36 @@ flight_profiles:
     metric_recon:
       mode: depth_at_target
       camera_down: false
+
+  sitl_physics:
+    camera:
+      source: synthetic_physics
+      synthetic_scenario: tests/fixtures/sitl_physics_wall.json
+      width: 640
+      height: 480
+      hfov_deg: 66.0
+      vfov_deg: 52.0
+    mavlink:
+      connection: "tcp:127.0.0.1:5760"
+    spray:
+      method: none
+    safety:
+      geofence_abort: false
+    gimbal:
+      enabled: true
+      channel: 9
+      pwm_min: 1000
+      pwm_max: 2000
+      pwm_neutral: 1500
+      kp: 0.8
+      deadband_px: 40
+    metric_recon:
+      mode: depth_at_target
+      camera_down: false
+    cv:
+      max_frames_without_target: 60
+    auto_nav:
+      approach_timeout_s: 90
 
 auto_nav:
   kp_x: 0.0015
