@@ -11,7 +11,8 @@ autonomy/
   orchestrator.py       # State machine, SITL/field modes, main loop
   packets.py            # CVPacket, MetricPacket
   auto_nav/             # Planner, visual servo, MAVLink driver
-  cv/                   # HSV, YOLO, detector, overlay UI
+  cv/                   # HSV, YOLO, detector, overlay UI, SITL dashboard
+  cv-archive/           # Archived CV layout (reference)
   metric_recon/         # Distance / clearance from bbox + rangefinder
   spray/                # Aim check, water trigger
   upload/               # Task 2 photo naming + Drive
@@ -31,5 +32,6 @@ autonomy/
 | SITL simulation | `--sitl` + `flight_profiles.sitl` | `docs/runbooks/sitl-overview.md` |
 | Vivi onboard | `flight_profiles.vivi` | `docs/runbooks/vivi-hand-test.md` |
 | Bench CV only | `tools/cv_bench_test.py` | `ONBOARDING.md` |
+| Standalone CV scripts | `src/valiant/cv/task2_cv_script.py` | training / convolute inference |
 
-Branch: **`onboard-pi`** ([docs/branches.md](../../../docs/branches.md)).
+Docs: [docs/branches.md](../../../docs/branches.md) (develop on **`main`**).

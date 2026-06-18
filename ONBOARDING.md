@@ -4,10 +4,13 @@ New recruit? Start with [WELCOME.md](WELCOME.md).
 
 ## Which branch?
 
-| Goal | Branch |
-|------|--------|
-| Task 2 autonomy, SITL, CV, motion | **`onboard-pi`** |
-| Task 1 only, hardware docs, stable baseline | **`main`** |
+**Use `main`** for everything — Task 1, Task 2 autonomy, SITL, CV, and hardware docs are all integrated.
+
+```powershell
+git clone https://github.com/Valiant-Aerotech/AEAC2027.git
+cd AEAC2027
+git checkout main
+```
 
 Details: [docs/branches.md](docs/branches.md).
 
@@ -22,7 +25,7 @@ Install these **before** running setup:
 | Python 3.10+ | Mission software | [python.org](https://www.python.org/downloads/) - check "Add to PATH" |
 | Git | Clone this repo | [git-scm.com](https://git-scm.com/) |
 | Mission Planner | MAVLink to Pixhawk | [ardupilot.org](https://ardupilot.org/planner/) |
-| scrcpy | Phone camera mirror (Task 2) | `winget install Genymobile.scrcpy` or [GitHub releases](https://github.com/Genymobile/scrcpy) |
+| scrcpy | Phone camera mirror (Task 2 GCS path) | `winget install Genymobile.scrcpy` or [GitHub releases](https://github.com/Genymobile/scrcpy) |
 | ADB | Android debug (wireless scrcpy) | Comes with scrcpy / Android SDK platform-tools |
 
 ## Setup (one time per laptop)
@@ -56,11 +59,12 @@ Add `--help` to any mission for options.
 
 ## Repo navigation
 
-- **Run something?** → `missions/`
-- **Change tuning?** → `config/`
+- **Run something?** → `missions/` or `hardware/vion/rpi/run_mission.py`
+- **Change tuning?** → `config/vion.yaml`
 - **Understand the pipeline?** → `docs/architecture.md`
 - **FC parameters / Lua?** → `hardware/<drone>/`
 - **Debug MAVLink?** → `python tools\mavproxy_listen.py`
+- **SITL (no hardware)?** → [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
 
 ## Common issues
 
@@ -83,13 +87,13 @@ python tools\cv_regression_test.py --video footage.mp4
 python -m valiant.autonomy.cv.training.generate_targets --count 20
 ```
 
-### Full virtual mission (SITL — `onboard-pi` only)
+### Full virtual mission (SITL)
 
 No Pixhawk, no COM port. Requires WSL + ArduPilot build (one-time):
 
 ```powershell
-.\tools\launch_sitl.ps1
-.\tools\run_sitl_mission.ps1
+.\tools\launch_sitl.ps1          # terminal 1
+.\tools\run_sitl_mission.ps1     # terminal 2
 ```
 
 See [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md).
@@ -98,8 +102,6 @@ Tune purple/blue thresholds in `config/vion.yaml` under `cv.hsv_dry` and `cv.hsv
 
 ## Next steps for new members
 
-1. Read [docs/drones.md](docs/drones.md) - know which drone does what
-2. Read [docs/architecture.md](docs/architecture.md) - CV -> Metric Recon -> Auto-Nav pipeline
-3. Read [docs/interfaces.md](docs/interfaces.md) - CVPacket, MetricPacket, and detection methods
-4. Read [docs/runbooks/field-test-plan.md](docs/runbooks/field-test-plan.md) - phased validation checklist
-5. Pick a GitHub issue from the [issue board](https://github.com/Valiant-Aerotech/AEAC2027/issues) (see [docs/github-issues-backlog.md](docs/github-issues-backlog.md))
+1. Run `python tools\conops_check.py` — confirms CONOPS config loads
+2. Run SITL mission (above) — full state machine without hardware
+3. Pick an issue from [GitHub](https://github.com/Valiant-Aerotech/AEAC2027/issues) — see [WELCOME.md](WELCOME.md)

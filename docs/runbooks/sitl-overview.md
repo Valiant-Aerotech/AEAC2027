@@ -114,7 +114,9 @@ tests/sitl/                # Integration tests (need SITL running)
 tests/fixtures/sitl_*      # Worlds and timelines
 ```
 
-Shared with field flight (same branch): `auto_nav/`, `metric_recon/`, `spray/`, `planner.py`, `approach_motion.py`.
+Shared with field flight: `auto_nav/`, `metric_recon/`, `spray/`, `planner.py`, `approach_motion.py`.
+
+Standalone CV training scripts live in `src/valiant/cv/` (merged from `feature/CV`).
 
 ## Orchestrator flags
 
@@ -130,19 +132,16 @@ Shared with field flight (same branch): `auto_nav/`, `metric_recon/`, `spray/`, 
 
 ```powershell
 # Unit (no SITL)
+.\tools\run_sitl_tests.ps1   # skips integration if SITL not running — or:
 $env:PYTHONPATH="src"
-python -m pytest tests/test_sitl_motion.py tests/test_sitl_dashboard.py tests/test_synthetic_camera.py -q
+python -m pytest tests/test_sitl_motion.py tests/test_sitl_search.py tests/test_sitl_dashboard.py -q
 
-# Integration (SITL must be running)
-.\tools\run_sitl_tests.ps1
+# Integration (SITL must be running on tcp:5760)
+python -m pytest tests/sitl -m sitl -q
 ```
-
-## Relation to `main` branch
-
-All SITL work lives on **`onboard-pi`** until merged. See [branches.md](../branches.md).
 
 ## Next improvements (optional)
 
 - Hybrid profile: `--sitl` + scrcpy/YOLO for real CV against sim FC
 - Ring-target HSV tuning from field photos in scenario colours
-- Merge stable autonomy → `main` before competition
+- Field validation on Vivi bench and competition hardware

@@ -7,12 +7,13 @@ You are joining the AEAC2027 autonomy stack. This repo runs on a **fresh GCS lap
 ```powershell
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
+git checkout main
 .\tools\setup.ps1
 python tools\verify_env.py
 python tools\conops_check.py
 ```
 
-Read [ONBOARDING.md](ONBOARDING.md) then [docs/architecture.md](docs/architecture.md).
+Read [ONBOARDING.md](ONBOARDING.md) then [docs/architecture.md](docs/architecture.md). All development is on **`main`** — see [docs/branches.md](docs/branches.md).
 
 ## Pick your first task
 

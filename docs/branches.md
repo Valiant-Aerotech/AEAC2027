@@ -1,63 +1,67 @@
 # Git branches
 
-This repo uses **two long-lived branches**. Pick the right one before you clone or checkout.
+**Default branch: [`main`](https://github.com/Valiant-Aerotech/AEAC2027/tree/main)** — clone and develop here.
 
-| Branch | Purpose | Who uses it |
-|--------|---------|-------------|
-| [`main`](https://github.com/Valiant-Aerotech/AEAC2027/tree/main) | Stable baseline after the AEAC 2026 rebase: fleet hardware docs, Task 1 (Vivi), repo scaffolding, team onboarding. **No Task 2 autonomy stack yet.** | Hardware, Task 1, docs-only work |
-| [`onboard-pi`](https://github.com/Valiant-Aerotech/AEAC2027/tree/onboard-pi) | **Task 2 autonomy** (Vion GCS offload + Vivi companion path), **SITL simulation**, gimbal, metric recon, motion stack, runbooks. | Autonomy / CV / sim development |
+As of June 2026, `main` includes the full AEAC2027 stack:
 
-## What lives only on `onboard-pi`
+- Task 1 (Vivi survey)
+- Task 2 autonomy (orchestrator, auto-nav, spray, upload)
+- SITL simulation (ArduPilot + synthetic/physics cameras)
+- Pi companion path (`hardware/vion/rpi/`)
+- CV training scripts (`src/valiant/cv/`) and active runtime CV (`src/valiant/autonomy/cv/`)
 
-Roughly **83 files / ~6k lines** ahead of `main` (as of the SITL milestone), including:
+## Long-lived branches
 
-- `src/valiant/autonomy/` — orchestrator, planner, spray, SITL motion/preflight
-- `src/valiant/common/sitl_*.py`, `synthetic_target_camera.py`, `physics_synthetic_camera.py`
-- `config/vion.yaml` — `flight_profiles.sitl`, `sitl_physics`, `vivi`
-- `tools/launch_sitl.ps1`, `tools/run_sitl_mission.ps1`, `tools/sitl/`
-- `tests/sitl/`, `tests/fixtures/sitl_*`
-- `docs/runbooks/sitl-wsl.md`, field-test updates
-
-`main` still has the shared skeleton (`missions/`, `config/`, `hardware/`, `tools/setup.ps1`) but not the closed-loop Task 2 pipeline.
+| Branch | Status | Notes |
+|--------|--------|-------|
+| **`main`** | **Primary** — all features integrated | Day-to-day development target |
+| `onboard-pi` | Synced with `main` | Historical name; kept for bookmarks - same tip as `main` |
+| `feature/CV` | Merged into `main` | Task 2 CV scripts (PR #80); branch may receive occasional CV-only work |
 
 ## Recommended workflow
 
 ```powershell
-# Autonomy or SITL work
-git fetch origin
-git checkout onboard-pi
-git pull origin onboard-pi
-
-# Hardware / Task 1 only (no autonomy)
+git clone https://github.com/Valiant-Aerotech/AEAC2027.git
+cd AEAC2027
 git checkout main
 git pull origin main
 ```
 
-1. **Feature branches** branch off `onboard-pi` for autonomy/SITL (e.g. `onboard-pi-sitl-dashboard`).
-2. Open PRs **into `onboard-pi`** for review.
-3. When Task 2 is competition-ready, open one PR **`onboard-pi` → `main`** (do not force-push `main`).
+1. **Feature branches** branch off `main` (e.g. `feature/sitl-tuning`, `fix/approach-gain`).
+2. Open PRs **into `main`** for review.
+3. Do not force-push `main`.
 
 ## Virtual sim vs physical drone
 
-| Environment | Branch | Connection | Camera |
-|-------------|--------|------------|--------|
-| **SITL (no drone)** | `onboard-pi` | `tcp:127.0.0.1:5760` | Synthetic / physics / video replay |
-| **Hand-test (FC, props off)** | `onboard-pi` | `COM5` or UDP | scrcpy / webcam bench |
-| **Field** | `onboard-pi` → `main` when merged | Radio COM | scrcpy |
+All modes below use **`main`** — branch choice is no longer required.
+
+| Environment | Connection | Camera | Entry |
+|-------------|------------|--------|-------|
+| **SITL (no drone)** | `tcp:127.0.0.1:5760` | Synthetic / physics / video | `.\tools\run_sitl_mission.ps1` |
+| **Hand-test (FC, props off)** | `COM5` or UDP | scrcpy / webcam | `docs/runbooks/vivi-hand-test.md` |
+| **Vivi bench (Pi)** | Pi UART | RPi camera + ToF | `hardware/vion/rpi/run_mission.py --profile vivi` |
+| **Field (Vion)** | Radio COM | RPi camera | `hardware/vion/rpi/run_mission.py --profile indoor` |
 
 Full SITL guide: [runbooks/sitl-overview.md](runbooks/sitl-overview.md).
 
-## Commit history (onboard-pi autonomy arc)
+## What merged into `main` (2026-06)
 
-| Commit | Summary |
-|--------|---------|
-| `507b2f8` | Full rebase after AEAC 2026 |
-| `c93706b` | Team onboarding prep |
-| `d04f209` | Vivi + Raspberry Pi companion path |
-| `6f6d35f` | Gimbal configs and actuation |
-| `91cde0a` | SITL mode (`--sitl`) |
-| `4b939f0` | SITL home + map fixtures |
-| `722fbd4` | Motion stack, dashboard, multi-target |
-| `5929506` | Preflight, safety, remediation fixes |
+| Source | Contents |
+|--------|----------|
+| `metric-reconstruction` | ArduCam ToF drivers, depth-at-target metric recon |
+| `feature/CV` | `src/valiant/cv/task2_cv_script.py`, `convolute_infer.py`, training notebook |
+| `onboard-pi` | SITL motion stack, orchestrator, dashboard, gimbal, flight profiles |
 
-Use `git log main..onboard-pi` for the full list.
+Key merge commits: `dd0402c` (feature/CV → main), `9a4eb43` (onboard-pi + feature/CV integration).
+
+## Repo map (on `main`)
+
+```
+src/valiant/autonomy/     # Task 2 pipeline (orchestrator, SITL, cv runtime)
+src/valiant/cv/           # Standalone CV training / inference scripts
+src/valiant/autonomy/cv-archive/   # Archived pre-merge CV layout (reference)
+config/vion.yaml          # flight_profiles: sitl, sitl_physics, vivi
+tools/launch_sitl.ps1     # WSL ArduPilot
+tools/run_sitl_mission.ps1
+tests/sitl/               # Integration tests (need SITL running)
+```

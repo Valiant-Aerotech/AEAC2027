@@ -1,6 +1,6 @@
 # Vivi Hardware
 
-Small surveying drone for Task 1. Carried by Vulcan 2. Also used as **onboard-Pi bench** for Task 2 stack (`onboard-pi` branch).
+Small surveying drone for Task 1. Carried by Vulcan 2. Also used as **Vivi bench** for Task 2 stack on the Pi companion (`flight_profiles.vivi` in `config/vion.yaml`).
 
 ## FC
 
