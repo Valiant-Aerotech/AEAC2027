@@ -55,4 +55,25 @@ Separate pipeline in `src/valiant/task1/` - MAVLink telemetry, building survey, 
 
 ## Config
 
-Tunables in `config/vion.yaml` plus per-airframe `config/vion_calibration.yaml` (from `.example` template).
+Tunables in `config/vion.yaml` (and `config/vivi.yaml` for Task 1). Optional per-airframe `config/vion_calibration.yaml` (from `.example` template).
+
+## SITL (virtual drone + environment)
+
+The same orchestrator runs against **ArduPilot SITL** instead of hardware:
+
+```
+ArduPilot SITL (WSL)  ←── tcp:5760 ──→  orchestrator.py
+                                              ↑
+                         synthetic / physics / video camera
+                         + JSON world (wall, targets, map)
+```
+
+| Component | Code |
+|-----------|------|
+| Mission loop + `--sitl` | `autonomy/orchestrator.py` |
+| Motion / preflight | `sitl_motion.py`, `sitl_preflight.py` |
+| Cameras | `common/synthetic_target_camera.py`, `physics_synthetic_camera.py` |
+| Dashboard | `cv/sitl_map_view.py` |
+| Standalone CV scripts | `src/valiant/cv/task2_cv_script.py` |
+
+Runbook: [runbooks/sitl-overview.md](runbooks/sitl-overview.md).

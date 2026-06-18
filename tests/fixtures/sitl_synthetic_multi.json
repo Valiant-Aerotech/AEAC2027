@@ -1,0 +1,54 @@
+{
+  "comment": "Timeline synthetic (no physics-linked CV) with abstract world for dashboard; 2 targets in fixture, daily driver uses max-targets 1",
+  "world": {
+    "hfov_deg": 66,
+    "vfov_deg": 52,
+    "initial_gimbal_pwm": 1680,
+    "approach_lane_y": 0.3,
+    "wall": {
+      "x_m": 5.0,
+      "y_min": -3.0,
+      "y_max": 3.0,
+      "z_top": -3.0,
+      "z_base": 0.0
+    },
+    "targets": [
+      {
+        "id": "target_a",
+        "position_ned": [5.0, 0.3, -1.1],
+        "diameter_m": 0.22,
+        "color": [180, 50, 180]
+      },
+      {
+        "id": "target_b",
+        "position_ned": [5.0, -1.2, -1.8],
+        "diameter_m": 0.18,
+        "color": [200, 80, 200]
+      }
+    ]
+  },
+  "missions": [
+    {
+      "target_id": "target_a",
+      "keyframes": [
+        {"t": 0, "cx": 400, "cy": 320, "bbox_w": 50, "depth_m": 3.5},
+        {"t": 2, "cx": 360, "cy": 280, "bbox_w": 70, "depth_m": 3.0},
+        {"t": 4, "cx": 320, "cy": 250, "bbox_w": 90, "depth_m": 2.5},
+        {"t": 6, "cx": 320, "cy": 240, "bbox_w": 120, "depth_m": 1.2},
+        {"t": 8, "cx": 320, "cy": 240, "bbox_w": 150, "depth_m": 0.95},
+        {"t": 10, "cx": 320, "cy": 240, "bbox_w": 170, "depth_m": 0.75}
+      ]
+    },
+    {
+      "target_id": "target_b",
+      "keyframes": [
+        {"t": 0, "cx": 480, "cy": 280, "bbox_w": 45, "depth_m": 3.2},
+        {"t": 2, "cx": 420, "cy": 260, "bbox_w": 65, "depth_m": 2.8},
+        {"t": 4, "cx": 360, "cy": 230, "bbox_w": 85, "depth_m": 2.3},
+        {"t": 6, "cx": 330, "cy": 220, "bbox_w": 110, "depth_m": 1.15},
+        {"t": 8, "cx": 320, "cy": 215, "bbox_w": 140, "depth_m": 0.9},
+        {"t": 10, "cx": 320, "cy": 215, "bbox_w": 165, "depth_m": 0.72}
+      ]
+    }
+  ]
+}

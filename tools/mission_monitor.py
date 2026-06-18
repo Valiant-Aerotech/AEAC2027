@@ -1,78 +1,87 @@
 #!/usr/bin/env python3
-"""GCS mission monitor: MAVLink link quality meter + mission telemetry."""
+"""GCS read-only mission monitor (UDP telemetry from Pi or SITL host)."""
 
 from __future__ import annotations
 
 import argparse
+import json
+import socket
 import sys
 import time
 
-from pymavlink import mavutil
 
-from valiant.common.config import load_config
-
-
-def _link_state(age_s: float, timeout_s: float, rtt_ms: float | None, degraded_rtt_ms: float) -> str:
-    if age_s > timeout_s:
-        return "LOST"
-    if rtt_ms is not None and rtt_ms > degraded_rtt_ms:
-        return "DEGRADED"
-    return "GOOD"
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="GCS mission monitor")
-    parser.add_argument("--connection", default=None)
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Monitor onboard mission telemetry")
+    parser.add_argument("--port", type=int, default=14560)
     args = parser.parse_args()
 
-    cfg = load_config("vion")
-    gcs_cfg = cfg.get("gcs_monitor", {})
-    conn = args.connection or gcs_cfg.get("connection", "udpin:0.0.0.0:14550")
-    timeout_s = gcs_cfg.get("heartbeat_timeout_s", 2.0)
-    degraded_rtt_ms = gcs_cfg.get("degraded_rtt_ms", 200)
-
-    print(f"Listening on {conn} (Ctrl+C to quit)")
-    master = mavutil.mavlink_connection(conn)
-    last_heartbeat = 0.0
-    last_rtt_ms: float | None = None
-    last_dist_m: float | None = None
-    last_statustext = ""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("0.0.0.0", args.port))
+    except OSError as exc:
+        in_use = getattr(exc, "winerror", None) == 10048 or getattr(exc, "errno", None) in (98, 10048)
+        if in_use:
+            print(
+                f"UDP :{args.port} already in use — another mission monitor is running.",
+                file=sys.stderr,
+            )
+            print("Close the other monitor window or use -NoMonitor on run_sitl_mission.ps1")
+            raise SystemExit(0) from exc
+        raise
+    sock.settimeout(1.0)
+    print(f"Listening for telemetry on UDP :{args.port} (Ctrl+C to stop)")
+    print(
+        f"{'time':>8}  {'state':<12}  {'dist':>12}  {'pos':>14}  {'vel':>14}  "
+        f"{'gimbal':>6}  tgt  sitl"
+    )
+    print("-" * 92)
 
     while True:
-        msg = master.recv_match(blocking=True, timeout=1.0)
-        now = time.time()
-        if msg is None:
-            age = now - last_heartbeat if last_heartbeat else 999.0
-            state = _link_state(age, timeout_s, last_rtt_ms, degraded_rtt_ms)
-            print(f"\r[{state}] waiting for telemetry...", end="", flush=True)
+        try:
+            data, addr = sock.recvfrom(4096)
+        except TimeoutError:
             continue
-
-        mtype = msg.get_type()
-        if mtype == "HEARTBEAT" and msg.get_srcComponent() == 191:
-            last_heartbeat = now
-        elif mtype == "STATUSTEXT":
-            last_statustext = msg.text
-        elif mtype == "NAMED_VALUE_FLOAT":
-            name = msg.name.rstrip("\0")
-            if name == "dist_m":
-                last_dist_m = msg.value
-        elif mtype == "PING":
-            last_rtt_ms = (now - (msg.time_usec / 1e6)) * 1000.0
-
-        age = now - last_heartbeat if last_heartbeat else 999.0
-        state = _link_state(age, timeout_s, last_rtt_ms, degraded_rtt_ms)
-        rtt_txt = f"{last_rtt_ms:.0f}ms" if last_rtt_ms is not None else "n/a"
-        dist_txt = f"{last_dist_m:.2f}m" if last_dist_m is not None else "n/a"
+        try:
+            msg = json.loads(data.decode())
+        except json.JSONDecodeError:
+            continue
+        dist = msg.get("dist_m")
+        dmin = msg.get("dist_min_m")
+        dmax = msg.get("dist_max_m")
+        if dmin is not None and dmax is not None:
+            dist_s = f"{dmin:.1f}-{dmax:.1f}m"
+        elif dist is not None:
+            dist_s = f"{dist:.1f}m"
+        else:
+            dist_s = "?"
+        vx = msg.get("vel_x")
+        vy = msg.get("vel_y")
+        vz = msg.get("vel_z")
+        if vx is not None:
+            vel_s = f"{vx:.2f},{vy:.2f},{vz:.2f}"
+        else:
+            vel_s = "?"
+        pwm = msg.get("gimbal_pwm")
+        pwm_s = str(pwm) if pwm is not None else "?"
+        px = msg.get("pos_x")
+        py = msg.get("pos_y")
+        alt = msg.get("alt_m")
+        if px is not None and py is not None:
+            pos_s = f"{px:.1f},{py:.1f},{alt or 0:.1f}"
+        else:
+            pos_s = "?"
         print(
-            f"\r[{state}] rtt={rtt_txt} dist={dist_txt} msg={last_statustext[:40]:<40}",
-            end="",
-            flush=True,
+            f"{time.strftime('%H:%M:%S'):>8}  "
+            f"{msg.get('state', '?'):<12}  "
+            f"{dist_s:>12}  "
+            f"{pos_s:>14}  "
+            f"{vel_s:>14}  "
+            f"{pwm_s:>6}  "
+            f"{'Y' if msg.get('target_seen') else 'n'}    "
+            f"{'Y' if msg.get('sitl') else 'n'}  "
+            f"<- {addr[0]}"
         )
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except KeyboardInterrupt:
-        print("\nStopped.")
-        raise SystemExit(0)
+    main()

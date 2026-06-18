@@ -1,0 +1,8 @@
+{
+  "name": "Newfoundland SITL default",
+  "lat_deg": 47.5760833,
+  "lon_deg": -52.7343056,
+  "alt_m": 100,
+  "heading_deg": 0,
+  "comment": "47°34'33.9\"N 52°44'03.5\"W"
+}

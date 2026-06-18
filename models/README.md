@@ -2,11 +2,15 @@
 
 ONNX weights are **not committed** to git (see `.gitignore`). Place trained files here locally.
 
-## Active model (Team)
+**Default detection uses YOLO** (`config/vion.yaml` `cv.method: yolo`) when `models/dry.pt`, `models/dry.onnx`, or `models/best.onnx` is present. HSV is still used for blue/wet **shot** confirmation. Set `cv.method: hsv` for purple-only bench without a model file.
+
+## Expected files
 
 | File | Purpose |
 |------|---------|
-| `best.onnx` | Dry (purple) target detection - primary YOLO model |
+| `best.onnx` | Dry (purple) target detection — primary YOLO model (team default) |
+| `dry.onnx` or `dry.pt` | Alternate names (auto-detected) |
+| `shot.onnx` | Extinguished blue/wetted (optional; shot also uses HSV) |
 
 Default config in `config/vion.yaml`:
 
@@ -14,18 +18,28 @@ Default config in `config/vion.yaml`:
 cv:
   method: yolo
   models:
-    dry: models/best.onnx
-  yolo_input_size: 320
+    dry: models/best.onnx    # or models/dry.onnx / models/dry.pt
 ```
 
+## Setup
+
+1. **Your trained weights** — copy into `models/`:
+   ```powershell
+   copy path\to\best.pt models\dry.pt
+   ```
+   Or export ONNX:
+   ```powershell
+   yolo export model=path\to\best.pt format=onnx imgsz=224
+   copy best.onnx models\dry.onnx
+   ```
+
+2. **Train in-repo**:
+   ```powershell
+   python -m valiant.autonomy.cv.training.generate_targets
+   python -m valiant.autonomy.cv.training.train
+   ```
+
 Shot confirmation (blue/wetted target after spray) still uses **HSV** when `cv.method` is `yolo`.
-
-## Optional files
-
-| File | Purpose |
-|------|---------|
-| `dry.onnx` | Alternate name for dry model (auto-discovered if `best.onnx` missing) |
-| `shot.onnx` | Reserved for a future shot-class YOLO model (not wired yet) |
 
 ## Test locally
 
@@ -35,15 +49,6 @@ python tools\cv_bench_test.py --camera 0
 python tools\metric_bench_test.py --camera 0
 ```
 
-Inference uses **onnxruntime** (no PyTorch required at runtime). Hold a purple target in the **center blue box** (320x320 AI view for `best.onnx`). Detections appear as magenta `dry` boxes.
-
-## Train / export new models
-
-```powershell
-python -m valiant.autonomy.cv.training.generate_targets
-python -m valiant.autonomy.cv.training.train
-# Export: yolo export model=<best.pt> format=onnx
-# Copy export to models/best.onnx
-```
+Inference uses **onnxruntime** (no PyTorch required at runtime). Hold a purple target in the **center blue box**. Detections appear as magenta `dry` boxes.
 
 Training run artifacts go under `models/runs/` (gitignored).

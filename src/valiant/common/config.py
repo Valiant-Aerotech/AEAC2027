@@ -38,45 +38,22 @@ def load_config(drone: str) -> dict[str, Any]:
     if conops_path.is_file():
         with open(conops_path, encoding="utf-8") as f:
             conops_cfg = yaml.safe_load(f) or {}
-        cfg = _deep_merge(cfg, conops_cfg)
+        cfg = deep_merge(cfg, conops_cfg)
 
     if drone_path.is_file():
         with open(drone_path, encoding="utf-8") as f:
             drone_cfg = yaml.safe_load(f) or {}
-        cfg = _deep_merge(cfg, drone_cfg)
+        cfg = deep_merge(cfg, drone_cfg)
 
-    cfg = _merge_calibration(cfg, drone)
     cfg["drone"] = drone
     return apply_conops_to_runtime(cfg)
 
 
-def _merge_calibration(cfg: dict[str, Any], drone: str) -> dict[str, Any]:
-    """Merge per-airframe calibration yaml when configured."""
-    cal_cfg = cfg.get("calibration", {})
-    cal_file = cal_cfg.get("file")
-    if not cal_file:
-        return cfg
-
-    cal_path = Path(cal_file)
-    if not cal_path.is_absolute():
-        cal_path = _REPO_ROOT / cal_path
-
-    if not cal_path.is_file():
-        return cfg
-
-    with open(cal_path, encoding="utf-8") as f:
-        cal_data = yaml.safe_load(f) or {}
-
-    merged = dict(cfg)
-    merged["calibration"] = _deep_merge(cal_data, cal_cfg)
-    return merged
-
-
-def _deep_merge(base: dict, override: dict) -> dict:
+def deep_merge(base: dict, override: dict) -> dict:
     result = dict(base)
     for key, value in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _deep_merge(result[key], value)
+            result[key] = deep_merge(result[key], value)
         else:
             result[key] = value
     return result

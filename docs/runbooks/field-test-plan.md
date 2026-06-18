@@ -19,6 +19,9 @@ Phased validation from bench to competition. Each phase has pass criteria before
 | 0.5 | CV shot detection | Wet a blue test circle, run cv_bench_test | Shot list populates after wetting |
 | 0.6 | Metric pipeline | `python tools\metric_bench_test.py --camera 0` | distance_m and side_clearance_m print steadily |
 | 0.7 | Sim orchestrator | `python missions\task2_vion_auto_extinguish.py --sim --max-targets 1` | State machine reaches VERIFYING or COMPLETE without crash |
+| 0.8 | SITL closed loop | WSL: `.\tools\launch_sitl.ps1`; then `.\tools\run_sitl_mission.ps1 -Profile sitl` | Monitor shows APPROACHING; SITL armed GUIDED; velocity non-zero when target off-centre |
+
+See [sitl-wsl.md](sitl-wsl.md) for WSL ArduPilot setup.
 
 **Known gaps at Phase 0:** HSV thresholds are synthetic-first. Outdoor lighting will need retuning (see GitHub issue CV-refinement).
 

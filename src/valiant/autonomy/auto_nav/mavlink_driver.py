@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pymavlink import mavutil
 
+from valiant.autonomy.auto_nav.mavlink_stream import VelocityStream
 from valiant.autonomy.auto_nav.visual_servo import VisualServo
 from valiant.autonomy.packets import MetricPacket
 
@@ -15,26 +16,14 @@ class MavlinkDriver:
         self.master = master
         self.servo = VisualServo(master, cfg)
         self.cfg = cfg
-        nav = cfg.get("auto_nav", {})
-        metric = cfg.get("metric_recon", {})
-        self._base_approach_speed = nav.get("approach_speed", 0.3)
-        self._slow_start_m = nav.get("approach_slow_start_m", 1.5)
-        self._min_speed_factor = nav.get("approach_min_speed_factor", 0.25)
-        self._fire_distance_m = metric.get("fire_distance_m", 0.8)
+        self._gimbal_pitch = bool(cfg.get("gimbal", {}).get("enabled", False))
+        self._vel_stream = VelocityStream(self.servo)
 
-    def scaled_approach_speed(self, distance_m: float | None) -> float:
-        """Reduce forward speed as the drone nears fire distance."""
-        if distance_m is None:
-            return self._base_approach_speed
+    def start_velocity_stream(self) -> None:
+        self._vel_stream.start()
 
-        if distance_m >= self._slow_start_m:
-            return self._base_approach_speed
-
-        span = max(self._slow_start_m - self._fire_distance_m, 0.1)
-        t = (distance_m - self._fire_distance_m) / span
-        t = max(0.0, min(1.0, t))
-        factor = self._min_speed_factor + (1.0 - self._min_speed_factor) * t
-        return self._base_approach_speed * factor
+    def stop_velocity_stream(self) -> None:
+        self._vel_stream.stop()
 
     def move_toward_target(
         self,
@@ -42,26 +31,66 @@ class MavlinkDriver:
         frame_w: int,
         frame_h: int,
         *,
-        approach_speed: float | None = None,
+        approach_speed: float = 0.3,
         camera_down: bool = True,
+        vz_ned: float = 0.0,
+    ) -> None:
+        self._vel_stream.start()
+        px, py = packet.target_px
+        vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
+        if self._gimbal_pitch:
+            self.servo.send_velocity_body(approach_speed, vel_right, vz_ned)
+            return
+        if camera_down:
+            self.servo.send_velocity_body(-vel_vertical, vel_right, approach_speed + vz_ned)
+        else:
+            self.servo.send_velocity_body(approach_speed, vel_right, vel_vertical + vz_ned)
+
+    def hold_center(
+        self,
+        packet: MetricPacket,
+        frame_w: int,
+        frame_h: int,
+        *,
+        camera_down: bool = True,
+        vz_ned: float = 0.0,
     ) -> None:
         px, py = packet.target_px
         vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
-        speed = approach_speed
-        if speed is None:
-            speed = self.scaled_approach_speed(packet.distance_m)
+        if self._gimbal_pitch:
+            self.servo.send_velocity_body(0.0, vel_right, vz_ned)
+            return
         if camera_down:
-            self.servo.send_velocity_body(-vel_vertical, vel_right, speed)
+            self.servo.send_velocity_body(-vel_vertical, vel_right, vz_ned)
         else:
-            self.servo.send_velocity_body(speed, vel_right, vel_vertical)
+            self.servo.send_velocity_body(0.0, vel_right, vel_vertical + vz_ned)
 
-    def hold_center(self, packet: MetricPacket, frame_w: int, frame_h: int, *, camera_down: bool = True) -> None:
-        px, py = packet.target_px
-        vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
-        if camera_down:
-            self.servo.send_velocity_body(-vel_vertical, vel_right, 0.0)
-        else:
-            self.servo.send_velocity_body(0.0, vel_right, vel_vertical)
+    def hold_position(self, *, vz_ned: float = 0.0) -> None:
+        """Keep streaming a zero horizontal velocity setpoint in GUIDED."""
+        self._vel_stream.start()
+        self.servo.send_velocity_body(0.0, 0.0, vz_ned)
 
     def stop(self) -> None:
+        self._vel_stream.stop()
         self.servo.stop()
+
+    def search_velocity(self, vx: float, vy: float, vz: float = 0.0) -> None:
+        self._vel_stream.start()
+        self.servo.send_velocity_body(vx, vy, vz)
+
+    def search_motion(
+        self,
+        vx: float,
+        vy: float,
+        vz: float = 0.0,
+        *,
+        yaw_rate: float | None = None,
+    ) -> None:
+        self._vel_stream.start()
+        if yaw_rate is not None and abs(yaw_rate) > 1e-4:
+            if abs(vx) + abs(vy) + abs(vz) > 1e-4:
+                self.servo.send_velocity_body(vx, vy, vz)
+            else:
+                self.servo.send_yaw_rate(yaw_rate)
+        else:
+            self.servo.send_velocity_body(vx, vy, vz)

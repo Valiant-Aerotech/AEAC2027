@@ -1,36 +1,26 @@
-# Deploy model and calibration to Pi (bringup Phase C3)
 param(
     [Parameter(Mandatory = $true)]
     [string]$PiHost,
-
-    [string]$PiPath = "~/AEAC2027",
-    [switch]$SkipModel,
-    [switch]$SkipCalibration
+    [string]$RemoteDir = "~/AEAC2027"
 )
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
-Set-Location $RepoRoot
+$Root = Split-Path -Parent $PSScriptRoot
+Set-Location $Root
 
-Write-Host "=== Deploy to Pi: $PiHost ===" -ForegroundColor Cyan
+Write-Host "Deploying repo to $PiHost:$RemoteDir ..."
+ssh $PiHost "mkdir -p $RemoteDir"
+scp -r src config hardware missions pyproject.toml README.md "${PiHost}:${RemoteDir}/"
 
-if (-not $SkipModel) {
-    $model = Join-Path $RepoRoot "models\best.onnx"
-    if (-not (Test-Path $model)) {
-        Write-Host "ERROR: models\best.onnx not found on laptop" -ForegroundColor Red
-        exit 1
-    }
-    Write-Host "Copying best.onnx..."
-    scp $model "${PiHost}:${PiPath}/models/"
+if (Test-Path "models\best.onnx") {
+    ssh $PiHost "mkdir -p $RemoteDir/models"
+    scp models\best.onnx "${PiHost}:${RemoteDir}/models/"
+    Write-Host "Deployed models/best.onnx"
+} else {
+    Write-Host "WARN: models\best.onnx not found locally"
 }
 
-if (-not $SkipCalibration) {
-    $cal = Join-Path $RepoRoot "config\vion_calibration.yaml"
-    if (-not (Test-Path $cal)) {
-        Copy-Item (Join-Path $RepoRoot "config\vion_calibration.yaml.example") $cal
-        Write-Host "Created local vion_calibration.yaml from example"
-    }
-    Write-Host "Copying vion_calibration.yaml..."
-    scp $cal "${PiHost}:${PiPath}/config/"
+if (Test-Path "config\vion_calibration.yaml") {
+    scp config\vion_calibration.yaml "${PiHost}:${RemoteDir}/config/"
 }
 
-Write-Host "OK. On Pi run: python hardware/vion/rpi/check_sensors.py"
+Write-Host "Done. On Pi: cd $RemoteDir && pip install -e ."
