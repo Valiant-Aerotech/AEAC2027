@@ -46,6 +46,10 @@ def apply_conops_to_runtime(cfg: dict) -> dict:
         metric["min_approach_distance_m"] = t2["min_approach_distance_m"]
     if "target_diameter_max_m" in t2:
         metric["target_diameter_m"] = t2["target_diameter_max_m"]
+    if "target_diameter_min_m" in t2:
+        metric["target_diameter_min_m"] = t2["target_diameter_min_m"]
+    if "target_diameter_max_m" in t2:
+        metric["target_diameter_max_m"] = t2["target_diameter_max_m"]
 
     return cfg
 

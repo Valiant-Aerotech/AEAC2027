@@ -4,6 +4,16 @@ Valiant Aerotech competition software for AEAC 2027.
 
 **New to the team?** Start with [WELCOME.md](WELCOME.md).
 
+## Branches
+
+| Branch | Use |
+|--------|-----|
+| **`main`** | Integrated baseline: Task 2 autonomy, CV scripts, SITL |
+| **`onboard-pi`** | SITL + Pi companion development |
+| **`feature/CV`** | Task 2 CV training scripts (`src/valiant/cv/`) |
+
+See [docs/branches.md](docs/branches.md).
+
 ## Fleet
 
 | Drone | Role | Mission |
@@ -33,20 +43,29 @@ notepad config\vion.yaml    # set telemetry radio COM port
 
 ## Run a mission
 
+**Primary (onboard Pi):**
+
 ```bash
-# Primary (onboard Pi)
-python hardware/vion/rpi/run_mission.py --profile indoor
+python hardware/vion/rpi/run_mission.py --profile vivi
 ```
+
+**GCS / dev:**
 
 ```powershell
-# GCS monitor
 python tools\mission_monitor.py
-
-# Dev / manual fallback
-python missions\task2_vion_auto_extinguish.py --sim --source webcam
-python missions\task2_vion_manual_photo.py
-python missions\task1_vivi_survey.py
+python missions\task2_vion_auto_extinguish.py      # Task 2 autonomous (field)
+python missions\task2_vion_manual_photo.py         # Task 2 manual fallback
+python missions\task1_vivi_survey.py               # Task 1 surveying
 ```
+
+### Virtual drone (no hardware)
+
+```powershell
+.\tools\launch_sitl.ps1          # terminal 1 — ArduPilot in WSL
+.\tools\run_sitl_mission.ps1     # terminal 2 — full mission + dashboard
+```
+
+[docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
 
 ## Repo layout
 
@@ -60,6 +79,6 @@ docs/runbooks/     <- vion-bringup.md, field-test-plan.md
 models/            <- ONNX models (best.onnx)
 ```
 
-See [docs/architecture.md](docs/architecture.md) and [docs/conops.md](docs/conops.md).
+See [WELCOME.md](WELCOME.md) for new members and [ONBOARDING.md](ONBOARDING.md) for full setup. See [docs/architecture.md](docs/architecture.md) for the modular pipeline design. **Branches:** [docs/branches.md](docs/branches.md). **SITL sim:** [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md). Competition rules: [docs/conops.md](docs/conops.md).
 
 **Before hardware:** [docs/runbooks/whats-left-before-hardware.md](docs/runbooks/whats-left-before-hardware.md)

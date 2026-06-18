@@ -34,6 +34,9 @@ class WaterTrigger:
             print(f"[WATER] WARNING: RPi.GPIO unavailable ({exc})")
 
     def fire(self, duration: float | None = None) -> None:
+        if self.method in (None, "none", "NONE", ""):
+            print("[WATER] Spray disabled (method none)")
+            return
         duration = duration if duration is not None else self.cfg.get("duration_s", 2.0)
         print(f"[WATER] Firing for {duration:.1f}s via {self.method}")
         if self.method == "GPIO":

@@ -1,21 +1,52 @@
-# Vion - fire suppression drone (Pixhawk 6C + RPi companion)
-# GCS laptop: calibration, monitor, manual fallback only.
+# Vion - fire suppression drone
+# Onboard Pi path: camera.source=rpi_local (see flight_profiles.vivi for Vivi bench)
 
 drone: vion
 
 mavlink:
-  connection: "COM5"                    # GCS dev; Pi uses /dev/ttyAMA0 or /dev/ttyUSB0
+  connection: "COM5"                    # GCS scrcpy path only
+  rpi_connection: "/dev/ttyAMA0"        # Pi UART to FC TELEM port
+  sitl_connection: "tcp:127.0.0.1:5760"
   baud: 57600
   sitl_fallback: "udpin:127.0.0.1:14550"
 
-flight:
-  profile: outdoor                    # outdoor | indoor
-  require_gps: true
-  mode: GUIDED                        # GUIDED | GUIDED_NOGPS
-  arm_check_gps: true
+sitl:
+  takeoff_alt_m: 5.0                    # NAV_TAKEOFF — start high, descend near wall
+  cruise_alt_m: 5.0                     # hold until within descent_wall_range_m
+  descent_wall_range_m: 4.5            # begin aligning to target altitude inside this range
+  velocity_local_ned: false             # BODY_NED — ArduCopter GUIDED default for offboard vel
+  preflight_timeout_s: 75               # arm + takeoff (cold EKF can take ~30s)
+  ekf_wait_s: 45                        # wait for EKF3/GPS before first arm
+  backoff_m: 1.5                        # reverse when wall_range below this (m)
+  max_north_m: 6.0                      # geofence north of home (m)
+  max_east_m: 2.0                       # geofence |east| from home (m)
+  search_yaw_rate: 0.35                 # rad/s peak yaw scan during SEARCHING
+  max_backup_speed: 0.12                 # cap reverse speed (m/s)
+  approach_lane_y: 0.0                  # east lane centre for approach (m)
+  home: tests/fixtures/sitl_home.json   # 47°34'33.9"N 52°44'03.5"W
+  map:
+    manifest: tests/fixtures/sitl_map/manifest.json
+    view_radius_m: 24.0                 # top-down window half-width (metres)
+    radius_m: 2000                      # satellite mosaic download radius
+  search_speed: 0.14                    # SEARCHING reposition (m/s)
+  wall_standoff_m: 1.0                   # stop / back up before wall plane (m)
+  creep_speed: 0.10                     # slow advance toward target when far
+  home_south_limit_m: -1.0               # never linger south of home
+  approach_slow_zone_m: 2.5              # taper approach speed inside this range (m)
+  min_ground_clearance_m: 1.0            # absolute floor AGL (targets can be below 2 m)
+  altitude_kp: 0.22                      # NED vz gain to level with target height
+  max_vz: 0.14                           # cap vertical speed (m/s) — safe descent
+  alt_offset_m: -0.15                    # slight bias downward so AIMING settles closer to target center
+  retreat_alt_m: 5.0                     # climb after each kill before next search
+  retreat_home_north_m: 4.0               # back south to this N before next search
+  complete_hold_s: 5.0                   # keep streaming zero velocity briefly before mission exit
+
+gcs_monitor:
+  port: 14560
+  ip: null                              # set via --gcs-ip on Pi
 
 camera:
-  source: scrcpy                      # scrcpy | webcam | rpi_local
+  source: scrcpy                        # scrcpy | rpi_local
   scrcpy_window_title: ExtinguisherCam
   phone_ip: null
   max_fps: 30
@@ -26,28 +57,17 @@ camera:
   hfov_deg: 66.0
   vfov_deg: 52.0
   rpi:
-    rgb_width: 640
-    rgb_height: 480
-    depth_width: 240
-    depth_height: 180
-    recording_dir: null
+    width: 640
+    height: 480
     tof:
       enabled: true
-      connect: CSI                    # CSI | USB
-      camera_index: 0
-      request_timeout_ms: 200
-      min_amplitude: 30
-      max_depth_m: 6.0
-
-calibration:
-  file: config/vion_calibration.yaml  # copy from vion_calibration.yaml.example
+      amplitude_min: 30
 
 cv:
-  method: yolo
+  method: yolo                          # yolo (trained dry) + HSV shot; or hsv | both
   models:
-    dry: models/best.onnx
+    dry: models/dry.onnx               # or models/dry.pt / models/best.pt
     shot: models/shot.onnx
-  yolo_input_size: 320
   hsv_dry:  { h_min: 130, h_max: 170, s_min: 50, v_min: 50 }
   hsv_shot: { h_min: 100, h_max: 130, s_min: 50, v_min: 50 }
   hsv_min_area_px: 500
@@ -55,36 +75,173 @@ cv:
   max_frames_without_target: 45
 
 metric_recon:
-  rangefinder: fov_estimate           # depth_at_target | vl53l1x | fov_estimate | none
-  target_diameter_m: 0.30
+  mode: rangefinder                     # rangefinder | depth_at_target
+  rangefinder: fov_estimate             # vl53l1x | fov_estimate | none
+  target_diameter_min_m: 0.05           # CONOPS 5 cm
+  target_diameter_max_m: 0.30           # CONOPS 30 cm
+  target_diameter_m: 0.30               # legacy single-value fallback
   min_approach_distance_m: 2.0
   fire_distance_m: 0.8
   wall_offset_m: 0.0
   camera_down: true
   rangefinder_stale_s: 1.0
-  depth_sample_window_px: 5
-  depth_invalid_mm: 0
-  depth_max_mm: 6000
+
+flight_profiles:
+  vivi:
+    camera:
+      source: rpi_local
+    metric_recon:
+      mode: depth_at_target
+      rangefinder: fov_estimate
+      camera_down: false
+    mavlink:
+      rpi_connection: "/dev/ttyAMA0"
+    gimbal:
+      enabled: true
+      channel: 9                         # CHANGE: your Kakute AUX servo output
+      pwm_min: 1000                      # stowed / 0 deg — tune on bench
+      pwm_max: 2000                      # 90 deg pitch — tune on bench
+      pwm_neutral: 1500
+      axis: pitch
+      kp: 0.8
+      deadband_px: 40
+      min_interval_s: 0.1
+    spray:
+      method: none
+    safety:
+      geofence_abort: false
+      check_battery: false
+
+  sitl:
+    camera:
+      source: synthetic
+      synthetic_scenario: tests/fixtures/sitl_synthetic_multi.json
+      synthetic_depth_m: 3.0
+      width: 640
+      height: 480
+    mavlink:
+      connection: "tcp:127.0.0.1:5760"
+    spray:
+      method: none
+    safety:
+      geofence_abort: false
+      check_battery: false
+    sitl:
+      wall_standoff_m: 1.2
+      backoff_m: 1.5
+      search_speed: 0.10
+      creep_speed: 0.10
+      approach_lane_y: 0.3
+      approach_slow_zone_m: 3.0
+      min_ground_clearance_m: 1.0
+      altitude_kp: 0.22
+      max_vz: 0.14
+      alt_offset_m: -0.15
+      cruise_alt_m: 5.0
+      descent_wall_range_m: 5.0
+      retreat_alt_m: 5.0
+      retreat_home_north_m: 4.0
+      complete_hold_s: 5.0
+    gimbal:
+      enabled: true
+      channel: 9
+      pwm_min: 1000
+      pwm_max: 2000
+      pwm_neutral: 1500
+      kp: 0.8
+      deadband_px: 40
+    auto_nav:
+      approach_timeout_s: 90
+      kp_x: 0.0006
+      kp_y: 0.0006
+      kd_x: 0.0014
+      kd_y: 0.0014
+      vel_smooth: 0.42
+      max_vel: 0.15
+      approach_speed: 0.14
+      side_clearance_m: 0.0
+    metric_recon:
+      mode: depth_at_target
+      camera_down: false
+
+  sitl_physics:
+    camera:
+      source: synthetic_physics
+      synthetic_scenario: tests/fixtures/sitl_physics_wall.json
+      width: 640
+      height: 480
+      hfov_deg: 66.0
+      vfov_deg: 52.0
+    mavlink:
+      connection: "tcp:127.0.0.1:5760"
+    spray:
+      method: none
+    safety:
+      geofence_abort: false
+      check_battery: false
+    sitl:
+      wall_standoff_m: 1.2
+      backoff_m: 1.5
+      search_speed: 0.10
+      creep_speed: 0.10
+      approach_slow_zone_m: 3.0
+      approach_lane_y: 0.3
+      min_ground_clearance_m: 1.0
+      altitude_kp: 0.22
+      max_vz: 0.14
+      alt_offset_m: -0.15
+      cruise_alt_m: 5.0
+      descent_wall_range_m: 5.0
+      retreat_alt_m: 5.0
+      retreat_home_north_m: 4.0
+      complete_hold_s: 5.0
+    gimbal:
+      enabled: true
+      channel: 9
+      pwm_min: 1000
+      pwm_max: 2000
+      pwm_neutral: 1500
+      kp: 0.35
+      deadband_px: 55
+      min_interval_s: 0.12
+    metric_recon:
+      mode: depth_at_target
+      camera_down: false
+    cv:
+      max_frames_without_target: 60
+    auto_nav:
+      approach_timeout_s: 90
+      kp_x: 0.0006
+      kp_y: 0.0006
+      kd_x: 0.0014
+      kd_y: 0.0014
+      vel_smooth: 0.42
+      max_vel: 0.15
+      deadband_px: 55
+      approach_speed: 0.14
+      side_clearance_m: 0.0
 
 auto_nav:
-  kp_x: 0.0015
-  kp_y: 0.0015
-  kd_x: 0.0004
-  kd_y: 0.0004
-  max_vel: 0.4
+  kp_x: 0.0006                           # tuned from SITL — softer lateral gain
+  kp_y: 0.0006
+  kd_x: 0.0014                           # damping to cut oscillation near target
+  kd_y: 0.0014
+  vel_smooth: 0.42                       # low-pass on velocity commands
+  max_vel: 0.15                          # cap lateral correction (m/s)
   deadband_px: 50
-  approach_speed: 0.25
-  approach_slow_start_m: 1.5
-  approach_min_speed_factor: 0.25
+  approach_speed: 0.10                   # forward creep during approach (m/s)
+  creep_speed: 0.10                      # minimum forward speed when remediating
+  approach_slow_zone_m: 2.5              # taper approach inside this range (m)
+  closing_rate_m_s: 0.05                 # brake if closing faster than this
   side_clearance_m: 1.0
   target_lock_area_px: 15000
-  approach_timeout_s: 30
+  approach_timeout_s: 90
   lock_duration_s: 1.5
-  lock_timeout_s: 10
+  lock_timeout_s: 30
 
 spray:
   method: MAVLINK_SERVO
-  channel: 15
+  channel: 15                           # AUX 7 / SERVO15
   pwm_open: 1900
   pwm_close: 1100
   duration_s: 2.0
@@ -92,14 +249,5 @@ spray:
 safety:
   min_battery_pct: 20
   geofence_abort: true
-  mission_timeout_s: 600
-  rtl_on_abort: false
-
-gcs_monitor:
-  enabled: false
-  connection: "udpout:127.0.0.1:14550"
-  heartbeat_hz: 1.0
-  heartbeat_timeout_s: 2.0
-  degraded_rtt_ms: 200
-  ping_interval_s: 1.0
-
+  mission_timeout_s: 600                # 0 disables global timeout
+  rtl_on_abort: false                   # set true to command RTL on battery/geofence abort
