@@ -2,7 +2,7 @@
 
 Valiant Aerotech competition software for AEAC 2027.
 
-**New to the team?** Start with [WELCOME.md](WELCOME.md). Clone **`main`** — it has Task 1, Task 2 autonomy, SITL, and CV.
+**New to the team?** Start with [WELCOME.md](WELCOME.md). Clone **`main`** - it has Task 1, Task 2 autonomy, SITL, and CV.
 
 ## Fleet
 
