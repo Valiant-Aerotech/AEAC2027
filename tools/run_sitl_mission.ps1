@@ -2,6 +2,7 @@ param(
     [string]$Profile = "sitl",
     [string]$Video = "",
     [string]$Scenario = "",
+    [int]$MaxTargets = 1,
     [switch]$Physics,
     [switch]$HardAngles,
     [switch]$NoMonitor,
@@ -26,7 +27,7 @@ elseif ($HardAngles) {
     $Scenario = "tests\fixtures\sitl_approach_hard.json"
 }
 
-$maxTargets = if ($Physics -or $Profile -eq "sitl") { "2" } else { "1" }
+$maxTargets = "$MaxTargets"
 $missionArgs = @(
     "missions\task2_vion_auto_extinguish.py",
     "--sitl",
@@ -72,7 +73,7 @@ if (-not $NoMonitor) {
     }
 }
 
-Write-Host "SITL mission profile=$Profile (daily driver: -Profile sitl; geometry: -Physics)"
+Write-Host "SITL mission profile=$Profile max-targets=$MaxTargets (daily driver: -Profile sitl; geometry: -Physics)"
 Write-Host "Starting SITL mission (arm/takeoff inside orchestrator): $($missionArgs -join ' ')"
 python @missionArgs
 if ($LASTEXITCODE -ne 0) {

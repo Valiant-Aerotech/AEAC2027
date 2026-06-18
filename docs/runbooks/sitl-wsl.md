@@ -73,14 +73,14 @@ cd A:\Code\Valiant-Aerotech\AEAC2027
 .\tools\run_sitl_mission.ps1
 ```
 
-Default `-Profile sitl` uses **scripted bbox timelines** (not physics-linked CV). You still get the full **Valiant SITL** dashboard (FOV + wall side + top-down), **2-target** suppress-and-retreat flow, green extinguished markers, and real MAVLink motion in SITL — without waiting for gimbal/pose-linked perception.
+Default `-Profile sitl` uses **scripted bbox timelines** (not physics-linked CV). You still get the full **Valiant SITL** dashboard (FOV + wall side + top-down), a **single-target** suppress → upload → brief hold → COMPLETE flow (override with `-MaxTargets 2`), green extinguished markers, and real MAVLink motion in SITL — without waiting for gimbal/pose-linked perception.
 
 | Label | Mode |
 |-------|------|
-| `SIM` (top-right of dashboard) | Timeline synthetic (`sitl` profile) |
+| `SIM` (top-right of FOV panel) | Timeline synthetic (`sitl` profile) |
 | `PHYSICS` | Pose-linked camera (`-Physics`) |
 
-Legacy single-target timeline: `tests/fixtures/sitl_approach.json` via `-Scenario`.
+Alternate single-target timeline: `tests/fixtures/sitl_approach.json` via `-Scenario`.
 
 Or with recorded video:
 

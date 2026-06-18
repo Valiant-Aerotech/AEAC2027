@@ -108,7 +108,7 @@ class MotionPlanner:
             return False
         if not self._approach_valid:
             return False
-        if wall_range_m is not None and wall_range_m > wall_standoff_m + 0.35:
+        if wall_range_m is not None and wall_range_m > self.fire_distance_m + 0.15:
             return False
         close = metric.distance_min_m if metric.distance_min_m is not None else metric.distance_m
         if close is not None and close > self.fire_distance_m + 0.12:
@@ -133,7 +133,7 @@ class MotionPlanner:
             blockers.append("no_distance")
         if not self._approach_valid:
             blockers.append("approach_not_proven")
-        if wall_range_m is not None and wall_range_m > wall_standoff_m + 0.35:
+        if wall_range_m is not None and wall_range_m > self.fire_distance_m + 0.15:
             blockers.append("too_far_wall")
         close = metric.distance_min_m if metric.distance_min_m is not None else metric.distance_m
         if close is not None and close > self.fire_distance_m + 0.12:

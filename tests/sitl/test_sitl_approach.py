@@ -51,12 +51,15 @@ def test_sitl_orchestrator_reaches_approaching(sitl_master):
 
     ext = AutoExtinguisher(
         cfg,
+        master=sitl_master,
         connection_string="tcp:127.0.0.1:5760",
         baudrate=57600,
         sitl_mode=True,
         headless=True,
         max_targets=1,
         gcs_ip="127.0.0.1",
+        skip_sitl_preflight=True,
+        assume_sitl_airborne=True,
     )
 
     reached = threading.Event()
@@ -88,25 +91,27 @@ def test_sitl_orchestrator_reaches_complete(sitl_master):
     """Timeline synthetic: full SEARCHING -> COMPLETE (spray disabled)."""
     cfg = apply_flight_profile(load_config("vion"), "sitl")
     cfg["camera"]["source"] = "synthetic"
-    cfg["camera"]["synthetic_scenario"] = "tests/fixtures/sitl_approach.json"
+    cfg["camera"]["synthetic_scenario"] = "tests/fixtures/sitl_synthetic_multi.json"
 
     ext = AutoExtinguisher(
         cfg,
+        master=sitl_master,
         connection_string="tcp:127.0.0.1:5760",
         baudrate=57600,
         sitl_mode=True,
         headless=True,
         max_targets=1,
         gcs_ip="127.0.0.1",
+        skip_sitl_preflight=True,
+        assume_sitl_airborne=True,
     )
 
     reached = threading.Event()
-    terminal_states = {STATE_COMPLETE, STATE_CAPTURING}
 
     def watch():
         deadline = time.time() + 150
         while time.time() < deadline:
-            if ext.state in terminal_states:
+            if ext.state == STATE_COMPLETE:
                 reached.set()
                 break
             time.sleep(0.1)
@@ -119,6 +124,50 @@ def test_sitl_orchestrator_reaches_complete(sitl_master):
 
     assert reached.wait(timeout=140), f"state stuck at {ext.state}"
     assert ext.state == STATE_COMPLETE, f"expected COMPLETE, got {ext.state}"
+    ext.request_stop()
+    loop_thread.join(timeout=5)
+    ext.metric_recon.stop()
+    ext.trigger.cleanup()
+    ext.gimbal.cleanup()
+    ext.camera.cleanup()
+
+
+def test_sitl_multi_target_reaches_complete(sitl_master):
+    """Optional 2-target path: suppress, reposition, second target, COMPLETE."""
+    cfg = apply_flight_profile(load_config("vion"), "sitl")
+
+    ext = AutoExtinguisher(
+        cfg,
+        master=sitl_master,
+        connection_string="tcp:127.0.0.1:5760",
+        baudrate=57600,
+        sitl_mode=True,
+        headless=True,
+        max_targets=2,
+        gcs_ip="127.0.0.1",
+        skip_sitl_preflight=True,
+        assume_sitl_airborne=True,
+    )
+
+    reached = threading.Event()
+
+    def watch():
+        deadline = time.time() + 300
+        while time.time() < deadline:
+            if ext.state == STATE_COMPLETE:
+                reached.set()
+                break
+            time.sleep(0.1)
+
+    watcher = threading.Thread(target=watch, daemon=True)
+    watcher.start()
+
+    loop_thread = threading.Thread(target=ext.loop, daemon=True)
+    loop_thread.start()
+
+    assert reached.wait(timeout=290), f"state stuck at {ext.state}"
+    assert ext.state == STATE_COMPLETE
+    assert ext.targets_completed >= 2
     ext.request_stop()
     loop_thread.join(timeout=5)
     ext.metric_recon.stop()

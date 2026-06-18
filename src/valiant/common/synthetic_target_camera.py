@@ -298,17 +298,6 @@ class SyntheticTargetCamera:
 
         cv2.circle(frame, (cx, cy), max(bbox_w // 2, 10), color, -1)
         self._draw_extinguished_markers(frame)
-        if self._world and len(self._missions) > 1:
-            cv2.putText(
-                frame,
-                f"SIM target {self._mission_index + 1}/{len(self._missions)}",
-                (10, 22),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.45,
-                (140, 150, 170),
-                1,
-                cv2.LINE_AA,
-            )
         return frame
 
     @property

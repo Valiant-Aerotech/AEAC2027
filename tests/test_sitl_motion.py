@@ -8,6 +8,7 @@ from pathlib import Path
 from valiant.autonomy.sitl_motion import (
     RULE_BACKOFF,
     RULE_FOLLOW,
+    RULE_HOLD,
     RULE_SEARCH,
     SitlMotionStack,
     search_yaw_rate,
@@ -44,6 +45,28 @@ def test_backoff_when_past_wall():
     assert cmd is not None
     assert cmd.rule == RULE_BACKOFF
     assert cmd.vx is not None and cmd.vx < 0
+
+
+def test_aiming_allows_fire_standoff_inside_backoff_zone():
+    """AIMING may hold inside backoff_m so fire range is reachable."""
+    stack = SitlMotionStack(CFG)
+    pose = VehiclePose(x=3.8, y=0.0, z=-1.1, ok=True)
+    metric = MetricPacket(
+        target_px=(320, 240),
+        pixel_offset=(0.0, 0.0),
+        distance_m=0.85,
+    )
+    cmd = stack.decide(
+        state="AIMING",
+        pose=pose,
+        scene=SCENE,
+        has_target=True,
+        metric=metric,
+        approach_speed=0.1,
+    )
+    assert cmd is not None
+    assert cmd.rule != RULE_BACKOFF
+    assert cmd.rule in (RULE_FOLLOW, RULE_HOLD)
 
 
 def test_follow_when_target_visible():
@@ -87,6 +110,37 @@ def test_search_yaw_scan_without_scene():
 def test_search_yaw_rate_oscillates():
     assert search_yaw_rate(0.0, rate=0.35) == 0.0
     assert abs(search_yaw_rate(2.0, rate=0.35, period_s=8.0)) > 0.1
+
+
+def test_approaching_descends_to_target_altitude():
+    stack = SitlMotionStack(
+        {
+            **CFG,
+            "sitl": {
+                **CFG["sitl"],
+                "cruise_alt_m": 5.0,
+                "altitude_kp": 0.22,
+                "max_vz": 0.14,
+            },
+        }
+    )
+    pose = VehiclePose(x=2.0, y=0.0, z=-5.0, ok=True)
+    metric = MetricPacket(
+        target_px=(320, 240),
+        pixel_offset=(0.0, 0.0),
+        distance_m=2.5,
+    )
+    cmd = stack.decide(
+        state="APPROACHING",
+        pose=pose,
+        scene=SCENE,
+        has_target=True,
+        metric=metric,
+        approach_speed=0.14,
+    )
+    assert cmd is not None
+    assert cmd.rule == RULE_FOLLOW
+    assert cmd.vz is not None and cmd.vz > 0.0
 
 
 def test_geofence_limits_east_drift():

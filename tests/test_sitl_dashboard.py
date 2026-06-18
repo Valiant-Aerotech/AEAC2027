@@ -31,6 +31,26 @@ def test_dashboard_grid_dimensions():
     assert img.shape == (720, 1280, 3)
 
 
+def test_dashboard_mode_label_in_fov_panel():
+    fov = np.zeros((480, 640, 3), dtype=np.uint8)
+    pose = VehiclePose(x=1.0, y=0.2, z=-2.5, ok=True)
+    img = render_sitl_dashboard(
+        fov,
+        SCENE,
+        pose,
+        state="AIMING",
+        mode_label="SIM",
+        width=1280,
+        height=720,
+    )
+    fov_w = 1280 // 2
+    # Mode label is drawn in the FOV panel (left half), not over the wall title bar.
+    left_panel = img[:, :fov_w]
+    right_panel = img[:, fov_w:]
+    assert left_panel.mean() > 0
+    assert right_panel.mean() > 0
+
+
 def test_wall_side_shows_wall_and_range():
     pose = VehiclePose(x=1.7, y=0.5, z=-1.5, yaw=0.0, ok=True)
     img = render_wall_side(MULTI_SCENE, pose, width=640, height=360, compact=True)

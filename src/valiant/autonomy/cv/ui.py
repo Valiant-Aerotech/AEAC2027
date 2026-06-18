@@ -64,6 +64,7 @@ def draw_overlay(
     show_yolo_crop: bool = False,
     vel_cmd_body: tuple[float, float, float] | None = None,
     vel_actual_body: tuple[float, float, float] | None = None,
+    compact_hud: bool = False,
 ) -> npt.NDArray[np.uint8]:
     """Draw detection boxes, crosshair, and state on a copy of the frame."""
     overlay = frame.copy()
@@ -75,15 +76,21 @@ def draw_overlay(
         for j in range(0, h, 48):
             cv2.line(overlay, (0, j), (w, j), (28, 30, 36), 1)
 
-    sc = state_color(state)
-    draw_panel(overlay, 8, 8, min(280, w - 16), 58, alpha=0.78)
-    cv2.putText(overlay, state, (18, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.85, sc, 2, cv2.LINE_AA)
-    cv2.putText(overlay, "MISSION VIEW", (18, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.38, C_MUTED, 1, cv2.LINE_AA)
+    panel_top = 8
+    if not compact_hud:
+        sc = state_color(state)
+        draw_panel(overlay, 8, 8, min(280, w - 16), 58, alpha=0.78)
+        cv2.putText(overlay, state, (18, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.85, sc, 2, cv2.LINE_AA)
+        cv2.putText(overlay, "MISSION VIEW", (18, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.38, C_MUTED, 1, cv2.LINE_AA)
+        panel_top = 72
 
     if packet:
         method_label = f"{packet.method}   dry {len(packet.dry)}   shot {len(packet.shot)}"
-        draw_panel(overlay, 8, 72, min(240, w - 16), 24, alpha=0.65)
-        cv2.putText(overlay, method_label, (16, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.42, C_TEXT, 1, cv2.LINE_AA)
+        draw_panel(overlay, 8, panel_top, min(240, w - 16), 24, alpha=0.65)
+        cv2.putText(
+            overlay, method_label, (16, panel_top + 18),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.42, C_TEXT, 1, cv2.LINE_AA,
+        )
 
         for hit in packet.dry:
             x1, y1, x2, y2 = hit.bbox

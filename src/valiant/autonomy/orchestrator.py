@@ -46,6 +46,7 @@ from valiant.common.mavlink import (
     send_rtl,
     send_statustext,
 )
+from valiant.common.mavlink_io import mavlink_io
 
 STATE_SEARCHING = "SEARCHING"
 STATE_REPOSITION = "REPOSITION"
@@ -66,6 +67,7 @@ class AutoExtinguisher:
         self,
         cfg: dict,
         *,
+        master: mavutil.mavfile | None = None,
         connection_string: str,
         baudrate: int,
         sim_mode: bool = False,
@@ -77,6 +79,7 @@ class AutoExtinguisher:
         gcs_ip: str | None = None,
         video_path: str | None = None,
         skip_sitl_preflight: bool = False,
+        assume_sitl_airborne: bool = False,
     ):
         self.cfg = cfg
         self.sim = sim_mode
@@ -84,6 +87,7 @@ class AutoExtinguisher:
         self.headless = headless
         self.hand_test = hand_test
         self._skip_sitl_preflight = skip_sitl_preflight
+        self._assume_sitl_airborne = assume_sitl_airborne
         self._sitl_preflight_done = False
         self._last_gcs_heartbeat = 0.0
         self._last_pose_log = 0.0
@@ -117,12 +121,18 @@ class AutoExtinguisher:
         for warning in validate_conops_config(cfg):
             print(f"[CONOPS] Warning: {warning}")
 
-        print(f"[INIT] Connecting MAVLink on {connection_string} (sim={sim_mode}, sitl={sitl_mode})...")
-        if sim_mode and not sitl_mode:
-            self.master = mavutil.mavlink_connection(connection_string, baud=baudrate)
+        if master is not None:
+            from valiant.common.mavlink_io import attach_io_lock
+
+            self.master = attach_io_lock(master)
+            print("[INIT] Using provided MAVLink master")
         else:
-            self.master = connect(connection_string, baudrate, wait_heartbeat=True)
-            print("[INIT] Heartbeat received")
+            print(f"[INIT] Connecting MAVLink on {connection_string} (sim={sim_mode}, sitl={sitl_mode})...")
+            if sim_mode and not sitl_mode:
+                self.master = mavutil.mavlink_connection(connection_string, baud=baudrate)
+            else:
+                self.master = connect(connection_string, baudrate, wait_heartbeat=True)
+                print("[INIT] Heartbeat received")
 
         if not sim_mode or sitl_mode:
             self.master.mav.request_data_stream_send(
@@ -161,6 +171,7 @@ class AutoExtinguisher:
         self.last_hud_alert_time = 0.0
         self.confirm_frame = None
         self.upload_file_path: str | None = None
+        self._complete_hold_announced = False
         self._last_cv: CVPacket | None = None
         self._last_metric: MetricPacket | None = None
         self._stop_loop = False
@@ -201,6 +212,7 @@ class AutoExtinguisher:
             self.send_hud_message(msg)
             self.state = new_state
             self.state_start_time = time.time()
+            self._complete_hold_announced = False
             if new_state == STATE_SEARCHING:
                 self.lock_start_time = None
                 self.planner.reset_approach()
@@ -213,7 +225,8 @@ class AutoExtinguisher:
                 if self.gimbal.enabled and not self.sitl and (not self.sim):
                     self.gimbal.reset()
             if new_state == STATE_APPROACHING:
-                self.planner.reset_approach()
+                if prev_state != STATE_AIMING:
+                    self.planner.reset_approach()
                 if self.sitl and self._allow_motion():
                     self.nav.start_velocity_stream()
                 if self.sitl and not self._sitl_approaching_logged:
@@ -345,6 +358,11 @@ class AutoExtinguisher:
             return
         self.nav.stop()
 
+    def _sitl_hold_position(self) -> None:
+        if not self._allow_motion():
+            return
+        self.nav.hold_position()
+
     def _sitl_apply_motion(
         self,
         hit,
@@ -462,21 +480,28 @@ class AutoExtinguisher:
         if now - self._last_guided_check < interval:
             return
         self._last_guided_check = now
+        mapping = self.master.mode_mapping()
+        guided_id = mapping.get("GUIDED")
+        if guided_id is None:
+            return
+
         mode = self.master.flightmode
         if mode == "GUIDED":
             return
-        print(f"[SITL] FC mode is {mode!r} — re-commanding GUIDED")
-        mapping = self.master.mode_mapping()
-        if "GUIDED" not in mapping:
-            return
-        self.master.set_mode(mapping["GUIDED"])
-        if force:
-            from valiant.autonomy.sitl_preflight import _wait_mode
 
-            try:
-                _wait_mode(self.master, "GUIDED", 2.0)
-            except RuntimeError:
-                print("[SITL] Warning: FC did not confirm GUIDED (velocity may be ignored)")
+        print(f"[SITL] FC mode is {mode!r} — re-commanding GUIDED")
+        self.master.set_mode(guided_id)
+        deadline = time.time() + (3.0 if force else 1.5)
+        while time.time() < deadline:
+            with mavlink_io(self.master):
+                hb = self.master.recv_match(type="HEARTBEAT", blocking=True, timeout=0.5)
+            if hb is not None and hb.get_srcSystem() == self.master.target_system:
+                from valiant.autonomy.sitl_preflight import _flight_mode_from_heartbeat
+
+                mode = _flight_mode_from_heartbeat(self.master, hb)
+                if mode == "GUIDED":
+                    return
+        print("[SITL] Warning: FC did not confirm GUIDED (velocity may be ignored)")
 
     def _actual_vel_body(self) -> tuple[float, float, float] | None:
         if not self.sitl or self._sitl_pose is None or not self._sitl_pose.ok:
@@ -522,10 +547,33 @@ class AutoExtinguisher:
         print("Pipeline: CV -> MetricRecon -> AutoNav -> Spray -> Upload")
         self._sitl_boot_t = time.time()
         if self.sitl and not self.hand_test and not self._sitl_preflight_done:
-            if not self._skip_sitl_preflight:
+            if self._assume_sitl_airborne:
+                print("[SITL] Assuming armed/airborne (test harness)")
+                from valiant.autonomy.sitl_preflight import arm_guided_takeoff, verify_sitl_motion_ready
+
+                takeoff_alt = float(self.cfg.get("sitl", {}).get("takeoff_alt_m", 5.0))
+                preflight_timeout = float(self.cfg.get("sitl", {}).get("preflight_timeout_s", 75.0))
+                request_sitl_telemetry_streams(self.master)
+                send_gcs_heartbeat(self.master)
+                ready, reason = verify_sitl_motion_ready(
+                    self.master,
+                    min_alt_m=takeoff_alt * 0.85,
+                    require_guided=False,
+                    sample_s=5.0,
+                )
+                if not ready:
+                    print(f"[SITL] Test harness readiness failed ({reason}) — running takeoff")
+                    ekf_wait = float(self.cfg.get("sitl", {}).get("ekf_wait_s", 60.0))
+                    arm_guided_takeoff(
+                        self.master,
+                        takeoff_alt_m=takeoff_alt,
+                        timeout_s=preflight_timeout,
+                        ekf_wait_s=min(ekf_wait, 8.0),
+                    )
+            elif not self._skip_sitl_preflight:
                 from valiant.autonomy.sitl_preflight import arm_guided_takeoff
 
-                takeoff_alt = float(self.cfg.get("sitl", {}).get("takeoff_alt_m", 3.0))
+                takeoff_alt = float(self.cfg.get("sitl", {}).get("takeoff_alt_m", 5.0))
                 preflight_timeout = float(self.cfg.get("sitl", {}).get("preflight_timeout_s", 75.0))
                 ekf_wait = float(self.cfg.get("sitl", {}).get("ekf_wait_s", 60.0))
                 arm_guided_takeoff(
@@ -541,19 +589,26 @@ class AutoExtinguisher:
                 print("[SITL] Skipping preflight (assume already armed/airborne)")
                 from valiant.autonomy.sitl_preflight import arm_guided_takeoff, verify_sitl_motion_ready
 
-                takeoff_alt = float(self.cfg.get("sitl", {}).get("takeoff_alt_m", 3.0))
+                takeoff_alt = float(self.cfg.get("sitl", {}).get("takeoff_alt_m", 5.0))
                 preflight_timeout = float(self.cfg.get("sitl", {}).get("preflight_timeout_s", 75.0))
                 ekf_wait = float(self.cfg.get("sitl", {}).get("ekf_wait_s", 60.0))
+                request_sitl_telemetry_streams(self.master)
+                send_gcs_heartbeat(self.master)
                 ready, reason = verify_sitl_motion_ready(
-                    self.master, min_alt_m=takeoff_alt * 0.85
+                    self.master, min_alt_m=takeoff_alt * 0.85, sample_s=5.0
                 )
+                if not ready:
+                    time.sleep(1.0)
+                    ready, reason = verify_sitl_motion_ready(
+                        self.master, min_alt_m=takeoff_alt * 0.85, sample_s=5.0
+                    )
                 if not ready:
                     print(f"[SITL] Skip-preflight check failed ({reason}) — running takeoff")
                     arm_guided_takeoff(
                         self.master,
                         takeoff_alt_m=takeoff_alt,
                         timeout_s=preflight_timeout,
-                        ekf_wait_s=ekf_wait,
+                        ekf_wait_s=min(ekf_wait, 8.0),
                     )
                 else:
                     print(f"[SITL] Skip-preflight OK ({reason})")
@@ -664,6 +719,10 @@ class AutoExtinguisher:
                         show_yolo_crop=self.cv_method in ("yolo", "both"),
                         vel_cmd_body=vel_cmd,
                         vel_actual_body=vel_sim,
+                        compact_hud=(
+                            hasattr(self.camera, "world_scene")
+                            and self.camera.world_scene is not None
+                        ),
                     )
                     scene = (
                         self.camera.world_scene
@@ -871,6 +930,15 @@ class AutoExtinguisher:
                         self.set_state(STATE_REPOSITION)
 
                 elif self.state == STATE_COMPLETE:
+                    hold_s = float(self.cfg.get("sitl", {}).get("complete_hold_s", 5.0))
+                    if self.sitl and hold_s > 0.0 and time.time() - self.state_start_time < hold_s:
+                        if not self._complete_hold_announced:
+                            msg = f"Holding after complete ({hold_s:.1f}s)"
+                            print(f"[SITL] {msg}")
+                            self.send_hud_message(msg)
+                            self._complete_hold_announced = True
+                        self._sitl_hold_position()
+                        continue
                     print(
                         f"Task 2 sequence complete. "
                         f"Extinguished {self.targets_completed} target(s)."

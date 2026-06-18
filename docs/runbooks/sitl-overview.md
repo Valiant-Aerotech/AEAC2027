@@ -50,9 +50,9 @@ cd A:\Code\Valiant-Aerotech\AEAC2027
 
 This runs `missions/task2_vion_auto_extinguish.py --sitl --profile sitl` with:
 
-- Preflight: EKF wait → GUIDED → arm → takeoff (~3 m)
+- Preflight: EKF wait → GUIDED → arm → takeoff (~5 m)
 - **Valiant SITL** OpenCV dashboard (FOV + wall side + top-down)
-- 2-target suppress → reposition → search flow
+- Single-target suppress → upload → brief hold → COMPLETE
 
 **Warm repeat** (SITL still running, already airborne):
 
@@ -68,7 +68,7 @@ Configured in `config/vion.yaml` under `flight_profiles`:
 
 | Profile | Command | Camera | Environment | Best for |
 |---------|---------|--------|-------------|----------|
-| **`sitl`** (default) | `run_sitl_mission.ps1` | Timeline synthetic + world scene | JSON keyframes **linked to mavlink pose** | Fast mission logic, dashboard, multi-target |
+| **`sitl`** (default) | `run_sitl_mission.ps1` | Timeline synthetic + world scene | JSON keyframes **linked to mavlink pose** | Fast mission logic, dashboard, single-target default |
 | **`sitl_physics`** | `run_sitl_mission.ps1 -Physics` | Pose + gimbal projection | `sitl_physics_wall.json` | Geometry, approach tuning, harder CV |
 | **Video replay** | `-Video path\to\clip.mp4` | Recorded footage | N/A | Regression from bench recordings |
 | **Field** | `task2_vion_auto_extinguish.py` (no `--sitl`) | scrcpy | Real world | Competition |
@@ -79,7 +79,7 @@ Dashboard label: **`SIM`** = timeline synthetic, **`PHYSICS`** = pose-linked cam
 
 | File | Role |
 |------|------|
-| `tests/fixtures/sitl_synthetic_multi.json` | Default **2-target** world + per-target keyframes |
+| `tests/fixtures/sitl_synthetic_multi.json` | Default world (2 targets in fixture; launcher uses `--max-targets 1`) |
 | `tests/fixtures/sitl_physics_wall.json` | Single wall + targets for physics camera |
 | `tests/fixtures/sitl_home.json` | SITL GPS home (map anchor) |
 | `tests/fixtures/sitl_map/manifest.json` | Optional satellite top-down (run `tools/download_sitl_map.py`) |
@@ -106,7 +106,7 @@ src/valiant/common/
 tools/
   launch_sitl.ps1          # WSL ArduPilot launcher
   run_sitl_mission.ps1     # One-command mission + monitor
-  run_sitl_tests.ps1       # pytest tests/sitl/
+  run_sitl_tests.ps1       # pytest SITL integration + motion/search unit tests
   sitl/launch_sitl.sh      # Called from WSL
   mission_monitor.py       # UDP telemetry HUD
 

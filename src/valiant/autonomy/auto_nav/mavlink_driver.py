@@ -65,6 +65,11 @@ class MavlinkDriver:
         else:
             self.servo.send_velocity_body(0.0, vel_right, vel_vertical + vz_ned)
 
+    def hold_position(self, *, vz_ned: float = 0.0) -> None:
+        """Keep streaming a zero horizontal velocity setpoint in GUIDED."""
+        self._vel_stream.start()
+        self.servo.send_velocity_body(0.0, 0.0, vz_ned)
+
     def stop(self) -> None:
         self._vel_stream.stop()
         self.servo.stop()

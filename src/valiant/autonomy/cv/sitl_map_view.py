@@ -10,7 +10,6 @@ import numpy as np
 from valiant.autonomy.cv.sitl_hud import (
     C_BORDER,
     C_GREEN,
-    C_MAGENTA,
     C_WALL,
     draw_compass,
     draw_corner_brackets,
@@ -98,14 +97,22 @@ def render_sitl_dashboard(
     if state:
         pill = f" {state} "
         color = state_color(state)
-        cv2.rectangle(canvas, (8, 8), (8 + len(pill) * 9 + 8, 30), color, -1, cv2.LINE_AA)
+        pill_w = min(len(pill) * 9 + 16, fov_w - 16)
+        cv2.rectangle(canvas, (8, 8), (8 + pill_w, 30), color, -1, cv2.LINE_AA)
         cv2.putText(
             canvas, pill, (12, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (20, 22, 28), 1, cv2.LINE_AA,
         )
     if mode_label:
+        tw = cv2.getTextSize(mode_label, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)[0][0]
         cv2.putText(
-            canvas, mode_label, (width - 88, 24),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (130, 138, 155), 1, cv2.LINE_AA,
+            canvas,
+            mode_label,
+            (fov_w - tw - 12, 24),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            (130, 138, 155),
+            1,
+            cv2.LINE_AA,
         )
     return canvas
 
@@ -214,12 +221,19 @@ def render_topdown(
     if not compact:
         draw_compass(img, width - 36, 52, radius=24)
     scale_m = 5.0 if view_radius_m > 15 else 2.0
-    draw_scale_bar(img, 14, height - (36 if compact else 48), scale_m, scale)
+    fh = 20 if compact else 26
+    scale_y = height - fh - 10 if compact else height - 48
+    draw_scale_bar(img, 14, scale_y, scale_m, scale)
     if pose.ok:
         wall_range = wx - pose.x
+        footer_left = (
+            f"N{pose.x:+.1f} E{pose.y:+.1f} alt{-pose.z:.1f}m | wall{wall_range:.1f}m"
+            if compact
+            else f"N {pose.x:+.1f} E {pose.y:+.1f} alt {-pose.z:.1f}m  |  wall {wall_range:.1f}m"
+        )
         draw_footer(
             img,
-            f"N {pose.x:+.1f} E {pose.y:+.1f} alt {-pose.z:.1f}m  |  wall {wall_range:.1f}m",
+            footer_left,
             right="Esri" if map_asset else "",
             compact=compact,
         )
@@ -291,18 +305,13 @@ def render_wall_side(
         pt = to_px(float(pos[0]), float(pos[2]))
         draw_target_marker(img, pt[0], pt[1], color)
 
+    wall_dist = 0.0
+    alt_m = 0.0
     if pose.ok:
         drone = to_px(pose.x, pose.z)
         draw_drone_icon(img, drone[0], drone[1], pose.yaw, scale=0.85)
         wall_dist = wx - pose.x
-        cv2.putText(
-            img, f"range {wall_dist:.1f} m", (plot_l, plot_t - 8),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.48, (220, 224, 232), 1, cv2.LINE_AA,
-        )
-        cv2.putText(
-            img, f"alt {-pose.z:.1f} m", (drone[0] + 12, drone[1]),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.42, C_MAGENTA, 1, cv2.LINE_AA,
-        )
+        alt_m = -pose.z
 
     cv2.rectangle(img, (plot_l, plot_t), (plot_r, plot_b), (55, 62, 78), 1, cv2.LINE_AA)
     draw_corner_brackets(img, margin=6 if compact else 8, length=12 if compact else 18)
@@ -314,7 +323,11 @@ def render_wall_side(
     )
     draw_footer(
         img,
-        f"range {(wx - pose.x):.1f}m" if pose.ok else "",
+        (
+            f"range {wall_dist:.1f}m  alt {alt_m:.1f}m"
+            if pose.ok
+            else ""
+        ),
         right="wall anchor",
         compact=compact,
     )

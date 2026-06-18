@@ -11,7 +11,9 @@ mavlink:
   sitl_fallback: "udpin:127.0.0.1:14550"
 
 sitl:
-  takeoff_alt_m: 3.0                    # NAV_TAKEOFF before velocity commands (SITL)
+  takeoff_alt_m: 5.0                    # NAV_TAKEOFF — start high, descend near wall
+  cruise_alt_m: 5.0                     # hold until within descent_wall_range_m
+  descent_wall_range_m: 4.5            # begin aligning to target altitude inside this range
   velocity_local_ned: false             # BODY_NED — ArduCopter GUIDED default for offboard vel
   preflight_timeout_s: 75               # arm + takeoff (cold EKF can take ~30s)
   ekf_wait_s: 45                        # wait for EKF3/GPS before first arm
@@ -31,11 +33,13 @@ sitl:
   creep_speed: 0.10                     # slow advance toward target when far
   home_south_limit_m: -1.0               # never linger south of home
   approach_slow_zone_m: 2.5              # taper approach speed inside this range (m)
-  min_ground_clearance_m: 2.0            # minimum altitude AGL during approach (m)
-  altitude_kp: 0.18                      # NED vz gain to level with target height
-  max_vz: 0.08                           # cap vertical speed (m/s)
-  retreat_alt_m: 2.5                     # climb to this after each kill (m AGL)
-  retreat_home_north_m: 1.0               # back south to this N before next search
+  min_ground_clearance_m: 1.0            # absolute floor AGL (targets can be below 2 m)
+  altitude_kp: 0.22                      # NED vz gain to level with target height
+  max_vz: 0.14                           # cap vertical speed (m/s) — safe descent
+  alt_offset_m: -0.15                    # slight bias downward so AIMING settles closer to target center
+  retreat_alt_m: 5.0                     # climb after each kill before next search
+  retreat_home_north_m: 4.0               # back south to this N before next search
+  complete_hold_s: 5.0                   # keep streaming zero velocity briefly before mission exit
 
 gcs_monitor:
   port: 14560
@@ -127,12 +131,17 @@ flight_profiles:
       backoff_m: 1.5
       search_speed: 0.10
       creep_speed: 0.10
+      approach_lane_y: 0.3
       approach_slow_zone_m: 3.0
-      min_ground_clearance_m: 2.0
-      altitude_kp: 0.16
-      max_vz: 0.08
-      retreat_alt_m: 2.5
-      retreat_home_north_m: 1.0
+      min_ground_clearance_m: 1.0
+      altitude_kp: 0.22
+      max_vz: 0.14
+      alt_offset_m: -0.15
+      cruise_alt_m: 5.0
+      descent_wall_range_m: 5.0
+      retreat_alt_m: 5.0
+      retreat_home_north_m: 4.0
+      complete_hold_s: 5.0
     gimbal:
       enabled: true
       channel: 9
@@ -149,7 +158,8 @@ flight_profiles:
       kd_y: 0.0014
       vel_smooth: 0.42
       max_vel: 0.15
-      approach_speed: 0.10
+      approach_speed: 0.14
+      side_clearance_m: 0.0
     metric_recon:
       mode: depth_at_target
       camera_down: false
@@ -176,11 +186,15 @@ flight_profiles:
       creep_speed: 0.10
       approach_slow_zone_m: 3.0
       approach_lane_y: 0.3
-      min_ground_clearance_m: 2.0
-      altitude_kp: 0.16
-      max_vz: 0.08
-      retreat_alt_m: 2.5
-      retreat_home_north_m: 1.0
+      min_ground_clearance_m: 1.0
+      altitude_kp: 0.22
+      max_vz: 0.14
+      alt_offset_m: -0.15
+      cruise_alt_m: 5.0
+      descent_wall_range_m: 5.0
+      retreat_alt_m: 5.0
+      retreat_home_north_m: 4.0
+      complete_hold_s: 5.0
     gimbal:
       enabled: true
       channel: 9
@@ -204,8 +218,8 @@ flight_profiles:
       vel_smooth: 0.42
       max_vel: 0.15
       deadband_px: 55
-      approach_speed: 0.10
-      side_clearance_m: 0.65
+      approach_speed: 0.14
+      side_clearance_m: 0.0
 
 auto_nav:
   kp_x: 0.0006                           # tuned from SITL — softer lateral gain

@@ -90,10 +90,16 @@ def scale_approach_speed(
     if wall_x is None or not pose.ok:
         spd = approach_speed
     else:
-        room = wall_x - wall_standoff_m - pose.x
+        wall_range = wall_x - pose.x
+        if fire_distance_m is not None:
+            room = wall_range - fire_distance_m
+            stop_range = fire_distance_m + 0.1
+        else:
+            room = wall_range - wall_standoff_m
+            stop_range = wall_standoff_m
         if room <= 0:
             return 0.0
-        if pose.vx > 0.03 and pose.x + pose.vx * 1.2 > wall_x - wall_standoff_m:
+        if pose.vx > 0.03 and wall_range - pose.vx * 1.2 < stop_range:
             return 0.0
         if room >= slow_zone_m:
             spd = approach_speed
@@ -119,8 +125,11 @@ def compute_altitude_vz(
     kp_z: float = 0.22,
     max_vz: float = 0.12,
     alt_offset_m: float = 0.0,
+    cruise_alt_m: float | None = None,
+    descent_wall_range_m: float = 4.5,
+    align_to_target: bool = False,
 ) -> float:
-    """NED vz (down positive): align altitude with target via gimbal-friendly standoff height."""
+    """NED vz (down positive): cruise high far from wall, descend to target altitude in close."""
     if not pose.ok:
         return 0.0
     target = nearest_active_target_ned(pose, scene.get("targets", []))
@@ -128,7 +137,20 @@ def compute_altitude_vz(
         return 0.0
 
     target_alt_m = -float(target[2])
-    desired_alt_m = max(target_alt_m + alt_offset_m, min_ground_clearance_m)
+    wall_x = wall_north_m(scene)
+    wall_range = (wall_x - pose.x) if wall_x is not None else None
+
+    descend_for_range = (
+        wall_range is not None and wall_range <= descent_wall_range_m
+    )
+    if align_to_target or descend_for_range:
+        desired_alt_m = target_alt_m + alt_offset_m
+    elif cruise_alt_m is not None:
+        desired_alt_m = cruise_alt_m
+    else:
+        desired_alt_m = target_alt_m + alt_offset_m
+
+    desired_alt_m = max(desired_alt_m, min_ground_clearance_m)
     desired_z = -desired_alt_m
     clearance_z = -min_ground_clearance_m
     current_alt_m = -pose.z
@@ -152,21 +174,28 @@ def compute_reposition_motion(
     *,
     retreat_alt_m: float = 2.5,
     retreat_home_north_m: float = 1.0,
+    lane_center_east_m: float = 0.0,
     speed: float = 0.12,
     max_vz: float = 0.12,
+    lane_tolerance_m: float = 0.35,
 ) -> tuple[float, float, float, bool]:
     """Climb and back away from wall after a kill; returns (vx, vy, vz body), done."""
     if not pose.ok:
         return 0.0, 0.0, 0.0, False
     alt_m = -pose.z
+    east_err = pose.y - lane_center_east_m
     vn = ve = 0.0
     vz = 0.0
     if pose.x > retreat_home_north_m:
         vn = -abs(speed)
     if alt_m < retreat_alt_m - 0.15:
         vz = -min(max_vz, abs(speed))
-    if abs(pose.y) > 0.4:
-        ve = -math.copysign(speed * 0.6, pose.y)
+    if abs(east_err) > lane_tolerance_m:
+        ve = -math.copysign(speed * 0.6, east_err)
     vx, vy, vz_b = ned_to_body_velocity(pose, vn, ve, vz)
-    done = pose.x <= retreat_home_north_m + 0.25 and alt_m >= retreat_alt_m - 0.2
+    done = (
+        pose.x <= retreat_home_north_m + 0.25
+        and alt_m >= retreat_alt_m - 0.2
+        and abs(east_err) <= lane_tolerance_m
+    )
     return vx, vy, vz_b, done

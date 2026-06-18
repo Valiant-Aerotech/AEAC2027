@@ -57,8 +57,10 @@ class SitlMotionConfig:
     altitude_kp: float = 0.22
     max_vz: float = 0.12
     alt_offset_m: float = 0.0
-    retreat_alt_m: float = 2.5
+    retreat_alt_m: float = 5.0
     retreat_home_north_m: float = 1.0
+    cruise_alt_m: float = 5.0
+    descent_wall_range_m: float = 4.5
 
 
 def _wall_range_m(pose: VehiclePose, scene: dict[str, Any] | None) -> float | None:
@@ -78,15 +80,16 @@ def _clamp_geofence(
     max_north_m: float,
     max_east_m: float,
     search_speed: float,
+    home_south_limit_m: float = -1.0,
 ) -> tuple[float, float, str]:
     reason = ""
     if pose.x > max_north_m:
         vn = min(vn, -abs(search_speed))
         reason = "geofence north"
-    if pose.x < -1.0:
+    if pose.x < home_south_limit_m:
         vn = max(vn, abs(search_speed) * 0.5)
         reason = reason or "geofence south"
-    east_err = pose.y - 0.0
+    east_err = pose.y
     if abs(pose.y) > max_east_m:
         ve = -math.copysign(abs(search_speed), east_err)
         reason = reason or "geofence east"
@@ -139,11 +142,25 @@ class SitlMotionStack:
             altitude_kp=float(sitl.get("altitude_kp", 0.22)),
             max_vz=float(sitl.get("max_vz", 0.12)),
             alt_offset_m=float(sitl.get("alt_offset_m", 0.0)),
-            retreat_alt_m=float(sitl.get("retreat_alt_m", 2.5)),
+            retreat_alt_m=float(sitl.get("retreat_alt_m", 5.0)),
             retreat_home_north_m=float(sitl.get("retreat_home_north_m", 1.0)),
+            cruise_alt_m=float(sitl.get("cruise_alt_m", sitl.get("takeoff_alt_m", 5.0))),
+            descent_wall_range_m=float(sitl.get("descent_wall_range_m", 4.5)),
         )
         self._search_start: float | None = None
         self._had_detection = False
+
+    def _altitude_kwargs(self, *, state: str = "", has_target: bool = False) -> dict[str, float]:
+        align = state in ("APPROACHING", "AIMING") and has_target
+        return {
+            "min_ground_clearance_m": self._cfg.min_ground_clearance_m,
+            "kp_z": self._cfg.altitude_kp,
+            "max_vz": self._cfg.max_vz,
+            "alt_offset_m": self._cfg.alt_offset_m,
+            "cruise_alt_m": self._cfg.cruise_alt_m,
+            "descent_wall_range_m": self._cfg.descent_wall_range_m,
+            "align_to_target": align,
+        }
 
     def reset_search(self) -> None:
         self._search_start = None
@@ -173,9 +190,14 @@ class SitlMotionStack:
 
         # --- Backoff (highest priority) ---
         backoff_reason = ""
-        if wall_x is not None and pose.x > wall_x - self._cfg.wall_standoff_m:
-            backoff_reason = "past wall standoff"
-        elif wall_range is not None and wall_range < self._cfg.backoff_m:
+        min_wall_range = max(self._cfg.fire_distance_m * 0.35, 0.25)
+        if wall_range is not None and wall_range < min_wall_range:
+            backoff_reason = "at wall plane"
+        elif (
+            state == "SEARCHING"
+            and wall_range is not None
+            and wall_range < self._cfg.backoff_m
+        ):
             backoff_reason = "wall backoff zone"
         elif metric is not None and metric.distance_m is not None:
             if metric.distance_m < self._cfg.fire_distance_m:
@@ -196,12 +218,7 @@ class SitlMotionStack:
             vz = 0.0
             if scene is not None:
                 vz = compute_altitude_vz(
-                    pose,
-                    scene,
-                    min_ground_clearance_m=self._cfg.min_ground_clearance_m,
-                    kp_z=self._cfg.altitude_kp,
-                    max_vz=self._cfg.max_vz,
-                    alt_offset_m=self._cfg.alt_offset_m,
+                    pose, scene, **self._altitude_kwargs(state=state, has_target=has_target)
                 )
             vx, vy, _ = ned_to_body_velocity(pose, vn, ve, vz)
             return MotionCommand(
@@ -213,16 +230,11 @@ class SitlMotionStack:
             vz = 0.0
             if scene is not None:
                 vz = compute_altitude_vz(
-                    pose,
-                    scene,
-                    min_ground_clearance_m=self._cfg.min_ground_clearance_m,
-                    kp_z=self._cfg.altitude_kp,
-                    max_vz=self._cfg.max_vz,
-                    alt_offset_m=self._cfg.alt_offset_m,
+                    pose, scene, **self._altitude_kwargs(state=state, has_target=True)
                 )
             if state == "AIMING":
                 needs_creep = False
-                if wall_range is not None and wall_range > self._cfg.wall_standoff_m + 0.4:
+                if wall_range is not None and wall_range > self._cfg.fire_distance_m + 0.2:
                     needs_creep = True
                 elif metric is not None and metric.distance_m is not None:
                     if metric.distance_m > self._cfg.fire_distance_m + 0.12:
@@ -253,8 +265,9 @@ class SitlMotionStack:
             if wall_range is not None and wall_range < self._cfg.approach_slow_zone_m:
                 if pose.vx > self._cfg.closing_rate_m_s:
                     spd = 0.0
-            if wall_range is not None and wall_range < self._cfg.wall_standoff_m + 0.3:
-                spd = 0.0
+            fire_band = self._cfg.fire_distance_m + 0.15
+            if wall_range is not None and wall_range < fire_band:
+                spd = min(spd, self._cfg.creep_speed)
             return MotionCommand(
                 RULE_FOLLOW,
                 approach_speed=spd,
@@ -287,6 +300,7 @@ class SitlMotionStack:
                         max_north_m=self._cfg.max_north_m,
                         max_east_m=self._cfg.max_east_m,
                         search_speed=self._cfg.search_speed,
+                        home_south_limit_m=self._cfg.home_south_limit_m,
                     )
                     vn, ve = _east_lane_correction(
                         pose,
@@ -295,14 +309,7 @@ class SitlMotionStack:
                         lane_center_east_m=self._cfg.lane_center_east_m,
                         creep_speed=self._cfg.creep_speed,
                     )
-                    vz = compute_altitude_vz(
-                        pose,
-                        scene,
-                        min_ground_clearance_m=self._cfg.min_ground_clearance_m,
-                        kp_z=self._cfg.altitude_kp,
-                        max_vz=self._cfg.max_vz,
-                        alt_offset_m=self._cfg.alt_offset_m,
-                    )
+                    vz = compute_altitude_vz(pose, scene, **self._altitude_kwargs())
                     vx, vy, _ = ned_to_body_velocity(pose, vn, ve, vz)
                     return MotionCommand(
                         RULE_SEARCH,
@@ -329,10 +336,7 @@ class SitlMotionStack:
                 vz = compute_altitude_vz(
                     pose,
                     scene,
-                    min_ground_clearance_m=self._cfg.min_ground_clearance_m,
-                    kp_z=self._cfg.altitude_kp * 0.5,
-                    max_vz=self._cfg.max_vz,
-                    alt_offset_m=self._cfg.alt_offset_m,
+                    **{**self._altitude_kwargs(state=state, has_target=True), "kp_z": self._cfg.altitude_kp * 0.5},
                 )
             if metric is not None:
                 return MotionCommand(
@@ -356,6 +360,7 @@ class SitlMotionStack:
             pose,
             retreat_alt_m=self._cfg.retreat_alt_m,
             retreat_home_north_m=self._cfg.retreat_home_north_m,
+            lane_center_east_m=self._cfg.lane_center_east_m,
             speed=self._cfg.search_speed,
             max_vz=self._cfg.max_vz,
         )
