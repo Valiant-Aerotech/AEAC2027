@@ -59,7 +59,6 @@ Key merge commits: `dd0402c` (feature/CV → main), `9a4eb43` (onboard-pi + feat
 ```
 src/valiant/autonomy/     # Task 2 pipeline (orchestrator, SITL, cv runtime)
 src/valiant/cv/           # Standalone CV training / inference scripts
-src/valiant/autonomy/cv-archive/   # Archived pre-merge CV layout (reference)
 config/vion.yaml          # flight_profiles: sitl, sitl_physics, vivi
 tools/launch_sitl.ps1     # WSL ArduPilot
 tools/run_sitl_mission.ps1

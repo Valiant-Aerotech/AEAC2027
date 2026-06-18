@@ -30,3 +30,6 @@ Thumbs.db
 # Test caches
 .pytest_cache/
 pytest-cache-files-*/
+
+# Generated test artifacts
+tests/output/

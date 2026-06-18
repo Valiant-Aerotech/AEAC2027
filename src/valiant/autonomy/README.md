@@ -12,7 +12,6 @@ autonomy/
   packets.py            # CVPacket, MetricPacket
   auto_nav/             # Planner, visual servo, MAVLink driver
   cv/                   # HSV, YOLO, detector, overlay UI, SITL dashboard
-  cv-archive/           # Archived CV layout (reference)
   metric_recon/         # Distance / clearance from bbox + rangefinder
   spray/                # Aim check, water trigger
   upload/               # Task 2 photo naming + Drive
