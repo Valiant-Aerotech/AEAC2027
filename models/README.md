@@ -8,7 +8,7 @@ ONNX weights are **not committed** to git (see `.gitignore`). Place trained file
 
 | File | Purpose |
 |------|---------|
-| `best.onnx` | Dry (purple) target detection — primary YOLO model (team default) |
+| `best.onnx` | Dry (purple) target detection, primary YOLO model (team default) |
 | `dry.onnx` or `dry.pt` | Alternate names (auto-detected) |
 | `shot.onnx` | Extinguished blue/wetted (optional; shot also uses HSV) |
 
@@ -23,7 +23,7 @@ cv:
 
 ## Setup
 
-1. **Your trained weights** — copy into `models/`:
+1. **Your trained weights**: copy into `models/`:
    ```powershell
    copy path\to\best.pt models\dry.pt
    ```

@@ -4,7 +4,7 @@ New recruit? Start with [WELCOME.md](WELCOME.md).
 
 ## Which branch?
 
-**Use `main`** for everything — Task 1, Task 2 autonomy, SITL, CV, and hardware docs are all integrated.
+**Use `main`** for everything: Task 1, Task 2 autonomy, SITL, CV, and hardware docs are all integrated.
 
 ```powershell
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
@@ -102,6 +102,6 @@ Tune purple/blue thresholds in `config/vion.yaml` under `cv.hsv_dry` and `cv.hsv
 
 ## Next steps for new members
 
-1. Run `python tools\conops_check.py` — confirms CONOPS config loads
-2. Run SITL mission (above) — full state machine without hardware
-3. Pick an issue from [GitHub](https://github.com/Valiant-Aerotech/AEAC2027/issues) — see [WELCOME.md](WELCOME.md)
+1. Run `python tools\conops_check.py` (confirms CONOPS config loads)
+2. Run SITL mission (above) for full state machine without hardware
+3. Pick an issue from [GitHub](https://github.com/Valiant-Aerotech/AEAC2027/issues); see [WELCOME.md](WELCOME.md)

@@ -1,6 +1,6 @@
 # Git branches
 
-**Default branch: [`main`](https://github.com/Valiant-Aerotech/AEAC2027/tree/main)** — clone and develop here.
+**Default branch: [`main`](https://github.com/Valiant-Aerotech/AEAC2027/tree/main)**. Clone and develop here.
 
 As of June 2026, `main` includes the full AEAC2027 stack:
 
@@ -14,7 +14,7 @@ As of June 2026, `main` includes the full AEAC2027 stack:
 
 | Branch | Status | Notes |
 |--------|--------|-------|
-| **`main`** | **Primary** — all features integrated | Day-to-day development target |
+| **`main`** | **Primary** (all features integrated) | Day-to-day development target |
 | `onboard-pi` | Synced with `main` | Historical name; kept for bookmarks - same tip as `main` |
 | `feature/CV` | Merged into `main` | Task 2 CV scripts (PR #80); branch may receive occasional CV-only work |
 
@@ -33,7 +33,7 @@ git pull origin main
 
 ## Virtual sim vs physical drone
 
-All modes below use **`main`** — branch choice is no longer required.
+All modes below use **`main`**. Branch choice is no longer required.
 
 | Environment | Connection | Camera | Entry |
 |-------------|------------|--------|-------|

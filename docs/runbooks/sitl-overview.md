@@ -125,14 +125,14 @@ Standalone CV training scripts live in `src/valiant/cv/` (merged from `feature/C
 | *(default)* | Hardware COM/UDP | On | scrcpy |
 | `--sitl` | `tcp:127.0.0.1:5760` | On | Profile (`sitl` / `sitl_physics`) |
 | `--sim` | Optional | **Off** | As configured |
-| `--hand-test` | Hardware | **Off** | scrcpy — gimbal + CV only |
+| `--hand-test` | Hardware | **Off** | scrcpy; gimbal + CV only |
 | `--skip-sitl-preflight` | SITL | On | Skips arm/takeoff if already airborne |
 
 ## Tests
 
 ```powershell
 # Unit (no SITL)
-.\tools\run_sitl_tests.ps1   # skips integration if SITL not running — or:
+.\tools\run_sitl_tests.ps1   # skips integration if SITL not running; or:
 $env:PYTHONPATH="src"
 python -m pytest tests/test_sitl_motion.py tests/test_sitl_search.py tests/test_sitl_dashboard.py -q
 

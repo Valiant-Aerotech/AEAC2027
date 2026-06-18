@@ -13,7 +13,7 @@ python tools\verify_env.py
 python tools\conops_check.py
 ```
 
-Read [ONBOARDING.md](ONBOARDING.md) then [docs/architecture.md](docs/architecture.md). All development is on **`main`** — see [docs/branches.md](docs/branches.md).
+Read [ONBOARDING.md](ONBOARDING.md) then [docs/architecture.md](docs/architecture.md). All development is on **`main`**; see [docs/branches.md](docs/branches.md).
 
 ## Pick your first task
 

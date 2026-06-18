@@ -2,7 +2,7 @@
 
 Valiant Aerotech competition software for AEAC 2027.
 
-**New to the team?** Start with [WELCOME.md](WELCOME.md). Clone **`main`** — it has Task 1, Task 2 autonomy, SITL, and CV.
+**New to the team?** Start with [WELCOME.md](WELCOME.md). Clone **`main`**: it has Task 1, Task 2 autonomy, SITL, and CV.
 
 ## Fleet
 
@@ -51,8 +51,8 @@ python missions\task1_vivi_survey.py               # Task 1 surveying
 ### Virtual drone (no hardware)
 
 ```powershell
-.\tools\launch_sitl.ps1          # terminal 1 — ArduPilot in WSL
-.\tools\run_sitl_mission.ps1     # terminal 2 — full mission + dashboard
+.\tools\launch_sitl.ps1          # terminal 1: ArduPilot in WSL
+.\tools\run_sitl_mission.ps1     # terminal 2: full mission + dashboard
 ```
 
 [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
