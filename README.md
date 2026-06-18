@@ -4,16 +4,6 @@ Valiant Aerotech competition software for AEAC 2027.
 
 **New to the team?** Start with [WELCOME.md](WELCOME.md).
 
-## Branches
-
-| Branch | Use |
-|--------|-----|
-| **`main`** | Integrated baseline: Task 2 autonomy, CV scripts, SITL |
-| **`onboard-pi`** | SITL + Pi companion development |
-| **`feature/CV`** | Task 2 CV training scripts (`src/valiant/cv/`) |
-
-See [docs/branches.md](docs/branches.md).
-
 ## Fleet
 
 | Drone | Role | Mission |
