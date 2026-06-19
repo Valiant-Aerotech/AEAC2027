@@ -74,6 +74,7 @@ All new autonomous navigation scripts (orbit, pattern, mission legs) must pass i
 | Duplicate `Flying forward` / `Loiter` in terminal | Double `say()` on phase change | One line per phase after dedupe fix; MP may still duplicate if `mp_use_autopilot_sysid` |
 | `Geofence - switching to loiter` early in SITL | Radius too tight vs orbit path | `sitl_orbit` profile uses 20 m geofence; field uses 12 m |
 | No `T2:` in Mission Planner | STATUSTEXT / sysid config | `python tools\valiant.py gcs verify-statustext` |
+| Exits at 10 m with `Disarmed - companion stopped` | Pilot-override poll false disarm (empty MAVLink buffer) | Pull latest; `sync_from_vehicle` seeds armed state after takeoff |
 | `Safety Lua preflight failed` at startup | SCR_ENABLE off or safety.lua missing | See **Confirm safety.lua is loaded** above; `gcs verify-safety` |
 | Overshoot to 16 m after takeoff | SITL takeoff tuning | Script shows `Descending to 10 m` and holds before forward leg |
 

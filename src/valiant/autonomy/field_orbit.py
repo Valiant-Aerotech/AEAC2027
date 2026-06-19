@@ -277,6 +277,7 @@ class FieldOrbitRunner:
     def _execute_mission(self) -> str:
         """Run one orbit cycle from GUIDED trigger through LOITER handoff."""
         x0, y0, z0, psi0 = self._wait_trigger()
+        self._pilot_monitor.sync_from_vehicle()
         self._origin = (x0, y0)
         self._start_time = time.time()
         trigger_alt = float(self._ocfg.get("trigger_alt_m", 10.0))

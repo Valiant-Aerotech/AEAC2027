@@ -94,6 +94,20 @@ def test_disarmed_override():
     assert monitor.poll() == OverrideKind.DISARMED
 
 
+def test_poll_empty_buffer_keeps_armed_snapshot():
+    """No HEARTBEAT in drain must not false-disarm when snapshot is armed."""
+    master = _FakeMaster([_FakeHb(mode_id=4, armed=True)])
+    monitor = PilotOverrideMonitor(master, {"field_orbit": {"pilot": {}}})
+    assert monitor.poll() == OverrideKind.NONE
+    assert monitor.poll() == OverrideKind.NONE
+
+
+def test_poll_empty_buffer_stays_disarmed_when_never_synced():
+    master = _FakeMaster([], flightmode="GUIDED")
+    monitor = PilotOverrideMonitor(master, {"field_orbit": {"pilot": {}}})
+    assert monitor.poll() == OverrideKind.DISARMED
+
+
 def test_rc_channel_pwm_1_based():
     msg = _FakeRc({8: 1500})
     assert _rc_channel_pwm(msg, 8) == 1500

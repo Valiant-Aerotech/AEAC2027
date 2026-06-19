@@ -46,9 +46,26 @@ class PilotOverrideMonitor:
     def snapshot(self) -> PilotSnapshot:
         return self._snapshot
 
+    def sync_from_vehicle(self, *, timeout_s: float = 3.0) -> bool:
+        """Refresh armed/mode from one FC HEARTBEAT (call after arm/preflight)."""
+        import time
+
+        target_sys = getattr(self._master, "target_system", 0)
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            with mavlink_io(self._master):
+                msg = self._master.recv_match(type="HEARTBEAT", blocking=True, timeout=0.5)
+            if msg is None or msg.get_srcSystem() != target_sys:
+                continue
+            armed = bool(msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED)
+            mode = _flight_mode_from_heartbeat(self._master, msg)
+            self._snapshot = PilotSnapshot(mode=mode, armed=armed, kill_active=False)
+            return True
+        return False
+
     def poll(self) -> OverrideKind:
-        mode = self._master.flightmode or "UNKNOWN"
-        armed = False
+        mode = self._master.flightmode or self._snapshot.mode or "UNKNOWN"
+        armed = self._snapshot.armed
         kill_active = False
         target_sys = getattr(self._master, "target_system", 0)
 
