@@ -8,17 +8,27 @@ param(
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
+. (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
 
 Write-Host "=== Calibration pipeline ===" -ForegroundColor Cyan
 & "$PSScriptRoot\copy_calibration_from_pi.ps1" -PiHost $PiHost -PiPath $PiPath
-
-Write-Host ""
-Write-Host "Validating (10% gate)..." -ForegroundColor Yellow
-python tools\valiant.py calibrate validate
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "FAIL: tune with tools\calibrate_depth_rgb.py and re-capture on Pi" -ForegroundColor Red
-    exit 1
+    Show-ValiantFailure "copy_calibration_from_pi failed" -Hints @(
+        "Check PiHost and SSH",
+        "Capture calibration on Pi first"
+    )
 }
 
+Write-Host ""
+Invoke-ValiantPythonStep -Label "Calibration validate (10% gate)" -Arguments @(
+    "python", "tools\valiant.py", "calibrate", "validate"
+) -Hints @(
+    "Tune: python tools\valiant.py calibrate tune",
+    "Re-capture on Pi and copy again"
+)
+
 & "$PSScriptRoot\copy_calibration_to_pi.ps1" -PiHost $PiHost -PiPath $PiPath
+if ($LASTEXITCODE -ne 0) {
+    Show-ValiantFailure "copy_calibration_to_pi failed" -Hints @("Check PiHost and SSH")
+}
 Write-Host "PASS: calibration on Pi" -ForegroundColor Green

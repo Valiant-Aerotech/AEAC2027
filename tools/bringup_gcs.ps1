@@ -2,6 +2,7 @@
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
+. (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
 
 Write-Host "=== Vion GCS first-connect bringup ===" -ForegroundColor Cyan
 Write-Host "New laptop? Run .\start.ps1 first. Scenario menu: python tools\valiant.py guide"
@@ -17,6 +18,9 @@ Write-Host ""
 
 Write-Host "2. GCS software setup..." -ForegroundColor Yellow
 & "$PSScriptRoot\setup.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Show-ValiantFailure "setup.ps1 failed" -Hints @("See errors above", "Run: .\tools\setup.ps1")
+}
 if (-not (Test-Path "config\vion_calibration.yaml")) {
     Copy-Item "config\vion_calibration.yaml.example" "config\vion_calibration.yaml"
     Write-Host "Created config\vion_calibration.yaml from example"

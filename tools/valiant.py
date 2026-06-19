@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = Path(__file__).resolve().parent
 
+from cli_diag import error, unexpected  # noqa: E402
 from guide_text import GUIDE, QUICKSTART_NEXT  # noqa: E402
 
 
@@ -60,8 +61,7 @@ def cmd_quickstart(_: argparse.Namespace) -> int:
 def cmd_setup(_: argparse.Namespace) -> int:
     ps1 = TOOLS / "setup.ps1"
     if not ps1.exists():
-        print(f"ERROR: {ps1} not found")
-        return 1
+        return error(f"{ps1} not found", "Re-clone the repo")
     return subprocess.call(
         ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1)],
         cwd=str(ROOT),
@@ -74,6 +74,10 @@ def cmd_bench_smoke(_: argparse.Namespace) -> int:
 
 def cmd_env_check(_: argparse.Namespace) -> int:
     return _run("verify_env.py")
+
+
+def cmd_diagnose(_: argparse.Namespace) -> int:
+    return _run("diagnose.py")
 
 
 def cmd_conops_check(_: argparse.Namespace) -> int:
@@ -150,8 +154,7 @@ def cmd_bringup_phase1_pi(_: argparse.Namespace) -> int:
 def cmd_sitl_setup_wsl(_: argparse.Namespace) -> int:
     ps1 = TOOLS / "setup_wsl.ps1"
     if not ps1.exists():
-        print(f"ERROR: {ps1} not found")
-        return 1
+        return error(f"{ps1} not found", r"Run from repo root")
     return subprocess.call(
         ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1)],
         cwd=str(ROOT),
@@ -198,6 +201,10 @@ def build_parser() -> argparse.ArgumentParser:
         "guide",
         help="Show scenario picker (what should I run?)",
     ).set_defaults(func=cmd_guide)
+    sub.add_parser(
+        "diagnose",
+        help="Check Windows venv, WSL SITL, and common failure points",
+    ).set_defaults(func=cmd_diagnose)
     sub.add_parser(
         "quickstart",
         help="Run env + CONOPS + safety checks, then show next steps",
@@ -294,10 +301,23 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv)
-    if args.command is None:
-        return cmd_guide(args)
-    return int(args.func(args))
+    try:
+        args = parser.parse_args(argv)
+        if args.command is None:
+            return cmd_guide(args)
+        return int(args.func(args))
+    except KeyboardInterrupt:
+        print("\nInterrupted.", file=sys.stderr)
+        return 130
+    except SystemExit as exc:
+        code = exc.code
+        if code is None:
+            return 0
+        if isinstance(code, int):
+            return code
+        return 1
+    except Exception as exc:
+        return unexpected(exc)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
+. (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
 
 function Get-NormalizedPath {
     param([string]$Path)
@@ -58,8 +59,10 @@ Write-Host "Repo: $RepoRoot"
 
 $python = Get-Command python -ErrorAction SilentlyContinue
 if (-not $python) {
-    Write-Host "ERROR: Python not found. Install Python 3.10+ and add to PATH." -ForegroundColor Red
-    exit 1
+    Show-ValiantFailure "Python not found" -Hints @(
+        "Install Python 3.10+ from https://python.org",
+        "Enable Add python.exe to PATH during install"
+    )
 }
 Write-Host "Python: $(python --version)"
 
@@ -74,8 +77,10 @@ if (-not $venvHealthy) {
     Write-Host "Creating virtual environment..."
     python -m venv .venv
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: Failed to create virtual environment." -ForegroundColor Red
-        exit 1
+        Show-ValiantFailure "Failed to create virtual environment" -Hints @(
+            "Ensure Python 3.10+ is installed",
+            "Try: python -m venv .venv"
+        )
     }
     $VenvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
 }

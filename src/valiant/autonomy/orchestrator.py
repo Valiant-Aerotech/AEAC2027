@@ -503,6 +503,46 @@ class AutoExtinguisher:
             return None
         return wall_x - self._sitl_pose.x
 
+    def _sitl_recover_startup_pose(self) -> None:
+        """After reconnect / skip-preflight: climb if grounded, back off if past wall."""
+        if not self.sitl or self._sitl_pose is None or not self._sitl_pose.ok:
+            return
+        self._refresh_sitl_pose()
+        if self._sitl_pose is None or not self._sitl_pose.ok:
+            return
+
+        sitl_cfg = self.cfg.get("sitl", {})
+        takeoff_alt = float(sitl_cfg.get("takeoff_alt_m", 5.0))
+        min_alt = takeoff_alt * 0.85
+        alt_m = -self._sitl_pose.z
+        wall_rng = self._sitl_wall_range_m()
+
+        if alt_m < min_alt:
+            print(
+                f"[SITL] Startup recovery: low altitude ({alt_m:.1f}m) — "
+                "re-running takeoff (common after exit/relaunch while SITL still running)"
+            )
+            from valiant.autonomy.sitl_preflight import arm_guided_takeoff
+
+            arm_guided_takeoff(
+                self.master,
+                takeoff_alt_m=takeoff_alt,
+                timeout_s=float(sitl_cfg.get("preflight_timeout_s", 75.0)),
+                ekf_wait_s=min(float(sitl_cfg.get("ekf_wait_s", 45.0)), 8.0),
+            )
+            self._refresh_sitl_pose()
+            return
+
+        standoff = float(sitl_cfg.get("wall_standoff_m", 1.0))
+        if wall_rng is not None and wall_rng < standoff * 0.5:
+            print(
+                f"[SITL] Startup recovery: past/near wall (range={wall_rng:.1f}m) — "
+                "entering REPOSITION"
+            )
+            self.set_state(STATE_REPOSITION)
+            if self._sitl_motion is not None:
+                self._sitl_motion.reset_search()
+
     def _ensure_sitl_guided(self, *, force: bool = False) -> None:
         if not self.sitl or self.hand_test:
             return
@@ -646,6 +686,7 @@ class AutoExtinguisher:
                 request_sitl_telemetry_streams(self.master)
                 send_gcs_heartbeat(self.master)
             self._sitl_preflight_done = True
+            self._sitl_recover_startup_pose()
             if (
                 hasattr(self.camera, "gimbal_pwm_hint")
                 and self._sitl_pose is not None

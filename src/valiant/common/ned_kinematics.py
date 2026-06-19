@@ -103,6 +103,19 @@ def wall_north_m(scene: dict[str, Any]) -> float | None:
     return float(wall.get("x_m", 5.0))
 
 
+def compute_fire_standoff_north_m(
+    scene: dict[str, Any],
+    fire_distance_m: float,
+    *,
+    wall_margin_m: float = 0.0,
+) -> float | None:
+    """North (x) coordinate to hold for spray: wall plane minus fire standoff."""
+    wall_x = wall_north_m(scene)
+    if wall_x is None:
+        return None
+    return wall_x - fire_distance_m - wall_margin_m
+
+
 def compute_approach_goal(
     pose: VehiclePose,
     target_ned: tuple[float, float, float],
@@ -231,6 +244,8 @@ def scale_speed_by_range(
     wall_x = wall_north_m(scene) if scene else None
     if wall_x is not None and pose.ok:
         wall_range = wall_x - pose.x
+        if wall_range <= 0:
+            return 0.0
         if fire_distance_m is not None:
             room = wall_range - fire_distance_m
             stop_range = fire_distance_m + 0.1

@@ -187,18 +187,31 @@ class SitlMotionStack:
 
         wall_range = _wall_range_m(pose, scene)
         wall_x = wall_north_m(scene) if scene else None
+        fire_band = self._cfg.fire_distance_m + 0.15
+        in_fire_band = (
+            metric is not None
+            and metric.planner_range_m() is not None
+            and metric.planner_range_m() <= fire_band
+        )
 
         # --- Backoff (highest priority) ---
         backoff_reason = ""
-        min_wall_range = max(self._cfg.fire_distance_m * 0.35, 0.25)
-        if wall_range is not None and wall_range < min_wall_range:
-            backoff_reason = "at wall plane"
-        elif (
-            state == "SEARCHING"
-            and wall_range is not None
-            and wall_range < self._cfg.backoff_m
-        ):
-            backoff_reason = "wall backoff zone"
+        if wall_range is not None:
+            if wall_range <= 0:
+                backoff_reason = "past wall plane"
+            elif wall_range < self._cfg.wall_standoff_m:
+                # Allow final creep in fire band; block overshoot from SEARCH or far approach.
+                if not (
+                    state in ("AIMING", "APPROACHING")
+                    and has_target
+                    and in_fire_band
+                ):
+                    backoff_reason = "inside wall standoff"
+            elif (
+                state == "SEARCHING"
+                and wall_range < self._cfg.backoff_m
+            ):
+                backoff_reason = "wall backoff zone"
         elif metric is not None and metric.planner_range_m() is not None:
             if metric.planner_range_m() < self._cfg.fire_distance_m:
                 backoff_reason = "inside fire distance"
@@ -277,6 +290,8 @@ class SitlMotionStack:
             fire_band = self._cfg.fire_distance_m + 0.15
             if wall_range is not None and wall_range < fire_band:
                 spd = min(spd, self._cfg.creep_speed)
+            if wall_range is not None and wall_range <= self._cfg.fire_distance_m * 0.5:
+                spd = 0.0
             return MotionCommand(
                 RULE_FOLLOW,
                 approach_speed=spd,

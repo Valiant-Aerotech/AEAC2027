@@ -190,6 +190,8 @@ Tests include timeline synthetic reaching `APPROACHING` and `COMPLETE` (spray di
 
 ## Troubleshooting
 
+**First step for any failure:** `python tools\valiant.py diagnose` (checks venv, WSL, arducopter, log tails).
+
 | Issue | Fix |
 |-------|-----|
 | `WSL setup failed` with no build log | Check `~/.valiant_sitl_setup.log` in Ubuntu (`tail -50`). Often sudo password, CRLF on `/mnt/c`, or `.profile` sourcing — fixed in latest `setup_wsl.sh` (pull + re-run) |

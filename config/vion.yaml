@@ -39,7 +39,7 @@ sitl:
   alt_offset_m: -0.15                    # slight bias downward so AIMING settles closer to target center
   alt_align_tolerance_m: 0.25              # SITL fire gate on metric altitude alignment
   retreat_alt_m: 5.0                     # climb after each kill before next search
-  retreat_home_north_m: 4.0               # back south to this N before next search
+      retreat_home_north_m: 3.0               # staging south of wall between targets (was 4.0, too close)
   complete_hold_s: 5.0                   # keep streaming zero velocity briefly before mission exit
 
 gcs_monitor:
@@ -144,7 +144,7 @@ flight_profiles:
       cruise_alt_m: 5.0
       descent_wall_range_m: 5.0
       retreat_alt_m: 5.0
-      retreat_home_north_m: 4.0
+      retreat_home_north_m: 3.0
       complete_hold_s: 5.0
     gimbal:
       enabled: true
@@ -156,13 +156,13 @@ flight_profiles:
       deadband_px: 40
     auto_nav:
       approach_timeout_s: 90
-      kp_x: 0.0006
-      kp_y: 0.0006
-      kd_x: 0.0014
-      kd_y: 0.0014
-      vel_smooth: 0.42
-      max_vel: 0.15
-      approach_speed: 0.14
+      kp_x: 0.00045
+      kp_y: 0.00045
+      kd_x: 0.0018
+      kd_y: 0.0018
+      vel_smooth: 0.55
+      max_vel: 0.12
+      approach_speed: 0.10
       side_clearance_m: 0.0
     metric_recon:
       mode: depth_at_target
@@ -197,7 +197,7 @@ flight_profiles:
       cruise_alt_m: 5.0
       descent_wall_range_m: 5.0
       retreat_alt_m: 5.0
-      retreat_home_north_m: 4.0
+      retreat_home_north_m: 3.0
       complete_hold_s: 5.0
     gimbal:
       enabled: true
@@ -215,14 +215,14 @@ flight_profiles:
       max_frames_without_target: 60
     auto_nav:
       approach_timeout_s: 90
-      kp_x: 0.0006
-      kp_y: 0.0006
-      kd_x: 0.0014
-      kd_y: 0.0014
-      vel_smooth: 0.42
-      max_vel: 0.15
+      kp_x: 0.00045
+      kp_y: 0.00045
+      kd_x: 0.0018
+      kd_y: 0.0018
+      vel_smooth: 0.55
+      max_vel: 0.12
       deadband_px: 55
-      approach_speed: 0.14
+      approach_speed: 0.10
       side_clearance_m: 0.0
 
   indoor:

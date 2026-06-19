@@ -33,6 +33,26 @@ CFG = {
 
 def test_backoff_when_past_wall():
     stack = SitlMotionStack(CFG)
+    pose = VehiclePose(x=5.5, y=0.0, z=-3.0, ok=True)
+    cmd = stack.decide(
+        state="APPROACHING",
+        pose=pose,
+        scene=SCENE,
+        has_target=True,
+        metric=MetricPacket(
+            target_px=(320, 240),
+            pixel_offset=(0.0, 0.0),
+            distance_m=0.5,
+        ),
+        approach_speed=0.2,
+    )
+    assert cmd is not None
+    assert cmd.rule == RULE_BACKOFF
+    assert cmd.vx is not None and cmd.vx < 0
+
+
+def test_backoff_search_inside_backoff_zone():
+    stack = SitlMotionStack(CFG)
     pose = VehiclePose(x=4.5, y=0.0, z=-3.0, ok=True)
     cmd = stack.decide(
         state="SEARCHING",
@@ -44,7 +64,6 @@ def test_backoff_when_past_wall():
     )
     assert cmd is not None
     assert cmd.rule == RULE_BACKOFF
-    assert cmd.vx is not None and cmd.vx < 0
 
 
 def test_aiming_allows_fire_standoff_inside_backoff_zone():

@@ -60,6 +60,8 @@ If the script says Ubuntu not detected but you have an Ubuntu tab: open the **Ub
 
 Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md)
 
+**Something failed?** Run `python tools\valiant.py diagnose` for a structured checklist (venv, WSL, arducopter, logs).
+
 ### Run a virtual mission (after WSL setup)
 
 **Terminal 1** - start ArduPilot in WSL (leave running):

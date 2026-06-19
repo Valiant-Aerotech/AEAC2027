@@ -10,6 +10,7 @@ ONE-TIME SETUP (new laptop)
 
 NO DRONE - try software on this laptop
   python tools\\valiant.py quickstart
+  python tools\\valiant.py diagnose      # if something fails
   python tools\\valiant.py bench cv --camera 0
   python tools\\valiant.py bench metric --camera 0
 

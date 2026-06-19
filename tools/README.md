@@ -18,6 +18,7 @@ No arguments also prints the guide. First laptop setup: `.\start.ps1` from repo 
 |----------|-----|
 | **Brand new laptop** | `.\start.ps1` |
 | **Check install (no drone)** | `python tools\valiant.py quickstart` |
+| **Something failed?** | `python tools\valiant.py diagnose` |
 | **Webcam / CV test** | `python tools\valiant.py bench cv --camera 0` |
 | **Virtual full mission** | Once: `.\tools\setup_wsl.ps1` then Terminal 1: `launch_sitl.ps1` -> Terminal 2: `valiant sitl mission` |
 | **First drone connect (GCS)** | `python tools\valiant.py bringup phase1` |

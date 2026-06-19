@@ -7,12 +7,14 @@ import math
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from valiant.common.ned_kinematics import (
     ApproachPhase,
     VehiclePose,
     compute_approach_goal,
     compute_altitude_vz,
+    compute_fire_standoff_north_m,
     distance_3d,
     ned_to_body_velocity,
     ned_to_body_vector,
@@ -78,3 +80,7 @@ def test_ned_to_body_velocity_yaw_only_matches_horizontal():
 
 def test_wall_north_from_scene():
     assert wall_north_m(SCENE) == 5.0
+
+
+def test_fire_standoff_north():
+    assert compute_fire_standoff_north_m(SCENE, 0.8) == pytest.approx(4.2)

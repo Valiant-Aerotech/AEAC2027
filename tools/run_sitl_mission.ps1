@@ -13,7 +13,7 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
-$env:PYTHONPATH = "src"
+. (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
 
 if ($SkipArm) {
     $SkipPreflight = $true
@@ -62,7 +62,7 @@ if (-not $NoMonitor) {
         $portBusy = $true
     }
     if ($portBusy) {
-        Write-Host "Telemetry monitor already on UDP $monitorPort - skipping new window" -ForegroundColor Yellow
+        Write-ValiantWarn "Telemetry monitor already on UDP $monitorPort - skipping new window"
     }
     else {
         Start-Process powershell -ArgumentList @(
@@ -73,9 +73,5 @@ if (-not $NoMonitor) {
     }
 }
 
-Write-Host "SITL mission profile=$Profile max-targets=$MaxTargets (daily driver: -Profile sitl; geometry: -Physics)"
-Write-Host "Starting SITL mission (arm/takeoff inside orchestrator): $($missionArgs -join ' ')"
-python @missionArgs
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Mission exited with code $LASTEXITCODE"
-}
+Write-Host "SITL mission profile=$Profile max-targets=$MaxTargets"
+Invoke-ValiantMissionPython -MissionArgs $missionArgs -Label "SITL mission"

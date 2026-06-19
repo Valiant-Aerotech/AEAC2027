@@ -3,6 +3,11 @@
 # Invoked from Windows: .\tools\setup_wsl.ps1
 set -euo pipefail
 
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "$_SCRIPT_DIR/common.sh"
+VALIANT_LOG="$HOME/.valiant_sitl_setup.log"
+
 ARDUPILOT_DIR="${ARDUPILOT_DIR:-$HOME/ardupilot}"
 MARKER="$HOME/.valiant_ardupilot_sitl_built"
 PREREQS_MARKER="$HOME/.valiant_ardupilot_prereqs_done"
@@ -14,6 +19,7 @@ on_err() {
   echo ""
   echo "ERROR: setup failed at line ${BASH_LINENO[0]} (exit $rc)"
   echo "Full session log: $SETUP_LOG"
+  valiant_hint "Windows: python tools/valiant.py diagnose"
   exit "$rc"
 }
 trap on_err ERR
@@ -144,10 +150,8 @@ else
 fi
 
 cd "$ARDUPILOT_DIR"
-if [[ ! -f Tools/environment_install/install-prereqs-ubuntu.sh ]]; then
-  echo "ERROR: install-prereqs-ubuntu.sh not found in $ARDUPILOT_DIR"
-  exit 1
-fi
+valiant_require_file "Tools/environment_install/install-prereqs-ubuntu.sh" "ArduPilot install-prereqs script" \
+  "Re-clone: rm -rf ~/ardupilot && re-run .\\tools\\setup_wsl.ps1"
 
 echo ""
 echo "[3/4] ArduPilot Linux prereqs (SITL-only; may take several minutes on first run)..."
