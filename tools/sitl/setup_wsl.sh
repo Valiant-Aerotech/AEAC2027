@@ -9,9 +9,6 @@ PREREQS_MARKER="$HOME/.valiant_ardupilot_prereqs_done"
 BUILD_LOG="$HOME/.valiant_sitl_build.log"
 SETUP_LOG="$HOME/.valiant_sitl_setup.log"
 
-# Line-buffered log (PowerShell->WSL often buffers stdout until exit).
-exec > >(tee -a "$SETUP_LOG") 2>&1
-
 on_err() {
   local rc=$?
   echo ""

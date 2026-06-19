@@ -76,11 +76,22 @@ Write-Host "(Repo stays on Windows; only ArduPilot clones in WSL ~/ardupilot.)" 
 Write-Host "(First run: build can take 15-30 minutes.)" -ForegroundColor DarkGray
 Write-Host ""
 
+function Test-ValiantSitlBuilt {
+    param([string]$DistroName)
+    wsl -d $DistroName bash -lc "test -x ~/ardupilot/build/sitl/bin/arducopter" 2>$null | Out-Null
+    return ($LASTEXITCODE -eq 0)
+}
+
 $ShForward = $ShWin -replace '\\', '/'
 $WslScript = (wsl -d $distro wslpath -a $ShForward).Trim()
-# Strip CRLF when repo lives on /mnt/c (Windows checkout); avoids silent bash failures.
-$bashCmd = "sed 's/\r$//' '$WslScript' | bash -s"
+# Strip CRLF when repo lives on /mnt/c. Tee in this shell (not inside bash) avoids SIGPIPE false failures.
+$bashCmd = "set -o pipefail; sed 's/\r$//' '$WslScript' | bash -s 2>&1 | tee -a ~/.valiant_sitl_setup.log; exit `${PIPESTATUS[1]}"
 $code = Invoke-ValiantWsl -WslArgs @("bash", "-lc", $bashCmd)
+if ($code -ne 0 -and (Test-ValiantSitlBuilt $distro)) {
+    Write-Host ""
+    Write-Host "Note: setup script exit code was $code but arducopter is built; continuing." -ForegroundColor Yellow
+    $code = 0
+}
 if ($code -ne 0) {
     Write-Host ""
     Write-Host "WSL setup failed. See docs\runbooks\sitl-wsl.md" -ForegroundColor Red
