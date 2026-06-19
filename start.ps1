@@ -9,7 +9,7 @@ $RepoRoot = $PSScriptRoot
 Set-Location $RepoRoot
 
 Write-Host ""
-Write-Host "=== Valiant AEAC2027 — Start ===" -ForegroundColor Cyan
+Write-Host "=== Valiant AEAC2027 - Start ===" -ForegroundColor Cyan
 Write-Host "Repo: $RepoRoot"
 Write-Host ""
 
@@ -20,21 +20,24 @@ if (-not $python) {
 }
 
 $VenvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
-if (-not $SkipSetup -and -not (Test-Path $VenvPython)) {
-    Write-Host "No virtual environment found — running setup..." -ForegroundColor Yellow
-    & "$RepoRoot\tools\setup.ps1"
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ((-not $SkipSetup) -and (-not (Test-Path $VenvPython))) {
+    Write-Host "No virtual environment found - running setup..." -ForegroundColor Yellow
+    & (Join-Path $RepoRoot "tools\setup.ps1")
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
 if (Test-Path $VenvPython) {
     $py = $VenvPython
-} else {
+}
+else {
     $py = "python"
 }
 
 Write-Host ""
 Write-Host "Running quickstart checks..." -ForegroundColor Yellow
-& $py tools\valiant.py quickstart
+& $py (Join-Path $RepoRoot "tools\valiant.py") quickstart
 $code = $LASTEXITCODE
 
 Write-Host ""

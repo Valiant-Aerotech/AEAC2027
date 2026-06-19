@@ -3,7 +3,7 @@ $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $ShWin = Join-Path $Root "tools\sitl\launch_sitl.sh"
 
 Write-Host "Starting ArduPilot SITL in WSL..."
-Write-Host "Requires ~/ardupilot in WSL — see docs\runbooks\sitl-wsl.md"
+Write-Host "Requires ~/ardupilot in WSL - see docs\runbooks\sitl-wsl.md"
 Write-Host "Companion connects: tcp:127.0.0.1:5760 (no MAVProxy required)"
 Write-Host ""
 

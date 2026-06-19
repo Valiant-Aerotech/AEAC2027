@@ -62,7 +62,7 @@ if (-not $NoMonitor) {
         $portBusy = $true
     }
     if ($portBusy) {
-        Write-Host "Telemetry monitor already on UDP $monitorPort — skipping new window" -ForegroundColor Yellow
+        Write-Host "Telemetry monitor already on UDP $monitorPort - skipping new window" -ForegroundColor Yellow
     }
     else {
         Start-Process powershell -ArgumentList @(
