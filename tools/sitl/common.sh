@@ -2,6 +2,15 @@
 # Shared diagnostics for Valiant WSL bash scripts (source, do not execute).
 # Usage: source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
+valiant_script_dir() {
+  local src="${1:-${BASH_SOURCE[1]:-${BASH_SOURCE[0]:-}}}"
+  if [[ -n "$src" ]]; then
+    cd "$(dirname "$src")" && pwd
+  else
+    echo "${VALIANT_SITL_SCRIPT_DIR:-}"
+  fi
+}
+
 VALIANT_LOG="${VALIANT_LOG:-$HOME/.valiant_wsl_last.log}"
 VALIANT_DOC="${VALIANT_DOC:-docs/runbooks/sitl-wsl.md}"
 

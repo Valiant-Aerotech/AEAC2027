@@ -143,7 +143,15 @@ function Invoke-ValiantWslBashScript {
         }) -join ' '
         $argSuffix = " $quoted"
     }
-    $bashCmd = "set -o pipefail; sed 's/\r$//' '$WslScript' | bash -s$argSuffix 2>&1 | tee -a $LogFile; exit `${PIPESTATUS[1]}"
+    $bashCmd = @"
+set -o pipefail
+TMP=`$(mktemp)
+sed 's/\r$//' '$WslScript' > "`$TMP"
+bash "`$TMP"$argSuffix 2>&1 | tee -a $LogFile
+ec=`${PIPESTATUS[0]}
+rm -f "`$TMP"
+exit `$ec
+"@
     $code = Invoke-ValiantWsl -WslArgs @("bash", "-lc", $bashCmd)
 
     if ($code -ne 0 -and $TreatSitlBuiltAsSuccess -and (Test-ValiantSitlBuilt -DistroName $distro)) {
