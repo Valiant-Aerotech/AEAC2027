@@ -60,7 +60,15 @@ Equivalent: `.\tools\run_sitl_mission.ps1`
 python tools\valiant.py sitl run config\sitl_missions\example_wall.yaml
 ```
 
-Copy and edit `config/sitl_missions/example_wall.yaml` for experiments.
+**GUIDED box pattern** (no CV, motion + turns + LOITER):
+
+```powershell
+python tools\valiant.py sitl pattern
+```
+
+Equivalent: `.\tools\run_sitl_pattern.ps1`. Reference config: `config/sitl_missions/pattern_box.yaml`.
+
+Copy and edit `config/sitl_missions/example_wall.yaml` for fire-mission experiments.
 
 This runs `missions/task2_vion_auto_extinguish.py --sitl --profile sitl` with:
 
@@ -84,6 +92,7 @@ Configured in `config/vion.yaml` under `flight_profiles`:
 |---------|---------|--------|-------------|----------|
 | **`sitl`** (default) | `run_sitl_mission.ps1` | Timeline synthetic + world scene | JSON keyframes **linked to mavlink pose** | Fast mission logic, dashboard, single-target default |
 | **`sitl_physics`** | `run_sitl_mission.ps1 -Physics` | Pose + gimbal projection | `sitl_physics_wall.json` | Geometry, approach tuning, harder CV |
+| **Pattern only** | `valiant sitl pattern` | None | N/A | GUIDED forward/turn box, LOITER; no CV |
 | **Video replay** | `-Video path\to\clip.mp4` | Recorded footage | N/A | Regression from bench recordings |
 | **Field** | `task2_vion_auto_extinguish.py` (no `--sitl`) | scrcpy | Real world | Competition |
 
@@ -106,8 +115,10 @@ Override only when needed: `-Scenario tests\fixtures\sitl_approach_hard.json`
 src/valiant/autonomy/
   orchestrator.py          # --sitl, preflight, dashboard, state machine
   sitl_motion.py           # Backoff → Follow → Search → Hold → Reposition (3D NED)
-  sitl_preflight.py        # EKF wait, GUIDED, arm, takeoff
+  sitl_preflight.py        # EKF wait, GUIDED, arm, takeoff, ensure_sitl_guided
+  sitl_pattern.py          # Guided box pattern + LOITER (no CV)
   sitl_search.py           # 3D search creep, approach speed, altitude
+  gcs_hud.py               # T2: STATUSTEXT for Mission Planner
 
 src/valiant/common/
   ned_kinematics.py        # Rotation matrices, 3D velocity planning, VehiclePose
@@ -122,8 +133,9 @@ tools/
   setup.ps1, setup_wsl.ps1, launch_sitl.ps1
   run_sitl_mission.ps1     # Default SITL mission
   run_sitl_mission_file.ps1  # YAML mission (valiant sitl run)
+  run_sitl_pattern.ps1     # GUIDED box pattern (valiant sitl pattern)
   bench/                   # verify_env, diagnose, CV/metric benches
-  gcs/                     # monitor, heartbeat, bringup_gcs.ps1
+  gcs/                     # monitor, verify-statustext, heartbeat, bringup_gcs.ps1
   sitl/                    # WSL bash, run_sitl_tests.ps1, map download
   bringup/, calibrate/, deploy/, dev/
 

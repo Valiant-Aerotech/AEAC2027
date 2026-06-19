@@ -35,7 +35,7 @@ The gimbal uses one AUX servo channel (set in `flight_profiles.vivi` → `gimbal
 | `SERVOn_MAX` | `2000` | Match `gimbal.pwm_max` in yaml |
 | `SERVOn_TRIM` | `1500` | Neutral / mid pitch |
 
-Replace `n` with your gimbal output number. **Do not** use motor channels (typically SERVO1–4 on quad).
+Replace `n` with your gimbal output number. **Do not** use motor channels (typically SERVO1-4 on quad).
 
 Bench-test gimbal sweep before flight:
 

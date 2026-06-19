@@ -6,11 +6,14 @@ New recruit overview: [WELCOME.md](WELCOME.md).
 
 ## Branch
 
-Use **`main`** for everything.
+Create a **feature branch** for every change. Do not commit directly to `main`.
 
 ```powershell
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
+git checkout main
+git pull origin main
+git checkout -b feature/your-name-topic
 ```
 
 Details: [docs/branches.md](docs/branches.md).

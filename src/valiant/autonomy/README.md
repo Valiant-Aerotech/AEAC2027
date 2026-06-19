@@ -18,7 +18,9 @@ autonomy/
   safety/               # Battery, geofence, timeout
   flight/               # Profile merge (sitl, vivi, …)
   sitl_motion.py        # SITL: 3D NED motion stack (Backoff → Follow → Search → Hold)
-  sitl_preflight.py     # SITL: arm / takeoff
+  sitl_preflight.py     # SITL: arm / takeoff, ensure GUIDED
+  sitl_pattern.py       # SITL: guided box pattern + LOITER (no CV)
+  gcs_hud.py            # Mission Planner T2: STATUSTEXT
   sitl_search.py        # SITL: 3D search creep + approach speed
   cv/sitl_map_view.py   # SITL: 3-panel dashboard
 
@@ -38,4 +40,4 @@ common/
 | Bench metric (3D) | `python tools/valiant.py bench metric` | `docs/interfaces.md` |
 | CV training | `python -m valiant.autonomy.cv.training.train` | `models/README.md` |
 
-Docs: [docs/branches.md](../../../docs/branches.md) (develop on **`main`**). Tools: [tools/README.md](../../../tools/README.md).
+Docs: [docs/branches.md](../../../docs/branches.md) (feature branches + PRs into `main`). Tools: [tools/README.md](../../../tools/README.md).

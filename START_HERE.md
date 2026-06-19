@@ -72,9 +72,11 @@ Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md)
 
 Wait until you see `SERIAL0 on TCP port 5760`.
 
-**Optional - Mission Planner map:** connect **TCP** `127.0.0.1:5762` (leave 5760 for the Valiant mission). Do not start a second SITL from MP Simulation tab. You should see `T2:` lines in **Messages** during the mission. Quick test: `python tools\valiant.py gcs verify-statustext` (with SITL running). Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md#mission-planner-as-gcs-viewer-optional).
+**Optional - Mission Planner map:** connect **TCP** `127.0.0.1:5762` (leave 5760 for the Valiant mission). Do not start a second SITL from MP Simulation tab. You should see plain `T2:` state lines in **Messages** during the mission. Quick test: `python tools\valiant.py gcs verify-statustext` (with SITL running). Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md#mission-planner-as-gcs-viewer-optional).
 
-**Terminal 2** - run the mission + dashboard:
+**Optional - GUIDED box pattern (no CV):** after SITL is up, `python tools\valiant.py sitl pattern` flies forward/turn legs and ends in LOITER. Good for MAVLink motion check before a full fire mission.
+
+**Terminal 2** - run the Task 2 mission + dashboard:
 
 ```powershell
 python tools\valiant.py sitl mission
@@ -105,7 +107,9 @@ python tools\valiant.py conops check
 python tools\valiant.py bench cv --camera 0
 python tools\valiant.py bench metric --camera 0
 python tools\valiant.py gcs monitor
+python tools\valiant.py gcs verify-statustext
 python tools\valiant.py sitl mission
+python tools\valiant.py sitl pattern
 python tools\valiant.py sitl run config\sitl_missions\example_wall.yaml
 python tools\valiant.py bringup phase1
 ```
@@ -119,6 +123,7 @@ Do **not** run the other `tools\*.py` files directly - use `valiant.py` subcomma
 | Problem | Fix |
 |---------|-----|
 | `start.ps1` parse error on `}` | Pull latest; scripts must be ASCII-only (no em-dash characters) |
+| Need a feature branch | `git checkout -b feature/topic` from updated `main`; PR into `main` when done |
 | `No module named valiant` | Run from repo root; use `python tools\valiant.py`, not `python valiant.py` |
 | Forgot to activate venv | Use `.\start.ps1` or `.venv\Scripts\Activate.ps1` |
 | MAVLink heartbeat fails | Set `mavlink.connection` in `config\rpas.yaml`; or use `--skip-mavlink` with `bringup phase1` on laptop-only |

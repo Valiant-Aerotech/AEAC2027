@@ -18,8 +18,10 @@ VIRTUAL DRONE (SITL) - two terminals
   One-time WSL setup:  .\\tools\\setup_wsl.ps1
                        (or: python tools\\valiant.py sitl setup-wsl)
   Terminal 1:          .\\tools\\launch_sitl.ps1
-  Terminal 2:          python tools\\valiant.py sitl mission
-                       python tools\\valiant.py sitl run config\\sitl_missions\\example_wall.yaml
+  Terminal 2 mission:  python tools\\valiant.py sitl mission
+  Terminal 2 pattern:  python tools\\valiant.py sitl pattern
+  YAML experiment:     python tools\\valiant.py sitl run config\\sitl_missions\\example_wall.yaml
+  MP STATUSTEXT test:  python tools\\valiant.py gcs verify-statustext
   Docs:                docs\\runbooks\\sitl-wsl.md
 
 FIRST CONNECT - GCS laptop + drone (props off)
