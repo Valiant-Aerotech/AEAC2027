@@ -3,7 +3,10 @@
 # Invoked from Windows: .\tools\setup_wsl.ps1
 set -euo pipefail
 
-_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_SCRIPT_DIR="${VALIANT_SITL_SCRIPT_DIR:-}"
+if [[ -z "$_SCRIPT_DIR" ]]; then
+  _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
 # shellcheck source=common.sh
 source "$_SCRIPT_DIR/common.sh"
 VALIANT_LOG="$HOME/.valiant_sitl_setup.log"

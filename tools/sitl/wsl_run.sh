@@ -12,6 +12,9 @@ SCRIPT="$1"
 LOG="$2"
 shift 2
 
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT")" && pwd)"
+export VALIANT_SITL_SCRIPT_DIR="$SCRIPT_DIR"
+
 TMP="$(mktemp)"
 cleanup() { rm -f "$TMP"; }
 trap cleanup EXIT

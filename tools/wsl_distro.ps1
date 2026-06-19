@@ -89,6 +89,13 @@ function Invoke-ValiantWsl {
         throw "No Ubuntu WSL distro found. Run: wsl -l -v"
     }
     $allArgs = @('-d', $Distro, '--') + $WslArgs
-    & wsl @allArgs
-    return $LASTEXITCODE
+    $lines = & wsl @allArgs 2>&1
+    foreach ($line in @($lines)) {
+        if ($line -is [System.Management.Automation.ErrorRecord]) {
+            Write-Host $line.ToString()
+        } else {
+            Write-Host $line
+        }
+    }
+    return [int]$LASTEXITCODE
 }

@@ -114,10 +114,8 @@ mkdir -p ~/.valiant/bin && sed 's/\r$//' '$runnerWsl' > ~/.valiant/bin/wsl_run.s
 
 function Get-ValiantWslRunnerPath {
     param([Parameter(Mandatory = $true)][string]$Distro)
-    $code = Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', 'test -x ~/.valiant/bin/wsl_run.sh')
-    if ($code -ne 0) {
-        Install-ValiantWslRunner -Distro $Distro
-    }
+    # Always sync from repo so wsl_run.sh updates apply without manual cleanup.
+    Install-ValiantWslRunner -Distro $Distro
     return '~/.valiant/bin/wsl_run.sh'
 }
 
@@ -145,16 +143,16 @@ echo -n '  ardupilot clone:   '; test -d ~/ardupilot/.git && echo OK || echo MIS
 echo -n '  venv-ardupilot:    '; test -f ~/venv-ardupilot/bin/activate && echo OK || echo MISSING
 echo -n '  prereqs marker:    '; test -f ~/.valiant_ardupilot_prereqs_done && echo OK || echo MISSING
 echo -n '  build marker:      '; test -f ~/.valiant_ardupilot_sitl_built && echo OK || echo MISSING
-"@
+"@ | Out-Null
     Write-Host ""
     Write-Host "Last WSL script log:" -ForegroundColor Yellow
-    Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', "tail -25 $LastLog 2>/dev/null || echo '(none)'")
+    Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', "tail -25 $LastLog 2>/dev/null || echo '(none)'") | Out-Null
     Write-Host ""
     Write-Host "Last setup log:" -ForegroundColor Yellow
-    Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', "tail -25 $SetupLog 2>/dev/null || echo '(none)'")
+    Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', "tail -25 $SetupLog 2>/dev/null || echo '(none)'") | Out-Null
     Write-Host ""
     Write-Host "Last build log:" -ForegroundColor Yellow
-    Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', "tail -15 $BuildLog 2>/dev/null || echo '(none)'")
+    Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', "tail -15 $BuildLog 2>/dev/null || echo '(none)'") | Out-Null
     Write-ValiantHint "Docs: docs\runbooks\sitl-wsl.md"
     Write-ValiantHint "Run: python tools\valiant.py diagnose"
 }
@@ -187,7 +185,7 @@ function Invoke-ValiantWslBashScript {
     if ($ExtraBashArgs.Count -gt 0) {
         $wslArgs += $ExtraBashArgs
     }
-    $code = Invoke-ValiantWsl -Distro $distro -WslArgs $wslArgs
+    $code = [int](Invoke-ValiantWsl -Distro $distro -WslArgs $wslArgs)
 
     if ($code -ne 0 -and $TreatSitlBuiltAsSuccess -and (Test-ValiantSitlBuilt -DistroName $distro)) {
         Write-ValiantWarn "Exit code $code but arducopter is built; continuing."

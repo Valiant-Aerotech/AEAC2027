@@ -234,6 +234,7 @@ Tests include timeline synthetic reaching `APPROACHING` and `COMPLETE` (spray di
 |-------|-----|
 | `wslpath: C:Users...` / `null-valued expression` on setup | Pull latest; scripts use pure-PS `/mnt/c/...` path mapping (no wslpath) |
 | `BASH_SOURCE[0]: unbound variable` in logs | Stale log from old launcher; pull latest, re-run `.\tools\launch_sitl.ps1` |
+| `/tmp/common.sh: No such file or directory` | Pull latest (wsl_run sets VALIANT_SITL_SCRIPT_DIR); re-run `.\tools\setup_wsl.ps1` |
 | `WSL setup failed` with no build log | Check `~/.valiant_sitl_setup.log` in Ubuntu (`tail -50`). Often sudo password, CRLF on `/mnt/c`, or `.profile` sourcing - fixed in latest `setup_wsl.sh` (pull + re-run) |
 | `WSL setup failed` after `install-prereqs-ubuntu.sh end` | Prereqs OK; waf build failed. Re-run `.\tools\setup_wsl.ps1` or manual waf commands in [If setup fails after prereqs](#if-setup-fails-after-prereqs) |
 | Build OOM / compiler killed | In Ubuntu: `./waf copter -j2` (lower parallelism) |

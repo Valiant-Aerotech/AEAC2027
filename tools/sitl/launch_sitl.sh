@@ -3,7 +3,10 @@
 # Prereq: ~/ardupilot cloned and built - see docs/runbooks/sitl-wsl.md
 set -euo pipefail
 
-_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_SCRIPT_DIR="${VALIANT_SITL_SCRIPT_DIR:-}"
+if [[ -z "$_SCRIPT_DIR" ]]; then
+  _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
 # shellcheck source=common.sh
 source "$_SCRIPT_DIR/common.sh"
 trap valiant_on_err ERR
