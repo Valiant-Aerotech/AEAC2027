@@ -30,6 +30,7 @@ from valiant.autonomy.safety.monitor import SafetyAbort, SafetyMonitor
 from valiant.autonomy.spray.actuation import WaterTrigger
 from valiant.autonomy.spray.aim import is_aimed
 from valiant.autonomy.gcs_hud import GcsHudReporter, format_sitl_status_line
+from valiant.autonomy.gimbal.servo_gimbal import GimbalController
 from valiant.autonomy.upload.drive import DriveUploader
 from valiant.common.camera_factory import (
     camera_depth_mm,
