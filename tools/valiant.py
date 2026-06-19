@@ -210,6 +210,24 @@ def cmd_sitl_run(args: argparse.Namespace) -> int:
     )
 
 
+def cmd_sitl_pattern(args: argparse.Namespace) -> int:
+    ps1 = TOOLS / "run_sitl_pattern.ps1"
+    extra: list[str] = []
+    if args.skip_preflight:
+        extra.append("-SkipPreflight")
+    if args.no_monitor:
+        extra.append("-NoMonitor")
+    if ps1.exists() and not args.extra:
+        return subprocess.call(
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1), *extra],
+            cwd=str(ROOT),
+        )
+    argv = list(args.extra or [])
+    if args.skip_preflight:
+        argv.append("--skip-preflight")
+    return _run("sitl/sitl_pattern_flight.py", argv)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="valiant",
@@ -276,6 +294,11 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--skip-preflight", action="store_true")
     sp.add_argument("--no-monitor", action="store_true")
     sp.set_defaults(func=cmd_sitl_run)
+    sp = s.add_parser("pattern", help="Guided box pattern then LOITER (no CV mission)")
+    sp.add_argument("--skip-preflight", action="store_true")
+    sp.add_argument("--no-monitor", action="store_true")
+    sp.add_argument("extra", nargs=argparse.REMAINDER)
+    sp.set_defaults(func=cmd_sitl_pattern)
     sp = s.add_parser("map", help="SITL map assets")
     sm = sp.add_subparsers(dest="map_cmd", required=True)
     sp2 = sm.add_parser("download", help="Download satellite tiles")

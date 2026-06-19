@@ -1,0 +1,21 @@
+# Guided box pattern for SITL familiarization (no CV / fire mission).
+# Run: python tools\valiant.py sitl pattern
+# Or:  .\tools\run_sitl_pattern.ps1
+#
+# Sequence (after GUIDED takeoff):
+#   forward 10 m -> right 90 deg -> forward 5 m -> left 180 deg ->
+#   forward 5 m -> left 90 deg -> forward 10 m -> LOITER
+
+name: pattern_box
+description: Guided box pattern then LOITER for manual control
+
+profile: sitl
+
+sitl:
+  takeoff_alt_m: 5.0
+  preflight_timeout_s: 75
+  ekf_wait_s: 45
+
+pattern:
+  speed_m_s: 0.45
+  yaw_rate_rad_s: 0.35

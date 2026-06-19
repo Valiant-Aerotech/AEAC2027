@@ -128,13 +128,12 @@ If 5762 fails, try **5763**, or check the ArduCopter console for `Serial port N 
 
 - Map position, altitude, heading, GUIDED mode
 - Arm/disarm state (Valiant arms during mission - avoid fighting it from MP)
-- **Messages** tab: `T2:` STATUSTEXT from the companion (orchestrator):
-  - `STATE SEARCHING->APPROACHING` on every state change
-  - `MOV follow: visual follow` / `MOV backoff: inside wall standoff` when motion changes
-  - Every ~3 s: compact status, e.g. `APPROACH N3E0 z5m tgt rng1.2m follow`
-  - In AIMING: `blk:not_aimed,too_far_wall` when fire prerequisites are not met
+- **Messages** tab: plain-language `T2:` status from Valiant (flight-line friendly):
+  - `Scanning for target`, `Moving toward target`, `Aiming at target`, `Spraying target`, etc.
+  - State changes announce the new phase immediately (no wall/range numbers)
+  - Optional multi-target: `Target 2/3: Aiming at target`
 
-SITL sends STATUSTEXT on the **5760** companion link **and** duplicates with the autopilot sysid (comp 191) so Mission Planner on **5762** shows the same lines. Companion heartbeats use `MAV_TYPE_ONBOARD_CONTROLLER` (not GCS).
+SITL sends STATUSTEXT on the **5760** companion link **and** duplicates with the autopilot sysid (comp 191) so Mission Planner on **5762** shows the same lines.
 
 **Verify without a full mission** (SITL running, MP on 5762):
 
@@ -169,6 +168,18 @@ python3 -m pip install --user --break-system-packages MAVProxy
 ## Run mission against SITL
 
 **No physical drone required** - SITL is a software flight controller on your laptop.
+
+### Guided box pattern (no CV / fire mission)
+
+Familiarization flight: take off in GUIDED, fly a box (10 m → right 90° → 5 m → left 180° → 5 m → left 90° → 10 m), then **LOITER** for manual control.
+
+**Terminal 2:**
+
+```powershell
+python tools\valiant.py sitl pattern
+```
+
+Or `.\tools\run_sitl_pattern.ps1`. Expect `T2:` lines like `Flying forward 10 m` and `Loiter - manual control` in Mission Planner.
 
 ### Daily driver (timeline synthetic - fast iteration)
 

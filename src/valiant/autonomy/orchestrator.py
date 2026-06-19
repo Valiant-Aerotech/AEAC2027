@@ -29,7 +29,12 @@ from valiant.autonomy.conops import (
 from valiant.autonomy.safety.monitor import SafetyAbort, SafetyMonitor
 from valiant.autonomy.spray.actuation import WaterTrigger
 from valiant.autonomy.spray.aim import is_aimed
-from valiant.autonomy.gcs_hud import GcsHudReporter, format_sitl_status_line
+from valiant.autonomy.gcs_hud import (
+    GcsHudReporter,
+    format_sitl_status_line,
+    format_state_transition,
+    human_state_label,
+)
 from valiant.autonomy.gimbal.servo_gimbal import GimbalController
 from valiant.autonomy.upload.drive import DriveUploader
 from valiant.common.camera_factory import (
@@ -217,8 +222,8 @@ class AutoExtinguisher:
             prev_state = self.state
             if new_state == STATE_SEARCHING and self.state in (STATE_APPROACHING, STATE_AIMING):
                 self._sitl_stop_motion()
-            msg = f"STATE {self.state}->{new_state}"
-            print(f">>> {msg}")
+            msg = format_state_transition(self.state, new_state)
+            print(f">>> {self.state} -> {new_state}")
             self.send_hud_message(msg, force=True)
             self.state = new_state
             self.state_start_time = time.time()
@@ -348,7 +353,8 @@ class AutoExtinguisher:
         self._last_remediate_log = time.time()
         text = ", ".join(blockers)
         print(f"[Nav] Working toward fire prerequisites: {text}")
-        self.send_hud_message(f"Nav: {text}", force=True)
+        if self.state == STATE_AIMING:
+            self.send_hud_message("Getting ready to spray", force=True)
 
     def _publish_sitl_gcs_status(
         self,
@@ -358,37 +364,11 @@ class AutoExtinguisher:
     ) -> None:
         if not self.sitl:
             return
-        pose = self._sitl_pose
-        wall_rng = self._sitl_wall_range_m()
-        blockers: tuple[str, ...] = ()
-        if self.state == STATE_AIMING and metric is not None:
-            lock_met = (
-                self.lock_start_time is not None
-                and (time.time() - self.lock_start_time) >= self.lock_duration_s
-            )
-            wall_standoff = float(self.cfg.get("sitl", {}).get("wall_standoff_m", 1.2))
-            blockers = self.planner.fire_blockers(
-                metric,
-                lock_duration_met=lock_met,
-                wall_range_m=wall_rng,
-                wall_standoff_m=wall_standoff,
-            )
-        motion_rule = ""
-        motion_reason = ""
-        if self._sitl_last_motion is not None:
-            motion_rule, motion_reason = self._sitl_last_motion
         line = format_sitl_status_line(
             state=self.state,
             target_seen=target_seen,
-            metric_range_m=metric.planner_range_m() if metric else None,
-            wall_range_m=wall_rng,
-            pose_n=pose.x if pose and pose.ok else None,
-            pose_e=pose.y if pose and pose.ok else None,
-            alt_m=-pose.z if pose and pose.ok else None,
-            vel_n=pose.vx if pose and pose.ok else None,
-            motion_rule=motion_rule,
-            motion_reason=motion_reason,
-            fire_blockers=blockers,
+            target_number=self.target_number,
+            max_targets=self.max_targets,
         )
         self.send_hud_message(line)
 
@@ -766,7 +746,7 @@ class AutoExtinguisher:
                         print(f"[SITL] Post-takeoff gimbal preset PWM={hint}")
         if self.sitl and not self.hand_test:
             self.nav.start_velocity_stream()
-        self.send_hud_message(f"MISSION {self.state}", force=True)
+        self.send_hud_message(human_state_label(self.state), force=True)
         if host == "GCS":
             print("Waiting for scrcpy window... (Ctrl+C to abort)")
         elif source in ("video", "synthetic", "synthetic_physics"):

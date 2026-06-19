@@ -11,6 +11,54 @@ from valiant.common.mavlink import GcsStatustextOptions, send_statustext_for_gcs
 HUD_PREFIX = "T2: "
 MAX_STATUSTEXT_LEN = 50
 
+# Flight-line friendly labels (no sensor numbers).
+STATE_HUD_LABELS: dict[str, str] = {
+    "SEARCHING": "Scanning for target",
+    "REPOSITION": "Heading to next target",
+    "APPROACHING": "Moving toward target",
+    "AIMING": "Aiming at target",
+    "FIRING": "Spraying target",
+    "VERIFYING": "Checking spray",
+    "CAPTURING": "Taking photo",
+    "UPLOADING": "Uploading photo",
+    "COMPLETE": "Mission complete",
+    "ABORTED": "Mission aborted",
+}
+
+
+def human_state_label(state: str) -> str:
+    """Plain-language mission state for GCS Messages."""
+    return STATE_HUD_LABELS.get(state, state.replace("_", " ").title())
+
+
+def format_state_transition(_prev_state: str, new_state: str) -> str:
+    """Announce a state change in one short sentence."""
+    return human_state_label(new_state)
+
+
+def format_sitl_status_line(
+    *,
+    state: str,
+    target_seen: bool = False,
+    target_number: int = 1,
+    max_targets: int | None = None,
+    **_ignored,
+) -> str:
+    """Periodic mission status for STATUSTEXT (body only, no prefix)."""
+    label = human_state_label(state)
+    if state == "SEARCHING" and not target_seen:
+        label = "Scanning for target"
+    elif state == "APPROACHING" and target_seen:
+        label = "Moving toward target"
+    elif state == "AIMING":
+        label = "Aiming at target"
+    if max_targets is not None and max_targets > 1:
+        prefix = f"Target {target_number}/{max_targets}: "
+        line = f"{prefix}{label}"
+    else:
+        line = label
+    return line[: MAX_STATUSTEXT_LEN - len(HUD_PREFIX.encode())]
+
 
 class GcsHudReporter:
     """Send companion STATUSTEXT (max 50 chars) without flooding the GCS."""
@@ -66,40 +114,3 @@ class GcsHudReporter:
         )
         self._last_body = body
         self._last_sent = now
-
-
-def format_sitl_status_line(
-    *,
-    state: str,
-    target_seen: bool,
-    metric_range_m: float | None = None,
-    wall_range_m: float | None = None,
-    pose_n: float | None = None,
-    pose_e: float | None = None,
-    alt_m: float | None = None,
-    vel_n: float | None = None,
-    motion_rule: str = "",
-    motion_reason: str = "",
-    fire_blockers: tuple[str, ...] = (),
-) -> str:
-    """Compact mission status for STATUSTEXT (body only, no prefix)."""
-    parts: list[str] = [state[:8]]
-    if pose_n is not None and pose_e is not None:
-        parts.append(f"N{pose_n:.0f}E{pose_e:.0f}")
-    if alt_m is not None:
-        parts.append(f"z{alt_m:.0f}m")
-    parts.append("tgt" if target_seen else "scan")
-    if metric_range_m is not None:
-        parts.append(f"rng{metric_range_m:.1f}m")
-    if wall_range_m is not None:
-        parts.append(f"wall{wall_range_m:.1f}m")
-    if motion_rule:
-        parts.append(motion_rule[:6])
-    elif vel_n is not None and abs(vel_n) > 0.04:
-        parts.append(f"vn{vel_n:+.2f}")
-    if fire_blockers:
-        parts.append("blk:" + ",".join(fire_blockers[:2])[:12])
-    elif motion_reason:
-        parts.append(motion_reason[:14])
-    line = " ".join(parts)
-    return line[: MAX_STATUSTEXT_LEN - len(HUD_PREFIX.encode())]

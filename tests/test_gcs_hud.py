@@ -2,35 +2,38 @@
 
 from __future__ import annotations
 
-from valiant.autonomy.gcs_hud import GcsHudReporter, format_sitl_status_line, HUD_PREFIX
+from valiant.autonomy.gcs_hud import (
+    GcsHudReporter,
+    format_sitl_status_line,
+    format_state_transition,
+    human_state_label,
+    HUD_PREFIX,
+)
 
 
-def test_format_sitl_status_fits_statustext():
+def test_format_sitl_status_human_readable():
     line = format_sitl_status_line(
         state="APPROACHING",
         target_seen=True,
-        metric_range_m=1.2,
-        wall_range_m=1.5,
-        pose_n=3.4,
-        pose_e=0.1,
-        alt_m=4.8,
-        vel_n=0.12,
-        motion_rule="follow",
-        motion_reason="visual follow",
     )
     assert len(f"{HUD_PREFIX}{line}") <= 50
-    assert "APPROACH" in line
-    assert "tgt" in line
+    assert line == "Moving toward target"
 
 
-def test_format_sitl_status_shows_blockers():
+def test_format_sitl_status_multi_target():
     line = format_sitl_status_line(
         state="AIMING",
         target_seen=True,
-        metric_range_m=0.9,
-        fire_blockers=("not_aimed", "too_far_wall"),
+        target_number=2,
+        max_targets=3,
     )
-    assert "blk:" in line
+    assert "Target 2/3" in line
+    assert "Aiming" in line
+
+
+def test_human_state_labels():
+    assert human_state_label("SEARCHING") == "Scanning for target"
+    assert format_state_transition("SEARCHING", "APPROACHING") == "Moving toward target"
 
 
 def test_gcs_hud_reporter_rate_limits():
