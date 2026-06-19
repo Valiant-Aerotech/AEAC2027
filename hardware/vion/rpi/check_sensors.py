@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 from valiant.autonomy.flight.profile import apply_flight_profile, mavlink_connection_for_host
 from valiant.common.camera_factory import create_camera, camera_depth_ok
 from valiant.common.config import load_config
-from valiant.common.mavlink import connect
+from valiant.common.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error
 
 
 def check_rgb(camera) -> bool:
@@ -43,15 +43,18 @@ def check_mavlink(conn: str, baud: int, *, cfg: dict | None = None) -> bool:
         master = connect(conn, baud, wait_heartbeat=True)
         print("[OK] MAVLink heartbeat received")
         if cfg is not None and cfg.get("safety", {}).get("require_lua_safety", True):
-            from valiant.autonomy.flight.fc_safety import assert_safety_lua
+            from valiant.autonomy.flight.fc_safety import SafetyPreflightError, assert_safety_lua
 
             try:
                 assert_safety_lua(master, cfg, sitl=False)
-            except RuntimeError:
+            except SafetyPreflightError:
                 master.close()
                 return False
         master.close()
         return True
+    except MavlinkConnectError as exc:
+        print_mavlink_connect_error(exc, prefix="[FAIL]")
+        return False
     except Exception as exc:
         print(f"[FAIL] MAVLink: {exc}")
         return False

@@ -45,8 +45,10 @@ from valiant.common.camera_factory import (
 )
 from valiant.common.config import load_config
 from valiant.common.mavlink import (
+    MavlinkConnectError,
     connect,
     gcs_statustext_options_from_cfg,
+    print_mavlink_connect_error,
     request_sitl_telemetry_streams,
     request_sys_status_stream,
     send_companion_heartbeat,
@@ -138,13 +140,20 @@ class AutoExtinguisher:
             if sim_mode and not sitl_mode:
                 self.master = mavutil.mavlink_connection(connection_string, baud=baudrate)
             else:
-                self.master = connect(connection_string, baudrate, wait_heartbeat=True)
+                try:
+                    self.master = connect(connection_string, baudrate, wait_heartbeat=True)
+                except MavlinkConnectError as exc:
+                    print_mavlink_connect_error(exc, prefix="[INIT]")
+                    raise SystemExit(1) from None
                 print("[INIT] Heartbeat received")
 
         if not sim_mode and not sitl_mode and cfg.get("safety", {}).get("require_lua_safety", True):
-            from valiant.autonomy.flight.fc_safety import assert_safety_lua
+            from valiant.autonomy.flight.fc_safety import SafetyPreflightError, assert_safety_lua
 
-            assert_safety_lua(self.master, cfg, sitl=False)
+            try:
+                assert_safety_lua(self.master, cfg, sitl=False)
+            except SafetyPreflightError:
+                raise SystemExit(1) from None
 
         if not sim_mode or sitl_mode:
             self.master.mav.request_data_stream_send(

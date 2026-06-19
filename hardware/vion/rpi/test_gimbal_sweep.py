@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 from valiant.autonomy.flight.profile import apply_flight_profile, mavlink_connection_for_host
 from valiant.autonomy.gimbal.servo_gimbal import GimbalController
 from valiant.common.config import load_config
-from valiant.common.mavlink import connect
+from valiant.common.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error
 
 
 def main() -> None:
@@ -31,7 +31,11 @@ def main() -> None:
 
     conn, baud = mavlink_connection_for_host(cfg)
     print(f"Connecting {conn} @ {baud} ...")
-    master = connect(conn, baud, wait_heartbeat=True)
+    try:
+        master = connect(conn, baud, wait_heartbeat=True)
+    except MavlinkConnectError as exc:
+        print_mavlink_connect_error(exc)
+        sys.exit(1)
     gimbal = GimbalController(master, cfg)
 
     steps = [

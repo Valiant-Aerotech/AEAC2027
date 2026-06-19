@@ -17,6 +17,14 @@ class SafetyLuaReport:
     warnings: list[str]
 
 
+class SafetyPreflightError(RuntimeError):
+    """Raised when safety.lua preflight checks fail."""
+
+    def __init__(self, report: SafetyLuaReport):
+        self.report = report
+        super().__init__("Safety Lua preflight failed — fix before flight")
+
+
 def fetch_param_value(master: mavutil.mavfile, name: str, *, timeout_s: float = 5.0) -> float | None:
     """Read one FC parameter by name."""
     target_sys = getattr(master, "target_system", 0)
@@ -100,7 +108,7 @@ def assert_safety_lua(
         return
     for err in report.errors:
         print(f"[Safety] FAIL: {err}")
-    raise RuntimeError("Safety Lua preflight failed — fix before flight")
+    raise SafetyPreflightError(report)
 
 
 def _mavftp_script_on_sd(

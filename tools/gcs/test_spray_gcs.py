@@ -7,7 +7,7 @@ import argparse
 import sys
 
 from valiant.common.config import load_config
-from valiant.common.mavlink import connect
+from valiant.common.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error
 from valiant.autonomy.spray.actuation import WaterTrigger
 
 
@@ -33,7 +33,12 @@ def main() -> int:
             print("Aborted.")
             return 0
 
-    master = connect(conn, baud, wait_heartbeat=True)
+    try:
+        master = connect(conn, baud, wait_heartbeat=True)
+    except MavlinkConnectError as exc:
+        print_mavlink_connect_error(exc)
+        return 1
+
     trigger = WaterTrigger(master, cfg)
     print("Firing...")
     trigger.fire(args.duration)

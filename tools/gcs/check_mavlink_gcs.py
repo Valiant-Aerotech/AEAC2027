@@ -8,7 +8,7 @@ import sys
 import time
 
 from valiant.common.config import load_config
-from valiant.common.mavlink import connect
+from valiant.common.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error
 
 
 def main() -> int:
@@ -26,9 +26,8 @@ def main() -> int:
     print(f"Connecting {conn} @ {baud} (timeout {args.timeout}s)...")
     try:
         master = connect(conn, baud, wait_heartbeat=True)
-    except Exception as exc:
-        print(f"FAIL: no heartbeat: {exc}")
-        print("Check: radio USB, COM port in config/rpas.yaml, drone powered")
+    except MavlinkConnectError as exc:
+        print_mavlink_connect_error(exc)
         return 1
 
     hb = master.recv_match(type="HEARTBEAT", blocking=True, timeout=args.timeout)

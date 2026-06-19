@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import sys
+from dataclasses import dataclass, field
 
 from pymavlink import mavutil
 
@@ -56,6 +57,104 @@ def encode_statustext(message: str, prefix: str = "") -> bytes:
     return raw.ljust(STATUSTEXT_MAX_LEN, b"\0")
 
 
+@dataclass
+class MavlinkConnectError(ConnectionError):
+    """MAVLink link could not be opened or heartbeat was not received."""
+
+    connection: str
+    baud: int
+    cause: Exception
+    attempts: int = 1
+    hints: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.hints:
+            self.hints = connection_error_hints(self.connection, self.cause)
+
+    def __str__(self) -> str:
+        return (
+            f"Could not connect to {self.connection!r} @ {self.baud} baud "
+            f"({self.cause})"
+        )
+
+
+def connection_error_hints(connection: str, cause: Exception) -> list[str]:
+    """Actionable hints for common MAVLink connection failures."""
+    hints: list[str] = []
+    cause_s = str(cause).lower()
+    conn_l = connection.lower()
+
+    if conn_l.startswith("/dev/") and sys.platform == "win32":
+        hints.append(
+            "Pi UART paths only work on the Raspberry Pi. From a Windows GCS laptop, "
+            "use the telemetry radio COM port."
+        )
+        hints.append(
+            "Example: python tools\\valiant.py gcs verify-safety --connection COM5"
+        )
+        hints.append("Set COM port in config/rpas.yaml (mavlink.connection).")
+    elif conn_l.startswith("/dev/") and (
+        "cannot find" in cause_s or "no such file" in cause_s or "not found" in cause_s
+    ):
+        hints.append(
+            "UART device missing. On Pi: FC TELEM wired to GPIO serial, serial enabled in raspi-config."
+        )
+        hints.append("Or pass --connection with the correct port.")
+
+    if conn_l.startswith("com") or "could not open port" in cause_s:
+        hints.append("Check USB telemetry radio is plugged in (Device Manager -> Ports).")
+        hints.append("Update config/rpas.yaml mavlink.connection to match (e.g. COM5).")
+
+    if conn_l.startswith("tcp:") or conn_l.startswith("udp"):
+        if "refused" in cause_s or "10061" in cause_s or "111" in cause_s:
+            hints.append("Start SITL first: .\\tools\\launch_sitl.ps1")
+        if "timeout" in cause_s or "timed out" in cause_s or "heartbeat" in cause_s:
+            hints.append("No FC heartbeat - is the vehicle powered and the link up?")
+
+    if "permission" in cause_s or "access is denied" in cause_s:
+        hints.append("Close Mission Planner or other apps using the same COM port.")
+
+    if not hints:
+        hints.append("Pass --connection to override the config default.")
+
+    return hints
+
+
+def format_mavlink_connect_error(exc: MavlinkConnectError | Exception) -> str:
+    """Multi-line user-facing message for a connect failure."""
+    if not isinstance(exc, MavlinkConnectError):
+        return f"Could not connect: {exc}"
+
+    lines = [
+        "Could not connect to flight controller",
+        f"  Connection: {exc.connection} @ {exc.baud} baud",
+        f"  Reason: {exc.cause}",
+    ]
+    if exc.attempts > 1:
+        lines.append(f"  Attempts: {exc.attempts}")
+    for hint in exc.hints:
+        lines.append(f"  -> {hint}")
+    return "\n".join(lines)
+
+
+def print_mavlink_connect_error(
+    exc: MavlinkConnectError | Exception,
+    *,
+    prefix: str = "[MAVLink]",
+) -> None:
+    """Print a friendly connect failure (no traceback)."""
+    if isinstance(exc, MavlinkConnectError):
+        print(f"{prefix} FAIL: Could not connect to flight controller")
+        print(f"  Connection: {exc.connection} @ {exc.baud} baud")
+        print(f"  Reason: {exc.cause}")
+        if exc.attempts > 1:
+            print(f"  Attempts: {exc.attempts}")
+        for hint in exc.hints:
+            print(f"  -> {hint}")
+    else:
+        print(f"{prefix} FAIL: {exc}")
+
+
 def connect(
     connection_string: str,
     baud: int = 57600,
@@ -92,7 +191,12 @@ def connect(
                     f"({exc}); retry in {retry_delay_s}s..."
                 )
                 time.sleep(retry_delay_s)
-    raise last_err  # type: ignore[misc]
+    raise MavlinkConnectError(
+        connection_string,
+        baud,
+        last_err,  # type: ignore[arg-type]
+        attempts=retries,
+    )
 
 
 def send_statustext(

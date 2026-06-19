@@ -39,13 +39,16 @@ def main() -> int:
         conn = args.connection
     cfg.setdefault("mavlink", {})["baud"] = baud
 
-    run_field_orbit(
-        connection=conn,
-        cfg=cfg,
-        sitl=False,
-        gcs_ip=args.gcs_ip,
-        skip_safety_check=args.skip_safety_check,
-    )
+    try:
+        run_field_orbit(
+            connection=conn,
+            cfg=cfg,
+            sitl=False,
+            gcs_ip=args.gcs_ip,
+            skip_safety_check=args.skip_safety_check,
+        )
+    except SystemExit as exc:
+        return int(exc.code) if exc.code is not None else 1
     return 0
 
 

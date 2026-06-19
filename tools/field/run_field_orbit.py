@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from valiant.autonomy.field_orbit import run_field_orbit  # noqa: E402
-from valiant.autonomy.flight.profile import apply_flight_profile  # noqa: E402
+from valiant.autonomy.flight.profile import apply_flight_profile, mavlink_connection_for_gcs  # noqa: E402
 from valiant.common.config import load_config  # noqa: E402
 
 
@@ -28,15 +28,21 @@ def main() -> int:
     cfg = apply_flight_profile(load_config(args.drone), args.profile)
     if args.laps is not None:
         cfg.setdefault("field_orbit", {})["laps"] = args.laps
-    mavlink = cfg.get("mavlink", {})
-    conn = args.connection or mavlink.get("rpi_connection") or mavlink.get("connection")
-    run_field_orbit(
-        connection=conn,
-        cfg=cfg,
-        sitl=False,
-        gcs_ip=args.gcs_ip,
-        skip_safety_check=args.skip_safety_check,
-    )
+    conn, baud = mavlink_connection_for_gcs(cfg)
+    if args.connection:
+        conn = args.connection
+    cfg.setdefault("mavlink", {})["baud"] = baud
+
+    try:
+        run_field_orbit(
+            connection=conn,
+            cfg=cfg,
+            sitl=False,
+            gcs_ip=args.gcs_ip,
+            skip_safety_check=args.skip_safety_check,
+        )
+    except SystemExit as exc:
+        return int(exc.code) if exc.code is not None else 1
     return 0
 
 

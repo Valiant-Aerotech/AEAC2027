@@ -15,8 +15,10 @@ sys.path.insert(0, str(ROOT / "src"))
 from valiant.common.config import load_config
 from valiant.common.mavlink import (
     GcsStatustextOptions,
+    MavlinkConnectError,
     connect,
     gcs_statustext_options_from_cfg,
+    print_mavlink_connect_error,
     send_statustext_for_gcs,
 )
 from valiant.autonomy.gcs_hud import HUD_PREFIX
@@ -108,9 +110,8 @@ def main() -> int:
     print(f"Connecting companion -> {conn}")
     try:
         master = connect(conn, wait_heartbeat=True)
-    except Exception as exc:
-        print(f"FAIL: cannot connect ({exc})")
-        print("Start SITL first: .\\tools\\launch_sitl.ps1")
+    except MavlinkConnectError as exc:
+        print_mavlink_connect_error(exc)
         return 1
 
     body = "VERIFY statustext"

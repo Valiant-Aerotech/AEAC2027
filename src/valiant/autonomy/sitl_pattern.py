@@ -10,8 +10,10 @@ from valiant.autonomy.guided_motion import GuidedMotionRunner
 from valiant.autonomy.orbit_math import wrap_pi
 from valiant.autonomy.sitl_preflight import ensure_sitl_guided
 from valiant.common.mavlink import (
+    MavlinkConnectError,
     connect,
     gcs_statustext_options_from_cfg,
+    print_mavlink_connect_error,
     request_guided_telemetry_streams,
 )
 from valiant.common.sitl_physics import wait_vehicle_pose
@@ -97,7 +99,12 @@ def run_pattern_flight(
     """Connect, take off in GUIDED, fly the default box, end in LOITER."""
     from valiant.autonomy.sitl_preflight import arm_guided_takeoff
 
-    master = connect(connection, cfg.get("mavlink", {}).get("baud", 57600))
+    baud = int(cfg.get("mavlink", {}).get("baud", 57600))
+    try:
+        master = connect(connection, baud)
+    except MavlinkConnectError as exc:
+        print_mavlink_connect_error(exc, prefix="[Pattern]")
+        raise SystemExit(1) from None
     gcs_cfg = cfg.get("gcs_monitor", {})
     hud = GcsHudReporter(
         master,
