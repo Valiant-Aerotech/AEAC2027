@@ -8,6 +8,10 @@ function Get-ValiantToolsDir {
     return $script:ValiantToolsDir
 }
 
+function Import-ValiantWslDistro {
+    . (Join-Path $script:ValiantDiagLibDir "wsl_distro.ps1")
+}
+
 function Write-ValiantError {
     param([Parameter(Mandatory = $true)][string]$Message)
     Write-Host "ERROR: $Message" -ForegroundColor Red
@@ -85,7 +89,7 @@ function Invoke-ValiantWslBashLc {
         [string]$Distro = ""
     )
     if (-not $Distro) {
-        . (Join-Path $script:ValiantToolsDir "wsl_distro.ps1")
+        Import-ValiantWslDistro
         $Distro = Get-ValiantWslDistro
     }
     if (-not $Distro) {
@@ -99,7 +103,7 @@ function Invoke-ValiantWslBashLc {
 
 function Install-ValiantWslRunner {
     param([Parameter(Mandatory = $true)][string]$Distro)
-    . (Join-Path $script:ValiantToolsDir "wsl_distro.ps1")
+    Import-ValiantWslDistro
     $runnerWin = Get-ValiantRepoPath -RelativePath "sitl\wsl_run.sh"
     Assert-ValiantFile -Path $runnerWin -Purpose "WSL runner script"
     $runnerWsl = ConvertTo-ValiantWslPath -WinPath $runnerWin
@@ -167,7 +171,7 @@ function Invoke-ValiantWslBashScript {
         [switch]$TreatSitlBuiltAsSuccess
     )
 
-    . (Join-Path $script:ValiantToolsDir "wsl_distro.ps1")
+    Import-ValiantWslDistro
 
     if (-not (Test-ValiantWslReady)) {
         Show-ValiantFailure "WSL Ubuntu not ready" -Hints @(

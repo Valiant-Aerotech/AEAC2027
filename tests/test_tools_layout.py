@@ -24,6 +24,7 @@ REPO = Path(__file__).resolve().parents[1]
         "tools/bench/diagnose.py",
         "tools/sitl/run_sitl_mission_file.py",
         "tools/dev/verify_ps1.ps1",
+        "tools/dev/audit_script_paths.py",
         "config/sitl_missions/example_wall.yaml",
     ],
 )

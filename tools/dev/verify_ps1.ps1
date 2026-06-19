@@ -61,10 +61,28 @@ if ($grepHits) {
     $pathFailed += "Raw wslpath still used in: $(($grepHits | Select-Object -ExpandProperty Path -Unique) -join ', ')"
 }
 
+$staleLibHits = Select-String -Path (Join-Path $RepoRoot "tools\**\*.ps1") -Pattern 'ValiantToolsDir.*wsl_distro|Join-Path \$PSScriptRoot "wsl_distro' -ErrorAction SilentlyContinue |
+    Where-Object { $_.Path -notlike '*\verify_ps1.ps1' }
+if ($staleLibHits) {
+    $pathFailed += "Stale wsl_distro path (use tools\lib\wsl_distro.ps1): $(($staleLibHits | Select-Object -ExpandProperty Path -Unique) -join ', ')"
+}
+
+$staleVerify = Select-String -Path (Join-Path $RepoRoot "tools\*.ps1") -Pattern '\\verify_ps1\.ps1"' -ErrorAction SilentlyContinue |
+    Where-Object { $_.Line -notmatch '\\dev\\verify_ps1' }
+if ($staleVerify) {
+    $pathFailed += "Stale verify_ps1 path (use tools\dev\verify_ps1.ps1): $(($staleVerify | Select-Object -ExpandProperty Path -Unique) -join ', ')"
+}
+
 if ($pathFailed.Count -gt 0) {
     Write-Host "FAILED: WSL path helper check" -ForegroundColor Red
     $pathFailed | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
     exit 1
+}
+
+$auditPy = Join-Path $RepoRoot "tools\dev\audit_script_paths.py"
+if (Test-Path -LiteralPath $auditPy) {
+    python $auditPy
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 Write-Host "OK: $($files.Count) PowerShell scripts parse cleanly (ASCII-only)" -ForegroundColor Green

@@ -102,7 +102,7 @@ Write-Host "Full walkthrough: START_HERE.md"
 
 Write-Host ""
 Write-Host "Verifying PowerShell scripts..." -ForegroundColor Yellow
-& "$PSScriptRoot\verify_ps1.ps1"
+& "$PSScriptRoot\dev\verify_ps1.ps1"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "WARN: verify_ps1.ps1 reported issues (see above)" -ForegroundColor Yellow
 }
