@@ -82,6 +82,12 @@ $code = Invoke-ValiantWsl -WslArgs @("bash", $WslScript)
 if ($code -ne 0) {
     Write-Host ""
     Write-Host "WSL setup failed. See docs\runbooks\sitl-wsl.md" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Last build log (WSL):" -ForegroundColor Yellow
+    wsl -d $distro bash -lc "tail -40 ~/.valiant_sitl_build.log 2>/dev/null || echo '(no build log yet - failure may be in prereqs step)'"
+    Write-Host ""
+    Write-Host "If prereqs already finished, retry build only:" -ForegroundColor Yellow
+    Write-Host "  .\tools\setup_wsl.ps1"
     exit $code
 }
 

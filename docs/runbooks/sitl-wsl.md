@@ -30,6 +30,27 @@ After reboot: open **Ubuntu** once (create Linux user), then run the **same comm
 
 First ArduPilot build often takes **15-30 minutes**. Re-runs are fast (skipped if already built).
 
+### If setup fails after prereqs
+
+If PowerShell prints `WSL setup failed` right after `install-prereqs-ubuntu.sh end`, the ArduPilot **prereqs step finished**; the **SITL waf build** (step 4) failed. Re-run from Windows:
+
+```powershell
+.\tools\setup_wsl.ps1
+```
+
+Steps 1-3 are skipped when markers exist; only the compile runs again.
+
+Manual recovery in **Ubuntu**:
+
+```bash
+source ~/venv-ardupilot/bin/activate
+cd ~/ardupilot
+./waf configure --board sitl
+./waf copter -j4
+```
+
+Success: `~/ardupilot/build/sitl/bin/arducopter` exists. Build log: `~/.valiant_sitl_build.log`.
+
 ## Manual WSL setup (optional detail)
 
 If you prefer step-by-step or the script fails, use these steps:
@@ -171,6 +192,9 @@ Tests include timeline synthetic reaching `APPROACHING` and `COMPLETE` (spray di
 
 | Issue | Fix |
 |-------|-----|
+| `WSL setup failed` after `install-prereqs-ubuntu.sh end` | Prereqs OK; waf build failed. Re-run `.\tools\setup_wsl.ps1` or manual waf commands in [If setup fails after prereqs](#if-setup-fails-after-prereqs) |
+| Build OOM / compiler killed | In Ubuntu: `./waf copter -j2` (lower parallelism) |
+| `you need to install empy` during waf | `source ~/venv-ardupilot/bin/activate` then retry build |
 | `Unable to locate package python3-future` | Fixed in latest `setup_wsl.sh` (pull repo). Re-run `.\tools\setup_wsl.ps1` |
 | `externally-managed-environment` / pip blocked | Script uses `--break-system-packages` on Noble; prefer `sudo apt install python3-empy` |
 | `No module named pip` | In **WSL**: `sudo apt install -y python3-empy` |

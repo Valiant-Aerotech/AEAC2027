@@ -50,6 +50,8 @@ cd AEAC2027
 
 Same command after a reboot if Windows asked you to restart. Open **Ubuntu** once from the Start menu to create your Linux username/password, then run `.\tools\setup_wsl.ps1` again to finish the ArduPilot build.
 
+If setup fails after a long prereqs step (`install-prereqs-ubuntu.sh end`), prereqs usually succeeded and only the SITL compile failed. **Re-run the same command** — it skips completed steps and retries the build.
+
 Equivalent: `python tools\valiant.py sitl setup-wsl`
 
 **You do not need the repo inside Ubuntu.** Clone on Windows only (`C:\Users\...\AEAC2027`). The setup script reads this folder from WSL automatically. Only ArduPilot is cloned inside Linux (`~/ardupilot`, public GitHub, no auth).
@@ -60,7 +62,7 @@ Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md)
 
 ### Run a virtual mission (after WSL setup)
 
-**Terminal 1** — start ArduPilot in WSL (leave running):
+**Terminal 1** - start ArduPilot in WSL (leave running):
 
 ```powershell
 .\tools\launch_sitl.ps1
@@ -68,7 +70,7 @@ Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md)
 
 Wait until you see `SERIAL0 on TCP port 5760`.
 
-**Terminal 2** — run the mission + dashboard:
+**Terminal 2** - run the mission + dashboard:
 
 ```powershell
 python tools\valiant.py sitl mission
