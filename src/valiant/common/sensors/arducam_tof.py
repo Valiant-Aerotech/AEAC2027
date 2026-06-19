@@ -31,7 +31,7 @@ class ArducamTofReader:
 
     def start(self) -> bool:
         if not HAVE_ARDUCAM:
-            print("[ToF] ArducamDepthCamera not installed — depth disabled")
+            print("[ToF] ArducamDepthCamera not installed - depth disabled")
             return False
         try:
             cam = ArducamCamera()

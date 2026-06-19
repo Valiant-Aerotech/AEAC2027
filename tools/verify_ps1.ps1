@@ -27,11 +27,45 @@ foreach ($f in $files) {
     }
 }
 
-if ($failed.Count -eq 0) {
-    Write-Host "OK: $($files.Count) PowerShell scripts parse cleanly (ASCII-only)" -ForegroundColor Green
-    exit 0
+if ($failed.Count -gt 0) {
+    Write-Host "FAILED: PowerShell script check" -ForegroundColor Red
+    $failed | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+    exit 1
 }
 
-Write-Host "FAILED: PowerShell script check" -ForegroundColor Red
-$failed | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
-exit 1
+. (Join-Path $RepoRoot "tools\wsl_distro.ps1")
+$pathFailed = @()
+
+$repoFromTools = Get-ValiantRepoRoot -FromScriptRoot (Join-Path $RepoRoot "tools")
+if ($repoFromTools -ne $RepoRoot) {
+    $pathFailed += "Get-ValiantRepoRoot mismatch: $repoFromTools vs $RepoRoot"
+}
+
+$sitlSh = Get-ValiantRepoPath -RelativePath "sitl\wsl_run.sh" -FromScriptRoot (Join-Path $RepoRoot "tools")
+if (-not (Test-Path -LiteralPath $sitlSh)) {
+    $pathFailed += "Get-ValiantRepoPath missing: $sitlSh"
+}
+
+$wslPath = ConvertTo-ValiantWslPath -WinPath $sitlSh
+if ($wslPath -notmatch '^/mnt/[a-z]/') {
+    $pathFailed += "ConvertTo-ValiantWslPath bad mount: $wslPath"
+}
+if ($wslPath -notmatch '/tools/sitl/wsl_run\.sh$') {
+    $pathFailed += "ConvertTo-ValiantWslPath bad suffix: $wslPath"
+}
+
+$grepHits = Select-String -Path (Join-Path $RepoRoot "tools\*.ps1"), (Join-Path $RepoRoot "tools\lib\*.ps1") -Pattern '\bwslpath\b' -ErrorAction SilentlyContinue |
+    Where-Object { $_.Path -notlike '*\verify_ps1.ps1' }
+if ($grepHits) {
+    $pathFailed += "Raw wslpath still used in: $(($grepHits | Select-Object -ExpandProperty Path -Unique) -join ', ')"
+}
+
+if ($pathFailed.Count -gt 0) {
+    Write-Host "FAILED: WSL path helper check" -ForegroundColor Red
+    $pathFailed | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
+    exit 1
+}
+
+Write-Host "OK: $($files.Count) PowerShell scripts parse cleanly (ASCII-only)" -ForegroundColor Green
+Write-Host "OK: WSL path helpers (repo root + /mnt/ conversion)" -ForegroundColor Green
+exit 0

@@ -17,5 +17,5 @@ def test_yolo_onnx_loads_and_runs():
     det = YoloOnnxDetector(MODEL, conf_thresh=0.99)
     frame = np.zeros((480, 640, 3), dtype=np.uint8)
     hit = det.detect_dry(frame)
-  # blank frame — no detection expected at high threshold
+  # blank frame - no detection expected at high threshold
     assert hit is None

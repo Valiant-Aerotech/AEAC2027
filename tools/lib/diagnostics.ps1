@@ -99,9 +99,10 @@ function Invoke-ValiantWslBashLc {
 
 function Install-ValiantWslRunner {
     param([Parameter(Mandatory = $true)][string]$Distro)
-    $runnerWin = Join-Path $script:ValiantToolsDir "sitl\wsl_run.sh"
+    . (Join-Path $script:ValiantToolsDir "wsl_distro.ps1")
+    $runnerWin = Get-ValiantRepoPath -RelativePath "sitl\wsl_run.sh"
     Assert-ValiantFile -Path $runnerWin -Purpose "WSL runner script"
-    $runnerWsl = (wsl -d $Distro wslpath -a $runnerWin).Trim()
+    $runnerWsl = ConvertTo-ValiantWslPath -WinPath $runnerWin
     $installCmd = ConvertTo-ValiantUnixShell -Text @"
 mkdir -p ~/.valiant/bin && sed 's/\r$//' '$runnerWsl' > ~/.valiant/bin/wsl_run.sh && chmod +x ~/.valiant/bin/wsl_run.sh
 "@
@@ -180,8 +181,7 @@ function Invoke-ValiantWslBashScript {
     $distro = Get-ValiantWslDistro
     Assert-ValiantFile -Path $WinScriptPath -Purpose "WSL bash script"
 
-    $ShForward = $WinScriptPath -replace '\\', '/'
-    $WslScript = (wsl -d $distro wslpath -a $ShForward).Trim()
+    $WslScript = ConvertTo-ValiantWslPath -WinPath $WinScriptPath
     $runner = Get-ValiantWslRunnerPath -Distro $distro
     $wslArgs = @('bash', $runner, $WslScript, $LogFile)
     if ($ExtraBashArgs.Count -gt 0) {

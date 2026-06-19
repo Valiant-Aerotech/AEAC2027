@@ -43,6 +43,7 @@ def main() -> int:
     all_ok = True
 
     print("Windows / repo")
+    _line(True, f"repo root: {ROOT}")
     all_ok &= _line(ROOT.joinpath("START_HERE.md").is_file(), "START_HERE.md")
     all_ok &= _line(
         ROOT.joinpath("tools/valiant.py").is_file(),
@@ -87,6 +88,11 @@ def main() -> int:
         _line(ok, f"WSL distro list ({distro or 'none'})")
 
         checks = (
+            (
+                "WSL script runner",
+                "test -x ~/.valiant/bin/wsl_run.sh",
+                r".\tools\setup_wsl.ps1",
+            ),
             ("~/ardupilot clone", "test -d ~/ardupilot/.git", r".\tools\setup_wsl.ps1"),
             (
                 "arducopter binary",
@@ -100,13 +106,13 @@ def main() -> int:
             ),
             (
                 "empy import",
-                "source ~/venv-ardupilot/bin/activate 2>/dev/null; python3 -c 'import empy'",
-                "source ~/venv-ardupilot/bin/activate",
+                "python3 -c 'import empy'",
+                "sudo apt install -y python3-empy  (in Ubuntu)",
             ),
         )
         for label, cmd, fix in checks:
             ok, _ = _wsl_ok(cmd)
-            if label.startswith("arducopter"):
+            if label.startswith("arducopter") or label.startswith("WSL script"):
                 all_ok &= _line(ok, label, fix)
             else:
                 _line(ok, label, fix if not ok else "")
@@ -122,6 +128,10 @@ def main() -> int:
             if ok and out:
                 for ln in out.splitlines():
                     print(f"    {ln}")
+                if "BASH_SOURCE[0]" in out:
+                    print(
+                        "    (stale log from old launcher - re-run .\\tools\\launch_sitl.ps1 after git pull)"
+                    )
             else:
                 print("    (empty or missing)")
 

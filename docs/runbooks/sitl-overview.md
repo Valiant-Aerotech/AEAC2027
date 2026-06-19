@@ -1,12 +1,12 @@
-# SITL overview — virtual drone + environment
+# SITL overview - virtual drone + environment
 
-Software-in-the-loop (SITL) lets you run the **full Task 2 autonomy pipeline** on a laptop: state machine, MAVLink motion, CV, metric recon, spray gating, upload — **without a physical drone or radio**.
+Software-in-the-loop (SITL) lets you run the **full Task 2 autonomy pipeline** on a laptop: state machine, MAVLink motion, CV, metric recon, spray gating, upload - **without a physical drone or radio**.
 
 ## What is simulated?
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Windows — AEAC orchestrator (Python)                           │
+│  Windows - AEAC orchestrator (Python)                           │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
 │  │ Camera sim   │  │ CV + metric  │  │ Auto-nav + motion stack│ │
 │  │ (see below)  │→ │ recon        │→ │ → pymavlink velocities │ │
@@ -14,7 +14,7 @@ Software-in-the-loop (SITL) lets you run the **full Task 2 autonomy pipeline** o
 │         ▲                           dashboard    │ tcp:5760      │
 │         │ pose-linked modes only                 ▼               │
 │  ┌──────┴───────┐                    ┌────────────────────────┐ │
-│  │ World JSON   │                    │ WSL — ArduPilot SITL     │ │
+│  │ World JSON   │                    │ WSL - ArduPilot SITL     │ │
 │  │ wall/targets │                    │ (virtual FC + dynamics)│ │
 │  └──────────────┘                    └────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
@@ -26,7 +26,7 @@ Software-in-the-loop (SITL) lets you run the **full Task 2 autonomy pipeline** o
 | Radio | COM / SiK telemetry | **TCP `127.0.0.1:5760`** |
 | Camera | Phone → scrcpy | **Synthetic timeline**, **physics camera**, or **video file** |
 | Targets / wall | Physical venue | **`tests/fixtures/sitl_*.json`** world + optional satellite map |
-| Spray | SERVO15 | Disabled (`spray.method: none`) — jumps to CAPTURE for proof photo |
+| Spray | SERVO15 | Disabled (`spray.method: none`) - jumps to CAPTURE for proof photo |
 
 No COM port, no props, no phone required for the default sim profile.
 
@@ -34,7 +34,7 @@ No COM port, no props, no phone required for the default sim profile.
 
 > **New to SITL?** Complete [START_HERE.md](../../START_HERE.md) setup first (`.\start.ps1`).
 
-**Terminal 1 — virtual flight controller (WSL):**
+**Terminal 1 - virtual flight controller (WSL):**
 
 ```powershell
 cd A:\Code\Valiant-Aerotech\AEAC2027
@@ -43,9 +43,9 @@ cd A:\Code\Valiant-Aerotech\AEAC2027
 
 Wait until ArduCopter shows `SERIAL0 on TCP port 5760`.
 
-**Optional — Mission Planner:** TCP connect to `127.0.0.1:5762` (Valiant mission stays on 5760). See [sitl-wsl.md](sitl-wsl.md#mission-planner-as-gcs-viewer-optional).
+**Optional - Mission Planner:** TCP connect to `127.0.0.1:5762` (Valiant mission stays on 5760). See [sitl-wsl.md](sitl-wsl.md#mission-planner-as-gcs-viewer-optional).
 
-**Terminal 2 — mission (Windows):**
+**Terminal 2 - mission (Windows):**
 
 ```powershell
 cd A:\Code\Valiant-Aerotech\AEAC2027

@@ -359,7 +359,7 @@ class SitlMotionStack:
                 reason="yaw scan",
             )
 
-        # --- Hold (lost target during approach — coast down, no slam-stop) ---
+        # --- Hold (lost target during approach - coast down, no slam-stop) ---
         if state in ("APPROACHING", "AIMING") and not has_target:
             vz = 0.0
             if scene is not None:

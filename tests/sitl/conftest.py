@@ -1,4 +1,4 @@
-"""SITL integration tests — require ArduPilot SITL on tcp:127.0.0.1:5760."""
+"""SITL integration tests - require ArduPilot SITL on tcp:127.0.0.1:5760."""
 
 from __future__ import annotations
 

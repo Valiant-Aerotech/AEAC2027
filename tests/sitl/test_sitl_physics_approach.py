@@ -1,4 +1,4 @@
-"""SITL physics wall approach — requires ArduPilot SITL."""
+"""SITL physics wall approach - requires ArduPilot SITL."""
 
 from __future__ import annotations
 

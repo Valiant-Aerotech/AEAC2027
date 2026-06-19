@@ -10,9 +10,9 @@ Valiant Aerotech competition software for AEAC 2027.
 
 | Drone | Role | Mission |
 |-------|------|---------|
-| **Vulcan 2** | Heavy lifter (carries Vivi) | Hardware docs only — `hardware/vulcan2/` |
-| **Vion** | Fire suppression (Pi + Pixhawk) | Task 2 — `hardware/vion/rpi/run_mission.py` |
-| **Vivi** | Surveying drone | Task 1 — `missions/task1_vivi_survey.py` |
+| **Vulcan 2** | Heavy lifter (carries Vivi) | Hardware docs only - `hardware/vulcan2/` |
+| **Vion** | Fire suppression (Pi + Pixhawk) | Task 2 - `hardware/vion/rpi/run_mission.py` |
+| **Vivi** | Surveying drone | Task 1 - `missions/task1_vivi_survey.py` |
 
 ## Quick start (new laptop)
 

@@ -1,6 +1,6 @@
 # SITL on WSL2 (Windows)
 
-> **Start here:** [sitl-overview.md](sitl-overview.md) — what is simulated, code map, profiles.  
+> **Start here:** [sitl-overview.md](sitl-overview.md) - what is simulated, code map, profiles.  
 > This page is WSL install + troubleshooting detail.
 
 Software-in-the-loop testing with **ArduPilot SITL** + AEAC orchestrator. No physical drone required.
@@ -17,7 +17,7 @@ Inspired by [Stanley](https://github.com/Matchstic/stanley) patterns; we use **p
 
 Or: `python tools\valiant.py sitl setup-wsl`
 
-**Keep the AEAC2027 repo on Windows** (e.g. `C:\Users\...\AEAC2027`). Do not clone it in Ubuntu unless you want to — PowerShell runs the WSL setup using the Windows path. Only **ArduPilot** is cloned inside WSL (`~/ardupilot` via public HTTPS, no GitHub auth).
+**Keep the AEAC2027 repo on Windows** (e.g. `C:\Users\...\AEAC2027`). Do not clone it in Ubuntu unless you want to - PowerShell runs the WSL setup using the Windows path. Only **ArduPilot** is cloned inside WSL (`~/ardupilot` via public HTTPS, no GitHub auth).
 
 If setup says Ubuntu not detected but Ubuntu is installed: open the **Ubuntu** app from Start menu once (complete Linux user setup), then re-run from PowerShell.
 
@@ -69,7 +69,7 @@ Tools/environment_install/install-prereqs-ubuntu.sh -y
 ./waf copter
 ```
 
-(`empy==3.3.4` is required by ArduPilot's waf build — install in **WSL** via `python3-empy`, not the Windows `.venv`.)
+(`empy==3.3.4` is required by ArduPilot's waf build - install in **WSL** via `python3-empy`, not the Windows `.venv`.)
 
 3. Verify from **Windows** (after SITL running):
 
@@ -90,14 +90,14 @@ cd A:\Code\Valiant-Aerotech\AEAC2027
 
 Home position is read from [`tests/fixtures/sitl_home.json`](../../tests/fixtures/sitl_home.json) (default: Newfoundland coordinates).
 
-If you see `No such file or directory` for the `.sh` path, update `launch_sitl.ps1` (uses `wslpath`) or run directly in WSL:
+If you see `No such file or directory` for the `.sh` path, pull latest (scripts map Windows paths to `/mnt/c/...` automatically) or run directly in WSL:
 
 ```bash
 cd ~/ardupilot
 ./Tools/autotest/sim_vehicle.py -v ArduCopter --no-mavproxy
 ```
 
-The ArduCopter window shows `SERIAL0 on TCP port 5760` — that is normal. AEAC connects directly; MAVProxy is **not** required.
+The ArduCopter window shows `SERIAL0 on TCP port 5760` - that is normal. AEAC connects directly; MAVProxy is **not** required.
 
 You may also see `Serial port 2 on TCP port 5762` (and sometimes 5763). Use those for **Mission Planner** so Valiant keeps 5760.
 
@@ -111,29 +111,29 @@ Do **not** start SITL from Mission Planner **and** `launch_sitl.ps1` at the same
 
 | Terminal | What |
 |----------|------|
-| 1 | `.\tools\launch_sitl.ps1` — wait for `TCP port 5760` |
-| 2 | Mission Planner — connect **TCP**, host `127.0.0.1`, port **5762** |
-| 3 | `python tools\valiant.py sitl mission` — autonomy on **5760** |
+| 1 | `.\tools\launch_sitl.ps1` - wait for `TCP port 5760` |
+| 2 | Mission Planner - connect **TCP**, host `127.0.0.1`, port **5762** |
+| 3 | `python tools\valiant.py sitl mission` - autonomy on **5760** |
 
 **Mission Planner steps:**
 
 1. Top-right connection dropdown: **TCP**
 2. Click **Connect**
 3. Host: `127.0.0.1` (WSL forwards localhost to Windows)
-4. Port: **5762** (not 5760 — that is reserved for the orchestrator)
+4. Port: **5762** (not 5760 - that is reserved for the orchestrator)
 
 If 5762 fails, try **5763**, or check the ArduCopter console for `Serial port N on TCP port XXXX`.
 
 **What you will see in Mission Planner:**
 
 - Map position, altitude, heading, GUIDED mode
-- Arm/disarm state (Valiant arms during mission — avoid fighting it from MP)
+- Arm/disarm state (Valiant arms during mission - avoid fighting it from MP)
 - **Messages** tab: `T2:` STATUSTEXT from the orchestrator (state / lock info)
 
 **What Mission Planner will not show:**
 
-- Valiant internal states (SEARCHING / APPROACHING / AIMING) — those are in the Python orchestrator and the Valiant SITL OpenCV dashboard, not MP waypoint missions
-- Synthetic CV bbox — use the Valiant dashboard window from the mission script
+- Valiant internal states (SEARCHING / APPROACHING / AIMING) - those are in the Python orchestrator and the Valiant SITL OpenCV dashboard, not MP waypoint missions
+- Synthetic CV bbox - use the Valiant dashboard window from the mission script
 
 **Alternative HUD:** `python tools\valiant.py gcs monitor` (UDP 14560) shows telemetry without Mission Planner.
 
@@ -146,9 +146,9 @@ python3 -m pip install --user --break-system-packages MAVProxy
 
 ## Run mission against SITL
 
-**No physical drone required** — SITL is a software flight controller on your laptop.
+**No physical drone required** - SITL is a software flight controller on your laptop.
 
-### Daily driver (timeline synthetic — fast iteration)
+### Daily driver (timeline synthetic - fast iteration)
 
 **Terminal 2** (from repo root):
 
@@ -157,7 +157,7 @@ cd A:\Code\Valiant-Aerotech\AEAC2027
 .\tools\run_sitl_mission.ps1
 ```
 
-Default `-Profile sitl` uses **scripted bbox timelines** (not physics-linked CV). You still get the full **Valiant SITL** dashboard (FOV + wall side + top-down), a **single-target** suppress → upload → brief hold → COMPLETE flow (override with `-MaxTargets 2`), green extinguished markers, and real MAVLink motion in SITL — without waiting for gimbal/pose-linked perception.
+Default `-Profile sitl` uses **scripted bbox timelines** (not physics-linked CV). You still get the full **Valiant SITL** dashboard (FOV + wall side + top-down), a **single-target** suppress → upload → brief hold → COMPLETE flow (override with `-MaxTargets 2`), green extinguished markers, and real MAVLink motion in SITL - without waiting for gimbal/pose-linked perception.
 
 | Label | Mode |
 |-------|------|
@@ -232,7 +232,9 @@ Tests include timeline synthetic reaching `APPROACHING` and `COMPLETE` (spray di
 
 | Issue | Fix |
 |-------|-----|
-| `WSL setup failed` with no build log | Check `~/.valiant_sitl_setup.log` in Ubuntu (`tail -50`). Often sudo password, CRLF on `/mnt/c`, or `.profile` sourcing — fixed in latest `setup_wsl.sh` (pull + re-run) |
+| `wslpath: C:Users...` / `null-valued expression` on setup | Pull latest; scripts use pure-PS `/mnt/c/...` path mapping (no wslpath) |
+| `BASH_SOURCE[0]: unbound variable` in logs | Stale log from old launcher; pull latest, re-run `.\tools\launch_sitl.ps1` |
+| `WSL setup failed` with no build log | Check `~/.valiant_sitl_setup.log` in Ubuntu (`tail -50`). Often sudo password, CRLF on `/mnt/c`, or `.profile` sourcing - fixed in latest `setup_wsl.sh` (pull + re-run) |
 | `WSL setup failed` after `install-prereqs-ubuntu.sh end` | Prereqs OK; waf build failed. Re-run `.\tools\setup_wsl.ps1` or manual waf commands in [If setup fails after prereqs](#if-setup-fails-after-prereqs) |
 | Build OOM / compiler killed | In Ubuntu: `./waf copter -j2` (lower parallelism) |
 | `you need to install empy` during waf | `source ~/venv-ardupilot/bin/activate` then retry build |
@@ -240,7 +242,7 @@ Tests include timeline synthetic reaching `APPROACHING` and `COMPLETE` (spray di
 | `externally-managed-environment` / pip blocked | Script uses `--break-system-packages` on Noble; prefer `sudo apt install python3-empy` |
 | `No module named pip` | In **WSL**: `sudo apt install -y python3-empy` |
 | `you need to install empy` | In **WSL**: `sudo apt install -y python3-empy` |
-| `mavproxy.py` not found | Expected — use `launch_sitl.ps1` (`--no-mavproxy`). Or install MAVProxy in WSL if you want map/console |
+| `mavproxy.py` not found | Expected - use `launch_sitl.ps1` (`--no-mavproxy`). Or install MAVProxy in WSL if you want map/console |
 | No heartbeat on tcp:5760 | Wait for SITL to finish boot; check WSL2 localhost forwarding |
 | First run arm timeout | Wait for EKF/GPS in SITL window; retry once, or use warm `-SkipPreflight` on second run |
 | Vehicle does not move | Must be GUIDED + armed; check monitor for `cmd` velocity |

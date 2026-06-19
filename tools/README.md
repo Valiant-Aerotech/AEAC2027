@@ -1,6 +1,6 @@
 # Valiant AEAC2027 tools
 
-**New here?** Read [START_HERE.md](../START_HERE.md) first — not this file.
+**New here?** Read [START_HERE.md](../START_HERE.md) first - not this file.
 
 ## One command to remember
 
@@ -45,7 +45,7 @@ No arguments also prints the guide. First laptop setup: `.\start.ps1` from repo 
 python tools\valiant.py --help
 ```
 
-**Do not run** `tools\verify_env.py`, `mission_monitor.py`, etc. directly — always use `valiant.py`.
+**Do not run** `tools\verify_env.py`, `mission_monitor.py`, etc. directly - always use `valiant.py`.
 
 ---
 

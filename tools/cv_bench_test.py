@@ -133,7 +133,7 @@ def main() -> int:
     if model_path:
         print(f"YOLO weights: {model_path}")
     elif cfg.get("cv", {}).get("method", "hsv") in ("yolo", "both"):
-        print("WARNING: no model in models/ (dry.pt, dry.onnx, best.pt) — will fall back to HSV")
+        print("WARNING: no model in models/ (dry.pt, dry.onnx, best.pt) - will fall back to HSV")
     frame_count = 0
 
     try:

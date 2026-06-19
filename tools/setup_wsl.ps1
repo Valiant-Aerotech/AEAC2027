@@ -6,10 +6,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "wsl_distro.ps1")
+$RepoRoot = Get-ValiantRepoRoot -FromScriptRoot $PSScriptRoot
 Set-Location $RepoRoot
 . (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
-. (Join-Path $PSScriptRoot "wsl_distro.ps1")
 
 function Test-IsAdmin {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -59,7 +59,7 @@ if (-not (Test-ValiantWslReady)) {
 $distro = Get-ValiantWslDistro
 Write-Host "Using WSL distro: $distro" -ForegroundColor Green
 
-$ShWin = Join-Path $RepoRoot "tools\sitl\setup_wsl.sh"
+$ShWin = Get-ValiantRepoPath -RelativePath "sitl\setup_wsl.sh" -FromScriptRoot $PSScriptRoot
 Write-Host "Running ArduPilot setup inside WSL..." -ForegroundColor Yellow
 Write-Host "(First run: build can take 15-30 minutes.)" -ForegroundColor DarkGray
 Write-Host ""

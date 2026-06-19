@@ -191,7 +191,7 @@ def cmd_sitl_mission(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="valiant",
-        description="Valiant AEAC2027 — one CLI for setup, bench, SITL, and bringup",
+        description="Valiant AEAC2027 - one CLI for setup, bench, SITL, and bringup",
         epilog="First time? Run: python tools/valiant.py guide  or read START_HERE.md",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

@@ -12,7 +12,7 @@ AI camera + ArduCam ToF (Pi)
    Metric Recon       -> MetricPacket { slant/horizontal range, altitude_error_m, clearance }
         |                  geometry_3d.py: camera rays, gimbal pitch, depth bbox sampling
         |
-   Auto-Nav           -> MAVLink velocity (GUIDED) — 3D vz from altitude_error on Pi;
+   Auto-Nav           -> MAVLink velocity (GUIDED) - 3D vz from altitude_error on Pi;
         |                  SITL: ned_kinematics 3D vector + pixel lateral fine-tune
         |
    Spray Water        -> aim check (pixel + altitude alignment) -> SERVO15

@@ -22,7 +22,7 @@ Details: [docs/branches.md](docs/branches.md).
 | Python 3.10+ | Mission software |
 | Git | Clone repo |
 | Mission Planner | MAVLink to Pixhawk (hardware days) |
-| scrcpy | Optional — GCS phone-camera dev path only |
+| scrcpy | Optional - GCS phone-camera dev path only |
 
 ## Setup (one time per laptop)
 
@@ -86,7 +86,7 @@ Set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). Skip until yo
 ## Next steps
 
 1. `python tools\valiant.py quickstart`
-2. SITL mission — [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
-3. Pick a GitHub issue — [WELCOME.md](WELCOME.md)
+2. SITL mission - [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
+3. Pick a GitHub issue - [WELCOME.md](WELCOME.md)
 
 Tune CV in `config/vion.yaml` under `cv.hsv_dry` / `cv.hsv_shot`. Nav gains under `auto_nav`.

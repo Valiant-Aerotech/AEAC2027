@@ -112,6 +112,14 @@ print_build_failure() {
   echo "  .\\tools\\setup_wsl.ps1"
 }
 
+install_wsl_runner() {
+  mkdir -p "$HOME/.valiant/bin"
+  sed 's/\r$//' "$_SCRIPT_DIR/wsl_run.sh" > "$HOME/.valiant/bin/wsl_run.sh"
+  chmod +x "$HOME/.valiant/bin/wsl_run.sh"
+}
+
+install_wsl_runner
+
 echo "=== Valiant SITL / WSL setup (inside Ubuntu) ==="
 echo "ArduPilot dir: $ARDUPILOT_DIR"
 echo ""

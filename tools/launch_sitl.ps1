@@ -1,7 +1,11 @@
 $ErrorActionPreference = "Stop"
-$Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$ShWin = Join-Path $Root "tools\sitl\launch_sitl.sh"
+. (Join-Path $PSScriptRoot "wsl_distro.ps1")
+$RepoRoot = Get-ValiantRepoRoot -FromScriptRoot $PSScriptRoot
+Set-Location $RepoRoot
+$ShWin = Get-ValiantRepoPath -RelativePath "sitl\launch_sitl.sh" -FromScriptRoot $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
+
+Write-Host "Repo: $RepoRoot"
 
 Write-Host "Starting ArduPilot SITL in WSL..."
 Write-Host "Valiant mission uses:  tcp:127.0.0.1:5760"

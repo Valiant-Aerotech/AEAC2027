@@ -27,7 +27,7 @@ EXTINGUISHED_BGR = (80, 200, 100)
 
 
 class PhysicsSyntheticCamera:
-    """Synthetic CV driven by SITL position, attitude, and gimbal — not a fixed timeline."""
+    """Synthetic CV driven by SITL position, attitude, and gimbal - not a fixed timeline."""
 
     def __init__(
         self,
@@ -214,7 +214,7 @@ class PhysicsSyntheticCamera:
             else:
                 cv2.putText(
                     frame,
-                    "NO TARGET — repositioning",
+                    "NO TARGET - repositioning",
                     (10, self.height - 12),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.48,

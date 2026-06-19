@@ -2,7 +2,7 @@
 
 **Never run this repo before?** Read this page only. Everything else is reference.
 
-## Step 1 — One-time setup (new laptop)
+## Step 1 - One-time setup (new laptop)
 
 ```powershell
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
@@ -16,7 +16,7 @@ cd AEAC2027
 
 ---
 
-## Step 2 — Pick what you are doing today
+## Step 2 - Pick what you are doing today
 
 | I want to… | Run this | Needs |
 |------------|----------|-------|
@@ -50,11 +50,11 @@ cd AEAC2027
 
 Same command after a reboot if Windows asked you to restart. Open **Ubuntu** once from the Start menu to create your Linux username/password, then run `.\tools\setup_wsl.ps1` again to finish the ArduPilot build.
 
-If setup fails after a long prereqs step (`install-prereqs-ubuntu.sh end`), prereqs usually succeeded and only the SITL compile failed. **Re-run the same command** — it skips completed steps and retries the build.
+If setup fails after a long prereqs step (`install-prereqs-ubuntu.sh end`), prereqs usually succeeded and only the SITL compile failed. **Re-run the same command** - it skips completed steps and retries the build.
 
 Equivalent: `python tools\valiant.py sitl setup-wsl`
 
-**You do not need the repo inside Ubuntu.** Clone on Windows only (`C:\Users\...\AEAC2027`). The setup script reads this folder from WSL automatically. Only ArduPilot is cloned inside Linux (`~/ardupilot`, public GitHub, no auth).
+**You do not need the repo inside Ubuntu.** Clone to **any** Windows folder (e.g. `C:\Users\...\AEAC2027` or `D:\dev\AEAC2027`). Scripts find the repo from their own location - you can also run the full path `...\AEAC2027\tools\setup_wsl.ps1` from any PowerShell cwd. Only ArduPilot is cloned inside Linux (`~/ardupilot`, public GitHub, no auth).
 
 If the script says Ubuntu not detected but you have an Ubuntu tab: open the **Ubuntu app once** from Start menu (finish username/password), then run `.\tools\setup_wsl.ps1` again from **PowerShell** in the Windows repo folder.
 
@@ -72,7 +72,7 @@ Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md)
 
 Wait until you see `SERIAL0 on TCP port 5760`.
 
-**Optional — Mission Planner map:** connect **TCP** `127.0.0.1:5762` (leave 5760 for the Valiant mission). Do not start a second SITL from MP Simulation tab. Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md#mission-planner-as-gcs-viewer-optional).
+**Optional - Mission Planner map:** connect **TCP** `127.0.0.1:5762` (leave 5760 for the Valiant mission). Do not start a second SITL from MP Simulation tab. Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md#mission-planner-as-gcs-viewer-optional).
 
 **Terminal 2** - run the mission + dashboard:
 
@@ -101,7 +101,7 @@ python tools\valiant.py sitl mission
 python tools\valiant.py bringup phase1
 ```
 
-Do **not** run the other `tools\*.py` files directly — use `valiant.py` subcommands. See [tools/README.md](tools/README.md).
+Do **not** run the other `tools\*.py` files directly - use `valiant.py` subcommands. See [tools/README.md](tools/README.md).
 
 ---
 

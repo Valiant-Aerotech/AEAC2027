@@ -111,7 +111,7 @@ def _wait_sitl_ready(master: mavutil.mavfile, timeout_s: float) -> None:
 
     print("[SITL] Warning: EKF/GPS ready not confirmed within timeout")
     raise RuntimeError(
-        "SITL EKF/GPS not ready — wait for sim to finish boot or increase sitl.ekf_wait_s"
+        "SITL EKF/GPS not ready - wait for sim to finish boot or increase sitl.ekf_wait_s"
     )
 
 
@@ -177,7 +177,7 @@ def arm_guided_takeoff(
     timeout_s: float = 75.0,
     ekf_wait_s: float = 60.0,
 ) -> None:
-    """GUIDED + arm + NAV_TAKEOFF — required before velocity commands move the copter."""
+    """GUIDED + arm + NAV_TAKEOFF - required before velocity commands move the copter."""
     from valiant.common.mavlink import request_message_interval
 
     request_message_interval(master, mavutil.mavlink.MAVLINK_MSG_ID_LOCAL_POSITION_NED, 5)

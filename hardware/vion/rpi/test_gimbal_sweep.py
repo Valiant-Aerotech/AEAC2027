@@ -40,7 +40,7 @@ def main() -> None:
         ("max", gimbal.pwm_max),
         ("neutral", gimbal.pwm_neutral),
     ]
-    print(f"Sweeping SERVO{gimbal.channel} — watch gimbal pitch (props OFF)")
+    print(f"Sweeping SERVO{gimbal.channel} - watch gimbal pitch (props OFF)")
     for name, pwm in steps:
         print(f"  -> {name}: PWM {pwm}")
         gimbal._send_pwm(pwm, force=True)

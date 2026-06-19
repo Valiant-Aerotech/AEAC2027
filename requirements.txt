@@ -10,7 +10,7 @@ pygetwindow>=0.0.9
 
 pyserial>=3.5                 # COM serial for pymavlink (GCS / FC)
 
-# Computer vision models (YOLO dry detector — ONNX uses onnxruntime, .pt uses ultralytics)
+# Computer vision models (YOLO dry detector - ONNX uses onnxruntime, .pt uses ultralytics)
 onnxruntime>=1.16
 ultralytics>=8.0
 

@@ -93,7 +93,7 @@ def request_sitl_telemetry_streams(master: mavutil.mavfile) -> None:
 
 
 def send_gcs_heartbeat(master: mavutil.mavfile) -> None:
-    """Companion/GCS heartbeat — use source_system=255 so we are not the autopilot."""
+    """Companion/GCS heartbeat - use source_system=255 so we are not the autopilot."""
     from valiant.common.mavlink_io import mavlink_io
 
     with mavlink_io(master):

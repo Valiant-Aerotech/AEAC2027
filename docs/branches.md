@@ -65,7 +65,7 @@ src/valiant/autonomy/     # Task 2 pipeline (orchestrator, SITL, cv runtime)
 src/valiant/cv/           # Standalone CV training / inference scripts
 src/valiant/common/         # ned_kinematics.py (3D motion math)
 config/vion.yaml          # flight_profiles: sitl, sitl_physics, vivi
-tools/valiant.py          # Unified CLI — see tools/README.md
+tools/valiant.py          # Unified CLI - see tools/README.md
 tools/launch_sitl.ps1     # WSL ArduPilot
 tests/sitl/               # Integration tests (need SITL running)
 ```

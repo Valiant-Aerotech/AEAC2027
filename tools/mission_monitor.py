@@ -22,7 +22,7 @@ def main() -> None:
         in_use = getattr(exc, "winerror", None) == 10048 or getattr(exc, "errno", None) in (98, 10048)
         if in_use:
             print(
-                f"UDP :{args.port} already in use — another mission monitor is running.",
+                f"UDP :{args.port} already in use - another mission monitor is running.",
                 file=sys.stderr,
             )
             print("Close the other monitor window or use -NoMonitor on run_sitl_mission.ps1")

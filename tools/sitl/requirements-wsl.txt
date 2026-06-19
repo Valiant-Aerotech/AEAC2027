@@ -1,4 +1,4 @@
-# ArduPilot SITL build deps — install inside WSL Ubuntu (not Windows .venv).
+# ArduPilot SITL build deps - install inside WSL Ubuntu (not Windows .venv).
 #
 # Preferred (Ubuntu 24.04+, avoids PEP 668 pip restrictions):
 #   sudo apt install -y python3-empy

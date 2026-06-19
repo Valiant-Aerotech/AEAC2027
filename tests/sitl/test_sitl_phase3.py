@@ -1,4 +1,4 @@
-"""SITL Phase 3 software acceptance — mirrors field-test-plan Phase 3 pass criteria."""
+"""SITL Phase 3 software acceptance - mirrors field-test-plan Phase 3 pass criteria."""
 
 from __future__ import annotations
 

@@ -120,5 +120,5 @@ def build_manifest_for_stitch(
         "x_tile_min": x_tile_min,
         "y_tile_min": y_tile_min,
         "image": "satellite.jpg",
-        "attribution": "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+        "attribution": "Tiles © Esri - Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
     }

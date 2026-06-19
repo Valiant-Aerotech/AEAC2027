@@ -9,7 +9,7 @@ gh auth login
 
 **Branch:** develop on **`main`**. See [branches.md](branches.md).
 
-**Dev tools:** `python tools/valiant.py guide` — index in [tools/README.md](../tools/README.md). First run: [START_HERE.md](../START_HERE.md).
+**Dev tools:** `python tools/valiant.py guide` - index in [tools/README.md](../tools/README.md). First run: [START_HERE.md](../START_HERE.md).
 
 ## Labels
 

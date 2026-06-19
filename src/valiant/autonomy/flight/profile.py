@@ -12,7 +12,7 @@ def apply_flight_profile(cfg: dict, profile: str | None) -> dict:
     profiles = cfg.get("flight_profiles", {})
     overlay = profiles.get(profile)
     if not overlay:
-        print(f"[Profile] Unknown profile '{profile}' — using base config")
+        print(f"[Profile] Unknown profile '{profile}' - using base config")
         return cfg
     merged = deep_merge(cfg, overlay)
     print(f"[Profile] Applied flight profile: {profile}")

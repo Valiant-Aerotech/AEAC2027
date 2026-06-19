@@ -1,5 +1,40 @@
 # Shared WSL distro detection (fixes UTF-16 output from wsl -l on Windows).
 
+function Get-ValiantRepoRoot {
+    param([string]$FromScriptRoot = "")
+    if ($FromScriptRoot) {
+        return (Resolve-Path -LiteralPath (Join-Path $FromScriptRoot "..")).Path
+    }
+    return (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+}
+
+function Get-ValiantRepoPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativePath,
+        [string]$FromScriptRoot = ""
+    )
+    $repo = Get-ValiantRepoRoot -FromScriptRoot $FromScriptRoot
+    $rel = $RelativePath -replace '/', '\'
+    if ($rel -like 'tools\*') {
+        return (Join-Path $repo $rel)
+    }
+    return (Join-Path $repo (Join-Path "tools" $rel))
+}
+
+function ConvertTo-ValiantWslPath {
+    param([Parameter(Mandatory = $true)][string]$WinPath)
+    if (-not (Test-Path -LiteralPath $WinPath)) {
+        throw "Cannot convert missing path to WSL: $WinPath"
+    }
+    $abs = (Resolve-Path -LiteralPath $WinPath).Path -replace '\\', '/'
+    if ($abs -match '^([A-Za-z]):/(.*)$') {
+        $drive = $matches[1].ToLower()
+        $rest = $matches[2]
+        return "/mnt/$drive/$rest"
+    }
+    throw "Cannot convert path to WSL mount (expected drive letter path): $WinPath"
+}
+
 function Get-WslDistroNames {
     # wsl -l -q is plain names; strip null bytes if UTF-16 leaks through
     $raw = (wsl -l -q 2>&1 | Out-String) -replace "`0", ""

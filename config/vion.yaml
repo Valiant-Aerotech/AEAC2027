@@ -11,10 +11,10 @@ mavlink:
   sitl_fallback: "udpin:127.0.0.1:14550"
 
 sitl:
-  takeoff_alt_m: 5.0                    # NAV_TAKEOFF — start high, descend near wall
+  takeoff_alt_m: 5.0                    # NAV_TAKEOFF - start high, descend near wall
   cruise_alt_m: 5.0                     # hold until within descent_wall_range_m
   descent_wall_range_m: 4.5            # begin aligning to target altitude inside this range
-  velocity_local_ned: false             # BODY_NED — ArduCopter GUIDED default for offboard vel
+  velocity_local_ned: false             # BODY_NED - ArduCopter GUIDED default for offboard vel
   preflight_timeout_s: 75               # arm + takeoff (cold EKF can take ~30s)
   ekf_wait_s: 45                        # wait for EKF3/GPS before first arm
   backoff_m: 1.5                        # reverse when wall_range below this (m)
@@ -35,7 +35,7 @@ sitl:
   approach_slow_zone_m: 2.5              # taper approach speed inside this range (m)
   min_ground_clearance_m: 1.0            # absolute floor AGL (targets can be below 2 m)
   altitude_kp: 0.22                      # NED vz gain to level with target height
-  max_vz: 0.14                           # cap vertical speed (m/s) — safe descent
+  max_vz: 0.14                           # cap vertical speed (m/s) - safe descent
   alt_offset_m: -0.15                    # slight bias downward so AIMING settles closer to target center
   alt_align_tolerance_m: 0.25              # SITL fire gate on metric altitude alignment
   retreat_alt_m: 5.0                     # climb after each kill before next search
@@ -103,8 +103,8 @@ flight_profiles:
     gimbal:
       enabled: true
       channel: 9                         # CHANGE: your Kakute AUX servo output
-      pwm_min: 1000                      # stowed / 0 deg — tune on bench
-      pwm_max: 2000                      # 90 deg pitch — tune on bench
+      pwm_min: 1000                      # stowed / 0 deg - tune on bench
+      pwm_max: 2000                      # 90 deg pitch - tune on bench
       pwm_neutral: 1500
       axis: pitch
       kp: 0.8
@@ -284,7 +284,7 @@ flight_profiles:
       geofence_abort: true
 
 auto_nav:
-  kp_x: 0.0006                           # tuned from SITL — softer lateral gain
+  kp_x: 0.0006                           # tuned from SITL - softer lateral gain
   kp_y: 0.0006
   kd_x: 0.0014                           # damping to cut oscillation near target
   kd_y: 0.0014

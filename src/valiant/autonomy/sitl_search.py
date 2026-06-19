@@ -1,4 +1,4 @@
-"""SEARCHING motion for physics SITL — reposition when target not in FOV."""
+"""SEARCHING motion for physics SITL - reposition when target not in FOV."""
 
 from __future__ import annotations
 

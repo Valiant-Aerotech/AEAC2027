@@ -1,4 +1,4 @@
-"""Scripted target timelines for SITL — fast closed-loop without physics-linked CV."""
+"""Scripted target timelines for SITL - fast closed-loop without physics-linked CV."""
 
 from __future__ import annotations
 
@@ -261,7 +261,7 @@ class SyntheticTargetCamera:
                 if self._world and not any(
                     not t.get("extinguished") for t in self._world.get("targets", [])
                 )
-                else "NO TARGET — repositioning"
+                else "NO TARGET - repositioning"
             )
             cv2.putText(
                 frame, label, (10, self.height - 12),

@@ -4,7 +4,7 @@ You are joining the AEAC2027 autonomy stack.
 
 ## Start here
 
-**[START_HERE.md](START_HERE.md)** — step-by-step for someone who has never run the repo.
+**[START_HERE.md](START_HERE.md)** - step-by-step for someone who has never run the repo.
 
 ```powershell
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git

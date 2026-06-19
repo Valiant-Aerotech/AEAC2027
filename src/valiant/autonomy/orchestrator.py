@@ -187,7 +187,7 @@ class AutoExtinguisher:
             if manifest:
                 self._sitl_map = SitlMapAsset.load(manifest)
                 if self._sitl_map is None:
-                    print(f"[SITL] Map not found ({manifest}) — run: python tools/valiant.py sitl map download")
+                    print(f"[SITL] Map not found ({manifest}) - run: python tools/valiant.py sitl map download")
                 else:
                     print(f"[SITL] Satellite map loaded ({manifest})")
             self._sitl_map_view_radius = float(map_cfg.get("view_radius_m", 24.0))
@@ -519,7 +519,7 @@ class AutoExtinguisher:
 
         if alt_m < min_alt:
             print(
-                f"[SITL] Startup recovery: low altitude ({alt_m:.1f}m) — "
+                f"[SITL] Startup recovery: low altitude ({alt_m:.1f}m) - "
                 "re-running takeoff (common after exit/relaunch while SITL still running)"
             )
             from valiant.autonomy.sitl_preflight import arm_guided_takeoff
@@ -536,7 +536,7 @@ class AutoExtinguisher:
         standoff = float(sitl_cfg.get("wall_standoff_m", 1.0))
         if wall_rng is not None and wall_rng < standoff * 0.5:
             print(
-                f"[SITL] Startup recovery: past/near wall (range={wall_rng:.1f}m) — "
+                f"[SITL] Startup recovery: past/near wall (range={wall_rng:.1f}m) - "
                 "entering REPOSITION"
             )
             self.set_state(STATE_REPOSITION)
@@ -560,7 +560,7 @@ class AutoExtinguisher:
         if mode == "GUIDED":
             return
 
-        print(f"[SITL] FC mode is {mode!r} — re-commanding GUIDED")
+        print(f"[SITL] FC mode is {mode!r} - re-commanding GUIDED")
         self.master.set_mode(guided_id)
         deadline = time.time() + (3.0 if force else 1.5)
         while time.time() < deadline:
@@ -612,9 +612,9 @@ class AutoExtinguisher:
         print(f"\n=== {host} AUTO-EXTINGUISH ===")
         print(f"CV method: {self.cv_method}")
         if self.sitl and not self._sitl_preflight_done:
-            print("[SITL] ArduPilot sim — motion enabled (preflight in loop)")
+            print("[SITL] ArduPilot sim - motion enabled (preflight in loop)")
         if self.hand_test:
-            print("HAND-TEST: props off — no drone velocity/spray; gimbal + perception active")
+            print("HAND-TEST: props off - no drone velocity/spray; gimbal + perception active")
         print("Pipeline: CV -> MetricRecon -> AutoNav -> Spray -> Upload")
         self._sitl_boot_t = time.time()
         if self.sitl and not self.hand_test and not self._sitl_preflight_done:
@@ -633,7 +633,7 @@ class AutoExtinguisher:
                     sample_s=5.0,
                 )
                 if not ready:
-                    print(f"[SITL] Test harness readiness failed ({reason}) — running takeoff")
+                    print(f"[SITL] Test harness readiness failed ({reason}) - running takeoff")
                     ekf_wait = float(self.cfg.get("sitl", {}).get("ekf_wait_s", 60.0))
                     arm_guided_takeoff(
                         self.master,
@@ -674,7 +674,7 @@ class AutoExtinguisher:
                         self.master, min_alt_m=takeoff_alt * 0.85, sample_s=5.0
                     )
                 if not ready:
-                    print(f"[SITL] Skip-preflight check failed ({reason}) — running takeoff")
+                    print(f"[SITL] Skip-preflight check failed ({reason}) - running takeoff")
                     arm_guided_takeoff(
                         self.master,
                         takeoff_alt_m=takeoff_alt,
@@ -838,7 +838,7 @@ class AutoExtinguisher:
                             self.nav.start_velocity_stream()
                             self.nav.search_velocity(cmd.vx or 0.0, cmd.vy or 0.0, cmd.vz)
                         if done:
-                            print("[SITL] Reposition complete — searching for next target")
+                            print("[SITL] Reposition complete - searching for next target")
                             self.set_state(STATE_SEARCHING)
 
                 elif self.state == STATE_APPROACHING:
