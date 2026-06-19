@@ -56,7 +56,10 @@ class MetricReconstructor:
         self.vfov_deg = cam_cfg.get("vfov_deg", cfg.get("fov", {}).get("vfov_deg", 52.0))
         self.camera_down = metric_cfg.get("camera_down", True)
         self.alt_offset_m = float(metric_cfg.get("alt_offset_m", cfg.get("sitl", {}).get("alt_offset_m", 0.0)))
-        self._calibration = cfg.get("calibration", cfg.get("vion_calibration", {}))
+        self._calibration = cfg.get(
+            "calibration",
+            cfg.get("rpas_calibration", cfg.get("vion_calibration", {})),
+        )
 
         self._rangefinder: RangefinderReader | None = None
         if (

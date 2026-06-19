@@ -51,7 +51,7 @@ Full SITL guide: [runbooks/sitl-overview.md](runbooks/sitl-overview.md).
 | Source | Contents |
 |--------|----------|
 | `metric-reconstruction` | ArduCam ToF drivers, depth-at-target metric recon |
-| `feature/CV` | `src/valiant/cv/task2_cv_script.py`, `convolute_infer.py`, training notebook |
+| `feature/CV` | YOLO training notebook, `autonomy/cv/training/` |
 | `onboard-pi` | SITL 3D motion stack, orchestrator, dashboard, gimbal, flight profiles |
 
 June 2026 follow-up on `main`: **3D kinematics** (`ned_kinematics.py`), **3D metric recon** (`geometry_3d.py`), **tools consolidation** (`valiant.py` CLI).
@@ -61,10 +61,10 @@ Key merge commits: `dd0402c` (feature/CV → main), `9a4eb43` (onboard-pi + feat
 ## Repo map (on `main`)
 
 ```
-src/valiant/autonomy/     # Task 2 pipeline (orchestrator, SITL, cv runtime)
-src/valiant/cv/           # Standalone CV training / inference scripts
-src/valiant/common/         # ned_kinematics.py (3D motion math)
-config/vion.yaml          # flight_profiles: sitl, sitl_physics, vivi
+src/valiant/autonomy/     # Task 2 pipeline (orchestrator, SITL, cv runtime + training)
+src/valiant/common/       # ned_kinematics.py (3D motion math)
+config/rpas.yaml          # default platform (inherits config/vion.yaml)
+config/vion.yaml          # airframe tuning; flight_profiles: sitl, sitl_physics, vivi
 tools/valiant.py          # Unified CLI - see tools/README.md
 tools/launch_sitl.ps1     # WSL ArduPilot
 tests/sitl/               # Integration tests (need SITL running)

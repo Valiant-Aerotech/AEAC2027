@@ -54,7 +54,9 @@ Use `metric.planner_range_m()` for fire/approach gating (prefers `horizontal_ran
 
 3D geometry: `src/valiant/autonomy/metric_recon/geometry_3d.py`. SITL motion uses `src/valiant/common/ned_kinematics.py` (rotation matrices, 3D velocity toward goal).
 
-## CV detection methods (`config/vion.yaml`)
+## CV detection methods (`config/rpas.yaml` / `config/vion.yaml`)
+
+Airframe tuning lives in `config/vion.yaml`; default platform loads via `config/rpas.yaml`.
 
 | method | Behaviour |
 |--------|-----------|
@@ -79,7 +81,7 @@ python tools\valiant.py conops check
 
 Legacy direct scripts were removed; use `python tools\valiant.py` subcommands only.
 
-## Auto-Nav and Spray (`config/vion.yaml`)
+## Auto-Nav and Spray (`config/vion.yaml`, inherited by `config/rpas.yaml`)
 
 - `metric_recon.mode`: `depth_at_target` (Pi) or `rangefinder` (GCS dev)
 - `metric_recon.rangefinder`: `fov_estimate`, `vl53l1x`, or `none`
@@ -93,7 +95,7 @@ Legacy direct scripts were removed; use `python tools\valiant.py` subcommands on
 
 SITL motion: 3D NED velocity toward target (`ned_kinematics.velocity_toward_goal`); pixel servo fine-tunes lateral only.
 
-## Safety (`config/vion.yaml`)
+## Safety (`config/vion.yaml`, inherited by `config/rpas.yaml`)
 
 `SafetyMonitor` runs each orchestrator loop iteration:
 

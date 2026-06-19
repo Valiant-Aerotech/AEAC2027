@@ -47,6 +47,6 @@ Code: `src/valiant/autonomy/`. Tools: `python tools\valiant.py guide`.
 
 ## Rules
 
-- Never commit secrets (`config/gdrive_credentials.json`)
+- Never commit secrets (`config/gdrive_credentials.json`, `config/rpas_calibration.yaml`)
 - Config: `config/vion.yaml`, `config/conops.yaml`
 - Ask before changing orchestrator state machine logic

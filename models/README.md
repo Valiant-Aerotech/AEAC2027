@@ -2,7 +2,7 @@
 
 ONNX weights are **not committed** to git (see `.gitignore`). Place trained files here locally.
 
-**Default detection uses YOLO** (`config/vion.yaml` `cv.method: yolo`) when `models/dry.pt`, `models/dry.onnx`, or `models/best.onnx` is present. HSV is still used for blue/wet **shot** confirmation. Set `cv.method: hsv` for purple-only bench without a model file.
+**Default detection uses YOLO** (`config/rpas.yaml` inherits `cv.method: yolo` from `config/vion.yaml`) when `models/dry.pt`, `models/dry.onnx`, or `models/best.onnx` is present. HSV is still used for blue/wet **shot** confirmation. Set `cv.method: hsv` for purple-only bench without a model file.
 
 ## Expected files
 
@@ -12,7 +12,7 @@ ONNX weights are **not committed** to git (see `.gitignore`). Place trained file
 | `dry.onnx` or `dry.pt` | Alternate names (auto-detected) |
 | `shot.onnx` | Extinguished blue/wetted (optional; shot also uses HSV) |
 
-Default config in `config/vion.yaml`:
+Default config in `config/vion.yaml` (inherited by `config/rpas.yaml`):
 
 ```yaml
 cv:

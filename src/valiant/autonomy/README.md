@@ -36,6 +36,6 @@ common/
 | Vivi onboard | `flight_profiles.vivi` | `docs/runbooks/vivi-hand-test.md` |
 | Bench CV | `python tools/valiant.py bench cv` | `ONBOARDING.md` |
 | Bench metric (3D) | `python tools/valiant.py bench metric` | `docs/interfaces.md` |
-| Standalone CV scripts | `src/valiant/cv/task2_cv_script.py` | training / convolute inference |
+| CV training | `python -m valiant.autonomy.cv.training.train` | `models/README.md` |
 
 Docs: [docs/branches.md](../../../docs/branches.md) (develop on **`main`**). Tools: [tools/README.md](../../../tools/README.md).

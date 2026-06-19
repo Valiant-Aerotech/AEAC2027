@@ -35,7 +35,7 @@ Pixhawk 6C + Holybro H-Flow (DroneCAN) handle indoor hover stability. H-Flow is 
 | Module | Code path |
 |--------|-----------|
 | CV (runtime) | `src/valiant/autonomy/cv/` |
-| CV (training scripts) | `src/valiant/cv/` (`task2_cv_script.py`, `convolute_infer.py`) |
+| CV (training) | `autonomy/cv/training/` (`generate_targets.py`, `train.py`) |
 | Metric Recon | `src/valiant/autonomy/metric_recon/` (+ `geometry_3d.py`) |
 | NED kinematics (SITL + shared) | `src/valiant/common/ned_kinematics.py` |
 | Auto-Nav | `src/valiant/autonomy/auto_nav/` |
@@ -60,7 +60,9 @@ Separate pipeline in `src/valiant/task1/` - MAVLink telemetry, building survey, 
 
 ## Config
 
-Tunables in `config/vion.yaml` (and `config/vivi.yaml` for Task 1). Optional per-airframe `config/vion_calibration.yaml` (from `.example` template).
+- **GCS / default platform:** `config/rpas.yaml` (inherits airframe tuning from `config/vion.yaml`)
+- **Airframe tuning:** `config/vion.yaml` (and `config/vivi.yaml` for Task 1)
+- **Field depth calibration:** `config/rpas_calibration.yaml` (from `.example`; legacy `vion_calibration.yaml` still merged if present)
 
 ## SITL (virtual drone + environment)
 
@@ -81,6 +83,5 @@ ArduPilot SITL (WSL)  ←── tcp:5760 ──→  orchestrator.py
 | Preflight | `sitl_preflight.py` |
 | Cameras | `common/synthetic_target_camera.py`, `physics_synthetic_camera.py` |
 | Dashboard | `cv/sitl_map_view.py` |
-| Standalone CV scripts | `src/valiant/cv/task2_cv_script.py` |
 
 Runbook: [runbooks/sitl-overview.md](runbooks/sitl-overview.md).

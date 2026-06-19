@@ -48,6 +48,32 @@ def load_default_config() -> dict[str, Any]:
     return load_config(DEFAULT_DRONE)
 
 
+def _calibration_paths(drone: str) -> list[Path]:
+    """Calibration YAML files to merge, in order (base airframe then platform)."""
+    seen: set[Path] = set()
+    paths: list[Path] = []
+    for layer in _config_layers(drone):
+        path = _CONFIG_DIR / f"{layer}_calibration.yaml"
+        if path not in seen:
+            seen.add(path)
+            paths.append(path)
+    legacy = _CONFIG_DIR / "vion_calibration.yaml"
+    if legacy not in seen:
+        paths.append(legacy)
+    return paths
+
+
+def load_calibration(drone: str | None = None) -> dict[str, Any]:
+    """Load per-airframe calibration YAML (rgb/depth alignment, FOV, validation)."""
+    drone = drone or DEFAULT_DRONE
+    cal: dict[str, Any] = {}
+    for path in _calibration_paths(drone):
+        if path.is_file():
+            with open(path, encoding="utf-8") as f:
+                cal = deep_merge(cal, yaml.safe_load(f) or {})
+    return cal
+
+
 def _config_layers(drone: str) -> list[str]:
     base = _CONFIG_BASE.get(drone)
     if base and base != drone:
@@ -84,6 +110,10 @@ def load_config(drone: str | None = None) -> dict[str, Any]:
             with open(drone_path, encoding="utf-8") as f:
                 drone_cfg = yaml.safe_load(f) or {}
             cfg = deep_merge(cfg, drone_cfg)
+
+    cal = load_calibration(drone)
+    if cal:
+        cfg["calibration"] = deep_merge(cfg.get("calibration", {}), cal)
 
     cfg["drone"] = drone
     return apply_conops_to_runtime(cfg)

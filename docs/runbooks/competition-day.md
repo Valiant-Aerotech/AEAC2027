@@ -8,9 +8,9 @@ Bringup reference: [vion-bringup.md](vion-bringup.md)
 
 - [ ] `python tools\valiant.py env check` passes on competition laptop
 - [ ] `python tools\valiant.py conops check` passes
-- [ ] `config\vion.yaml` COM port correct (GCS radio)
+- [ ] `config\rpas.yaml` COM port correct (GCS radio)
 - [ ] `config\defaults.yaml` team name and upload settings correct
-- [ ] Pi has `models/best.onnx` and `config/vion_calibration.yaml`
+- [ ] Pi has `models/best.onnx` and `config/rpas_calibration.yaml` (or legacy `vion_calibration.yaml`)
 - [ ] Emergency RC switch tested (`hardware/vion/lua/safety.lua`)
 - [ ] Water tank filled, SERVO15 spray tested in Mission Planner
 - [ ] H-Flow `opt_qua` OK on venue-like flooring (indoor)

@@ -35,10 +35,10 @@ Or manually: `.\tools\setup.ps1` then `python tools\valiant.py quickstart`.
 ## Configure this machine
 
 ```powershell
-notepad config\vion.yaml
+notepad config\rpas.yaml
 ```
 
-Set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). Skip until you connect a radio if you are only doing SITL/bench work.
+Set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). Airframe tuning lives in `config/vion.yaml` (inherited by RPAS). Skip until you connect a radio if you are only doing SITL/bench work.
 
 ## What to run (by scenario)
 
@@ -68,7 +68,7 @@ Set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). Skip until yo
 | Question | Where |
 |----------|-------|
 | What should I run? | `START_HERE.md` or `valiant guide` |
-| Change tuning? | `config/vion.yaml` |
+| Change tuning? | `config/rpas.yaml` (GCS) / `config/vion.yaml` (airframe) |
 | Pipeline design? | `docs/architecture.md` |
 | FC params / Lua? | `hardware/vion/` |
 | Debug MAVLink? | `python tools\valiant.py gcs listen` |
@@ -79,7 +79,7 @@ Set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). Skip until yo
 | Problem | Fix |
 |---------|-----|
 | Import errors | Re-run `.\start.ps1` |
-| No COM port | Device Manager → update `config/vion.yaml` |
+| No COM port | Device Manager → update `config/rpas.yaml` |
 | SITL won't connect | Run `launch_sitl.ps1` first; wait for port 5760 |
 | Wrong entry point | Pi flight = `hardware/vion/rpi/run_mission.py` |
 

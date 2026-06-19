@@ -97,6 +97,21 @@ class MotionPlanner:
             return True
         return abs(metric.altitude_error_m) <= self.alt_align_tolerance_m
 
+    def _too_far_from_wall_for_fire(
+        self,
+        metric: MetricPacket,
+        wall_range_m: float | None,
+        wall_standoff_m: float,
+    ) -> bool:
+        """Wall-plane gate for wall-mounted targets (distinct from slant metric range)."""
+        if wall_range_m is None:
+            return False
+        close = metric.distance_min_m if metric.distance_min_m is not None else metric.planner_range_m()
+        if close is not None and close <= self.fire_distance_m + 0.12:
+            if wall_range_m <= wall_standoff_m:
+                return False
+        return wall_range_m > self.fire_distance_m + 0.15
+
     def intent_for_approaching(self, metric: MetricPacket, *, bbox_area: int = 0) -> MotionIntent:
         self.update_approach_tracking(metric)
         if not self.is_safe_to_move(metric, bbox_area=bbox_area):
@@ -125,7 +140,7 @@ class MotionPlanner:
             return False
         if not self._approach_valid:
             return False
-        if wall_range_m is not None and wall_range_m > self.fire_distance_m + 0.15:
+        if self._too_far_from_wall_for_fire(metric, wall_range_m, wall_standoff_m):
             return False
         close = metric.distance_min_m if metric.distance_min_m is not None else metric.planner_range_m()
         if close is not None and close > self.fire_distance_m + 0.12:
@@ -152,7 +167,7 @@ class MotionPlanner:
             blockers.append("no_distance")
         if not self._approach_valid:
             blockers.append("approach_not_proven")
-        if wall_range_m is not None and wall_range_m > self.fire_distance_m + 0.15:
+        if self._too_far_from_wall_for_fire(metric, wall_range_m, wall_standoff_m):
             blockers.append("too_far_wall")
         close = metric.distance_min_m if metric.distance_min_m is not None else metric.planner_range_m()
         if close is not None and close > self.fire_distance_m + 0.12:

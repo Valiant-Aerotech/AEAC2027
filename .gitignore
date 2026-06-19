@@ -11,6 +11,7 @@ env/
 # Secrets - never commit
 config/gdrive_credentials.json
 config/vion_calibration.yaml
+config/rpas_calibration.yaml
 *.pem
 .env
 

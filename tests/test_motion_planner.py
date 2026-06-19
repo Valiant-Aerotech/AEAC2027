@@ -42,12 +42,23 @@ def test_can_fire_requires_wall_proximity_in_sitl():
     assert not planner.can_fire(
         metric, lock_duration_met=True, wall_range_m=5.0, wall_standoff_m=1.2
     )
-    assert not planner.can_fire(
+    assert planner.can_fire(
         metric, lock_duration_met=True, wall_range_m=1.1, wall_standoff_m=1.2
     )
     assert planner.can_fire(
         metric, lock_duration_met=True, wall_range_m=0.9, wall_standoff_m=1.2
     )
+
+
+def test_too_far_wall_when_metric_out_of_range_at_standoff():
+    planner = _planner()
+    planner.update_approach_tracking(_metric(distance_m=3.0, distance_max_m=3.0))
+    metric = _metric(distance_m=1.5, distance_min_m=1.5, distance_max_m=1.5)
+    blockers = planner.fire_blockers(
+        metric, lock_duration_met=True, wall_range_m=1.1, wall_standoff_m=1.2
+    )
+    assert "too_far_wall" in blockers
+    assert "too_far_metric" in blockers
 
 
 def test_fire_blockers_trigger_approach_remediation():

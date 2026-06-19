@@ -1117,7 +1117,7 @@ def run_auto_extinguish(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Vion Task 2 autonomous fire extinguishing")
+    parser = argparse.ArgumentParser(description="RPAS Task 2 autonomous fire extinguishing")
     parser.add_argument("--connection", default=None)
     parser.add_argument("--baud", type=int, default=None)
     parser.add_argument("--sim", action="store_true", help="Dry-run: no MAVLink motion")

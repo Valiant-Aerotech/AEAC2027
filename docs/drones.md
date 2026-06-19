@@ -26,7 +26,8 @@ Fleet-specific hardware folders (`hardware/vion/`, etc.) stay named for each air
   - `hardware/vion/rpi/run_mission.py` - primary autonomous (onboard)
   - `missions/task2_vion_auto_extinguish.py` - GCS dev / legacy fallback
   - `missions/task2_vion_manual_photo.py` - manual fallback
-- **Config:** `config/vion.yaml` (airframe tuning base for RPAS), `config/vion_calibration.yaml` (legacy cal name on some Pis)
+- **Config:** `config/vion.yaml` (airframe tuning base inherited by `config/rpas.yaml`)
+- **Calibration:** legacy `config/vion_calibration.yaml` still merged if present; prefer `config/rpas_calibration.yaml` on new Pis
 
 ## Vivi
 

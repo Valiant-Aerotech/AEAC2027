@@ -1,4 +1,9 @@
 # RPAS - Remotely Piloted Aircraft System (default platform config)
 # Inherits airframe tuning from config/vion.yaml; override only platform-specific keys here.
+# GCS laptop: set mavlink.connection below. Pi onboard uses mavlink.rpi_connection from vion.yaml.
+# Field depth calibration: copy rpas_calibration.yaml.example -> rpas_calibration.yaml (gitignored).
 
 drone: rpas
+
+mavlink:
+  connection: "COM5"
