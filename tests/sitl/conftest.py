@@ -40,7 +40,7 @@ def sitl_master(sitl_available: bool):
         master.close()
         pytest.skip(str(exc))
 
-    cfg = load_config("vion")
+    cfg = load_config()
     takeoff_alt = float(cfg.get("sitl", {}).get("takeoff_alt_m", 5.0))
     preflight_timeout = float(cfg.get("sitl", {}).get("preflight_timeout_s", 75.0))
     ready, reason = verify_sitl_motion_ready(master, min_alt_m=takeoff_alt * 0.85, sample_s=5.0)

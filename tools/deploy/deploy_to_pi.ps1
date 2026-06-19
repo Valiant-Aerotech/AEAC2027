@@ -46,8 +46,11 @@ if (Test-Path "models\best.onnx") {
     Write-ValiantWarn "models\best.onnx not found locally (optional for Pi CV)"
 }
 
-if (Test-Path "config\vion_calibration.yaml") {
-    scp config\vion_calibration.yaml "${PiHost}:${RemoteDir}/config/"
+if (Test-Path "config\rpas_calibration.yaml") {
+    scp config/rpas_calibration.yaml "${PiHost}:${RemoteDir}/config/"
+}
+elseif (Test-Path "config\vion_calibration.yaml") {
+    scp config/vion_calibration.yaml "${PiHost}:${RemoteDir}/config/rpas_calibration.yaml"
 }
 
 Write-Host "Done. On Pi: cd $RemoteDir && pip install -e ."

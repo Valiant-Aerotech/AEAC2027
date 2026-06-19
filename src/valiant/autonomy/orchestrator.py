@@ -1048,9 +1048,12 @@ def run_auto_extinguish(
     video_path: str | None = None,
     scenario_path: str | None = None,
     mission_file: str | None = None,
+    drone: str | None = None,
     skip_sitl_preflight: bool = False,
 ) -> None:
-    cfg = load_config("vion")
+    from valiant.common.config import DEFAULT_DRONE, load_config
+
+    cfg = load_config(drone or DEFAULT_DRONE)
     if mission_file:
         from valiant.autonomy.flight.profile import apply_flight_profile
         from valiant.autonomy.sitl_mission import apply_sitl_mission, load_sitl_mission
@@ -1142,6 +1145,11 @@ def main() -> None:
     parser.add_argument("--gcs-ip", default=None, help="GCS laptop IP for telemetry mirror")
     parser.add_argument("--profile", default=None, help="Flight profile overlay (e.g. vivi)")
     parser.add_argument(
+        "--drone",
+        default=None,
+        help="Platform config id (default: rpas)",
+    )
+    parser.add_argument(
         "--skip-sitl-preflight",
         action="store_true",
         help="Skip SITL arm/takeoff (already airborne)",
@@ -1163,6 +1171,7 @@ def main() -> None:
         video_path=args.video,
         scenario_path=args.scenario,
         mission_file=args.mission_file,
+        drone=args.drone,
         skip_sitl_preflight=args.skip_sitl_preflight,
     )
 

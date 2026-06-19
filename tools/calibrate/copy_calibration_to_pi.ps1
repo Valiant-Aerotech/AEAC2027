@@ -4,7 +4,7 @@ param(
     [string]$PiHost,
 
     [string]$PiPath = "~/AEAC2027",
-    [string]$LocalFile = "config\vion_calibration.yaml"
+    [string]$LocalFile = "config/rpas_calibration.yaml"
 )
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "..\lib\script_paths.ps1")
@@ -18,5 +18,5 @@ if (-not (Test-Path $cal)) {
 }
 
 Write-Host "Copying $LocalFile to Pi..."
-scp $cal "${PiHost}:${PiPath}/config/vion_calibration.yaml"
+scp $cal "${PiHost}:${PiPath}/config/rpas_calibration.yaml"
 Write-Host "OK. Pi ready for run_mission.py"

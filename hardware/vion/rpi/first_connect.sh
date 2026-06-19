@@ -29,14 +29,20 @@ fi
 echo ""
 echo "3. Checking required files..."
 MISSING=0
-for f in models/best.onnx config/vion_calibration.yaml; do
-  if [ -f "$f" ]; then
-    echo "   OK: $f"
-  else
-    echo "   MISSING: $f"
-    MISSING=1
-  fi
-done
+if [ -f models/best.onnx ]; then
+  echo "   OK: models/best.onnx"
+else
+  echo "   MISSING: models/best.onnx"
+  MISSING=1
+fi
+if [ -f config/rpas_calibration.yaml ]; then
+  echo "   OK: config/rpas_calibration.yaml"
+elif [ -f config/vion_calibration.yaml ]; then
+  echo "   OK: config/vion_calibration.yaml (legacy; prefer rpas_calibration.yaml)"
+else
+  echo "   MISSING: config/rpas_calibration.yaml"
+  MISSING=1
+fi
 if [ "$MISSING" -eq 1 ]; then
   echo "   Copy from laptop: scp models/best.onnx <user>@<pi>:~/AEAC2027/models/"
 fi

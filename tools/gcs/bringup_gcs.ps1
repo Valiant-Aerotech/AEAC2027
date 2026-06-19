@@ -5,7 +5,7 @@ $ctx = Initialize-ValiantScript -ScriptRoot $PSScriptRoot
 $RepoRoot = $ctx.RepoRoot
 $ToolsDir = $ctx.ToolsDir
 
-Write-Host "=== Vion GCS first-connect bringup ===" -ForegroundColor Cyan
+Write-Host "=== RPAS GCS first-connect bringup ===" -ForegroundColor Cyan
 Write-Host "New laptop? Run .\start.ps1 first. Scenario menu: python tools\valiant.py guide"
 Write-Host ""
 
@@ -22,9 +22,9 @@ Write-Host "2. GCS software setup..." -ForegroundColor Yellow
 if ($LASTEXITCODE -ne 0) {
     Show-ValiantFailure "setup.ps1 failed" -Hints @("See errors above", "Run: .\tools\setup.ps1")
 }
-if (-not (Test-Path "config\vion_calibration.yaml")) {
-    Copy-Item "config\vion_calibration.yaml.example" "config\vion_calibration.yaml"
-    Write-Host "Created config\vion_calibration.yaml from example"
+if (-not (Test-Path "config\rpas_calibration.yaml")) {
+    Copy-Item "config\rpas_calibration.yaml.example" "config\rpas_calibration.yaml"
+    Write-Host "Created config\rpas_calibration.yaml from example"
 }
 
 Write-Host ""
@@ -36,19 +36,27 @@ Write-Host ""
 Write-Host "4. MAVLink heartbeat (drone powered, radio connected)..." -ForegroundColor Yellow
 python tools\valiant.py gcs heartbeat
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "WARN: MAVLink check failed. Fix COM port in config\vion.yaml and retry." -ForegroundColor Yellow
+    Write-Host "WARN: MAVLink check failed. Fix COM port in config\rpas.yaml and retry." -ForegroundColor Yellow
 }
 
 Write-Host ""
-$vionYaml = Join-Path $RepoRoot "config\vion.yaml"
-if (Test-Path $vionYaml) {
-    $match = Select-String -Path $vionYaml -Pattern 'connection:\s*"(COM\d+)"' | Select-Object -First 1
+$cfgFiles = @(
+    (Join-Path $RepoRoot "config\rpas.yaml"),
+    (Join-Path $RepoRoot "config\vion.yaml")
+)
+$conn = $null
+foreach ($cfgFile in $cfgFiles) {
+    if (-not (Test-Path $cfgFile)) { continue }
+    $match = Select-String -Path $cfgFile -Pattern 'connection:\s*"(COM\d+)"' | Select-Object -First 1
     if ($match) {
         $conn = $match.Matches.Groups[1].Value
-        Write-Host "config\vion.yaml mavlink.connection = $conn" -ForegroundColor Green
-    } else {
-        Write-Host "Edit config\vion.yaml -> mavlink.connection to your radio COM port" -ForegroundColor Yellow
+        break
     }
+}
+if ($conn) {
+    Write-Host "mavlink.connection = $conn (config\rpas.yaml)" -ForegroundColor Green
+} else {
+    Write-Host "Edit config\rpas.yaml / config\vion.yaml -> mavlink.connection to your radio COM port" -ForegroundColor Yellow
 }
 
 Write-Host ""

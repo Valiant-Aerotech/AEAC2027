@@ -13,12 +13,12 @@ from valiant.common.mavlink import connect
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check GCS MAVLink link to Pixhawk")
-    parser.add_argument("--connection", default=None, help="Override config/vion.yaml")
+    parser.add_argument("--connection", default=None, help="Override config/rpas.yaml")
     parser.add_argument("--baud", type=int, default=None)
     parser.add_argument("--timeout", type=float, default=10.0)
     args = parser.parse_args()
 
-    cfg = load_config("vion")
+    cfg = load_config()
     mavlink = cfg.get("mavlink", {})
     conn = args.connection or mavlink.get("connection", "COM5")
     baud = args.baud if args.baud is not None else mavlink.get("baud", 57600)
@@ -28,7 +28,7 @@ def main() -> int:
         master = connect(conn, baud, wait_heartbeat=True)
     except Exception as exc:
         print(f"FAIL: no heartbeat: {exc}")
-        print("Check: radio USB, COM port in config/vion.yaml, drone powered")
+        print("Check: radio USB, COM port in config/rpas.yaml, drone powered")
         return 1
 
     hb = master.recv_match(type="HEARTBEAT", blocking=True, timeout=args.timeout)

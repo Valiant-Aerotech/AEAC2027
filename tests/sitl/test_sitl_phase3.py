@@ -19,7 +19,7 @@ pytestmark = pytest.mark.sitl
 
 def test_sitl_phase3_single_target_cycle(sitl_master):
     """SEARCHING -> COMPLETE with CONOPS photo name + local upload copy."""
-    cfg = apply_flight_profile(load_config("vion"), "sitl")
+    cfg = apply_flight_profile(load_config(), "sitl")
 
     with tempfile.TemporaryDirectory() as tmp:
         photo_dir = Path(tmp) / "task2_photos"

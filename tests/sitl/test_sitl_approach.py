@@ -31,7 +31,7 @@ def test_synthetic_camera_produces_target():
 
 
 def test_sitl_velocity_command(sitl_master):
-    cfg = apply_flight_profile(load_config("vion"), "sitl")
+    cfg = apply_flight_profile(load_config(), "sitl")
     nav = MavlinkDriver(sitl_master, cfg)
     metric = MetricPacket(
         target_px=(400, 300),
@@ -45,7 +45,7 @@ def test_sitl_velocity_command(sitl_master):
 
 
 def test_sitl_orchestrator_reaches_approaching(sitl_master):
-    cfg = apply_flight_profile(load_config("vion"), "sitl")
+    cfg = apply_flight_profile(load_config(), "sitl")
     cfg["camera"]["source"] = "synthetic"
     cfg["camera"]["synthetic_scenario"] = "tests/fixtures/sitl_approach.json"
 
@@ -89,7 +89,7 @@ def test_sitl_orchestrator_reaches_approaching(sitl_master):
 
 def test_sitl_orchestrator_reaches_complete(sitl_master):
     """Timeline synthetic: full SEARCHING -> COMPLETE (spray disabled)."""
-    cfg = apply_flight_profile(load_config("vion"), "sitl")
+    cfg = apply_flight_profile(load_config(), "sitl")
     cfg["camera"]["source"] = "synthetic"
     cfg["camera"]["synthetic_scenario"] = "tests/fixtures/sitl_synthetic_multi.json"
 
@@ -134,7 +134,7 @@ def test_sitl_orchestrator_reaches_complete(sitl_master):
 
 def test_sitl_multi_target_reaches_complete(sitl_master):
     """Optional 2-target path: suppress, reposition, second target, COMPLETE."""
-    cfg = apply_flight_profile(load_config("vion"), "sitl")
+    cfg = apply_flight_profile(load_config(), "sitl")
 
     ext = AutoExtinguisher(
         cfg,

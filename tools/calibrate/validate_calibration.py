@@ -23,7 +23,7 @@ def main() -> int:
     parser.add_argument("--max-error-pct", type=float, default=None)
     args = parser.parse_args()
 
-    cfg = load_config("vion")
+    cfg = load_config()
     cal = cfg.get("calibration", {})
     max_error = args.max_error_pct
     if max_error is None:

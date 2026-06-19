@@ -34,9 +34,14 @@ if [ "$UART_NEEDS_ENABLE" -eq 1 ]; then
   echo "  Or: sudo raspi-config -> Interface Options -> Serial Port -> hardware Yes, login No"
 fi
 
-if [ ! -f config/vion_calibration.yaml ]; then
-  cp config/vion_calibration.yaml.example config/vion_calibration.yaml
-  echo "Created config/vion_calibration.yaml from example"
+if [ ! -f config/rpas_calibration.yaml ]; then
+  if [ -f config/rpas_calibration.yaml.example ]; then
+    cp config/rpas_calibration.yaml.example config/rpas_calibration.yaml
+    echo "Created config/rpas_calibration.yaml from example"
+  elif [ ! -f config/vion_calibration.yaml ] && [ -f config/vion_calibration.yaml.example ]; then
+    cp config/vion_calibration.yaml.example config/vion_calibration.yaml
+    echo "Created config/vion_calibration.yaml from example (legacy)"
+  fi
 fi
 
 echo ""

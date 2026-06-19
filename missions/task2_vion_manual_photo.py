@@ -30,7 +30,7 @@ def main() -> None:
         print("ERROR: valiant package not installed. Run: .\\tools\\setup.ps1")
         sys.exit(1)
 
-    cfg = load_config("vion")
+    cfg = load_config()
     team = args.team or cfg.get("team", {}).get("name", "ValiantAerotech")
     output_dir = args.output_dir or cfg.get("team", {}).get("photo_save_dir", "task2_photos")
 

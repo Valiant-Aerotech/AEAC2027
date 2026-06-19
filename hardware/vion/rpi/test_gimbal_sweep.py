@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument("--dwell-s", type=float, default=1.5)
     args = parser.parse_args()
 
-    cfg = apply_flight_profile(load_config("vion"), args.profile)
+    cfg = apply_flight_profile(load_config(), args.profile)
     gimbal_cfg = cfg.get("gimbal", {})
     if not gimbal_cfg.get("enabled"):
         print("[FAIL] gimbal.enabled is false in profile")

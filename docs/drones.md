@@ -1,5 +1,14 @@
 # Drone Fleet
 
+## RPAS (default platform)
+
+- **Name:** Remotely Piloted Aircraft System
+- **Role:** Generic Task 2 software platform (scripts, SITL, GCS tools default here)
+- **Config:** `config/rpas.yaml` (inherits airframe tuning from `config/vion.yaml`)
+- **Calibration:** `config/rpas_calibration.yaml` (from `rpas_calibration.yaml.example`)
+
+Fleet-specific hardware folders (`hardware/vion/`, etc.) stay named for each aircraft.
+
 ## Vulcan 2
 
 - **Role:** Heavy lifter
@@ -17,7 +26,7 @@
   - `hardware/vion/rpi/run_mission.py` - primary autonomous (onboard)
   - `missions/task2_vion_auto_extinguish.py` - GCS dev / legacy fallback
   - `missions/task2_vion_manual_photo.py` - manual fallback
-- **Config:** `config/vion.yaml`, `config/vion_calibration.yaml`
+- **Config:** `config/vion.yaml` (airframe tuning base for RPAS), `config/vion_calibration.yaml` (legacy cal name on some Pis)
 
 ## Vivi
 

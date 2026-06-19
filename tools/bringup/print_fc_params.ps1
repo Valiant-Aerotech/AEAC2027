@@ -1,7 +1,7 @@
 # Print Pixhawk parameters to set during first-time bringup (Phase B2 + B3)
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== Vion FC parameters (set in Mission Planner) ===" -ForegroundColor Cyan
+Write-Host "=== RPAS FC parameters (set in Mission Planner) ===" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Pi companion TELEM port (replace x with your port number):" -ForegroundColor Yellow
 Write-Host "  SERIALx_PROTOCOL = 2    # MAVLink2"

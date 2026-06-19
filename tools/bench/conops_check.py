@@ -16,7 +16,7 @@ from valiant.common.config import load_config
 def main() -> int:
     print("=== CONOPS Config Check ===\n")
 
-    vion = load_config("vion")
+    vion = load_config()
     vivi = load_config("vivi")
 
     season = vion.get("conops", {}).get("season", "unknown")

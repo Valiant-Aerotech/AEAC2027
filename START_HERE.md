@@ -12,7 +12,7 @@ cd AEAC2027
 
 `start.ps1` creates the Python virtual environment, installs packages, and runs a quick health check.
 
-**Edit config once:** open `config\vion.yaml` and set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). For laptop-only work, you can skip this until you connect a radio.
+**Edit config once:** open `config\rpas.yaml` and set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). For laptop-only work, you can skip this until you connect a radio.
 
 ---
 
@@ -121,7 +121,7 @@ Do **not** run the other `tools\*.py` files directly - use `valiant.py` subcomma
 | `start.ps1` parse error on `}` | Pull latest; scripts must be ASCII-only (no em-dash characters) |
 | `No module named valiant` | Run from repo root; use `python tools\valiant.py`, not `python valiant.py` |
 | Forgot to activate venv | Use `.\start.ps1` or `.venv\Scripts\Activate.ps1` |
-| MAVLink heartbeat fails | Set `mavlink.connection` in `config\vion.yaml`; or use `--skip-mavlink` with `bringup phase1` on laptop-only |
+| MAVLink heartbeat fails | Set `mavlink.connection` in `config\rpas.yaml`; or use `--skip-mavlink` with `bringup phase1` on laptop-only |
 | SITL mission can't connect | Start `launch_sitl.ps1` first; wait for port 5760 |
 | Wrong mission entry point | **Pi flight** = `hardware/vion/rpi/run_mission.py`. **GCS dev** = `missions/task2_vion_auto_extinguish.py` or SITL above |
 | scrcpy / phone camera | GCS legacy path only; competition runs on **Pi camera** |

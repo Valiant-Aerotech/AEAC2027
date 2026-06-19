@@ -16,7 +16,7 @@ from valiant.common.config import load_config, repo_root
 
 
 def run_test(*, target_number: int = 1) -> int:
-    cfg = load_config("vion")
+    cfg = load_config()
     uploader = DriveUploader(cfg)
 
     with tempfile.TemporaryDirectory() as tmp:

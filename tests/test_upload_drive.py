@@ -14,7 +14,7 @@ from valiant.common.config import load_config
 
 
 def test_local_copy_upload():
-    cfg = load_config("vion")
+    cfg = load_config()
     cfg = dict(cfg)
     cfg.setdefault("upload", {})["method"] = "local_copy"
 

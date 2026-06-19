@@ -20,7 +20,7 @@ Valiant Aerotech competition software for AEAC 2027.
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
 .\start.ps1
-notepad config\vion.yaml    # set telemetry COM port when you have a radio
+notepad config\rpas.yaml    # set telemetry COM port when you have a radio
 python tools\valiant.py guide
 ```
 

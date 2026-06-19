@@ -25,7 +25,7 @@ def test_load_example_mission_file():
 
 
 def test_geofence_merges_into_sitl_block():
-    cfg = load_config("vion")
+    cfg = load_config()
     mission = {
         "name": "t",
         "profile": "sitl",
@@ -63,7 +63,7 @@ def test_inline_world_materializes_json(tmp_path: Path):
 
 
 def test_sitl_physics_sets_camera_source():
-    cfg = load_config("vion")
+    cfg = load_config()
     mission = {
         "name": "phys",
         "profile": "sitl_physics",

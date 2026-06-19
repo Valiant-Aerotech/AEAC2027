@@ -19,7 +19,7 @@ def main() -> int:
     parser.add_argument("--yes", action="store_true", help="Skip confirmation prompt")
     args = parser.parse_args()
 
-    cfg = load_config("vion")
+    cfg = load_config()
     mavlink = cfg.get("mavlink", {})
     conn = args.connection or mavlink.get("connection", "COM5")
     baud = args.baud if args.baud is not None else mavlink.get("baud", 57600)

@@ -56,7 +56,7 @@ def main() -> None:
     parser.add_argument("--skip-mavlink", action="store_true")
     args = parser.parse_args()
 
-    cfg = apply_flight_profile(load_config("vion"), args.profile)
+    cfg = apply_flight_profile(load_config(), args.profile)
     conn, baud = mavlink_connection_for_host(cfg)
 
     camera = create_camera(cfg)

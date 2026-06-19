@@ -20,7 +20,7 @@ def main() -> int:
     parser.add_argument("--recording-dir", required=True)
     args = parser.parse_args()
 
-    cfg = load_config("vion")
+    cfg = load_config()
     cfg.setdefault("metric_recon", {})["rangefinder"] = "depth_at_target"
     depth_source = InlineDepthSource()
     recon = MetricReconstructor(None, cfg, sim=True, depth_source=depth_source)

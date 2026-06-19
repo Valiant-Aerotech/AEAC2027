@@ -36,7 +36,7 @@ class _FakeMaster:
 
 
 def main() -> int:
-    cfg = load_config("vion")
+    cfg = load_config()
     cfg["safety"]["mission_timeout_s"] = 0
 
     master = _FakeMaster(
@@ -59,7 +59,7 @@ def main() -> int:
         return 1
     print(f"OK geofence abort: {abort2.reason}")
 
-    cfg_timeout = load_config("vion")
+    cfg_timeout = load_config()
     cfg_timeout["safety"]["mission_timeout_s"] = 1
     monitor3 = SafetyMonitor(None, cfg_timeout, sim=False)
     time.sleep(1.1)

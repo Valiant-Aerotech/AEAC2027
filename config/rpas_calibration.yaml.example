@@ -1,0 +1,25 @@
+# Per-airframe RGB/depth calibration for RPAS (copy to rpas_calibration.yaml).
+# Gitignored in production; template stays in repo.
+
+rgb_to_depth:
+  scale_x: 0.5
+  scale_y: 0.5
+  offset_x: 0.0
+  offset_y: 0.0
+  depth_width: 240
+  depth_height: 180
+
+depth_scale: 0.001          # mm -> m
+depth_offset_m: 0.0
+depth_sample_window_px: 5
+depth_invalid_mm: 0
+depth_max_mm: 6000
+
+fov:
+  hfov_deg: 66.0
+  vfov_deg: 52.0
+
+# Tape-measure validation checkpoints (filled by calibrate_depth_rgb.py)
+validation:
+  distances_m: [1.0, 2.0, 3.0]
+  max_error_pct: 10.0

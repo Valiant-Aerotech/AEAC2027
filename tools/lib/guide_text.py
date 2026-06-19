@@ -6,7 +6,7 @@ Valiant AEAC2027 - what should I run?
 
 ONE-TIME SETUP (new laptop)
   .\\start.ps1
-  notepad config\\vion.yaml     # set mavlink.connection (COM port)
+  notepad config\\rpas.yaml     # set mavlink.connection (COM port)
 
 NO DRONE - try software on this laptop
   python tools\\valiant.py quickstart

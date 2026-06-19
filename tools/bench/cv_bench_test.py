@@ -23,7 +23,7 @@ def _run_regression(args) -> int:
         print(f"ERROR: video not found: {video_path}")
         return 1
 
-    cfg = load_config("vion")
+    cfg = load_config()
     if args.method:
         cfg.setdefault("cv", {})["method"] = args.method
 
@@ -108,7 +108,7 @@ def main() -> int:
             return 1
         return _run_regression(args)
 
-    cfg = load_config("vion")
+    cfg = load_config()
     if args.method:
         cfg.setdefault("cv", {})["method"] = args.method
 

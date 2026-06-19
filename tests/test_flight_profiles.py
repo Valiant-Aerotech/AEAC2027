@@ -7,7 +7,7 @@ from valiant.common.config import load_config
 
 
 def test_indoor_profile_sets_guided_nogps():
-    cfg = apply_flight_profile(load_config("vion"), "indoor")
+    cfg = apply_flight_profile(load_config(), "indoor")
     flight = cfg.get("flight", {})
     assert flight.get("profile") == "indoor"
     assert flight.get("require_gps") is False
@@ -17,7 +17,7 @@ def test_indoor_profile_sets_guided_nogps():
 
 
 def test_outdoor_profile_tunes_cv_and_nav():
-    cfg = apply_flight_profile(load_config("vion"), "outdoor")
+    cfg = apply_flight_profile(load_config(), "outdoor")
     flight = cfg.get("flight", {})
     assert flight.get("profile") == "outdoor"
     assert flight.get("mode") == "GUIDED"

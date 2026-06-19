@@ -1,0 +1,4 @@
+# RPAS - Remotely Piloted Aircraft System (default platform config)
+# Inherits airframe tuning from config/vion.yaml; override only platform-specific keys here.
+
+drone: rpas

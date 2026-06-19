@@ -23,7 +23,7 @@ def main() -> int:
     parser.add_argument("--recording-dir", default=None, help="Depth replay dir for depth_at_target")
     args = parser.parse_args()
 
-    cfg = load_config("vion")
+    cfg = load_config()
     metric_cfg = cfg.setdefault("metric_recon", {})
     if args.rangefinder:
         metric_cfg["rangefinder"] = args.rangefinder

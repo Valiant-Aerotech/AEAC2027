@@ -16,7 +16,7 @@ pytestmark = pytest.mark.sitl
 
 def test_sitl_physics_reaches_aiming_within_bounds(sitl_master):
     """Physics wall: AIMING with dry target, no overshoot past x=4.5m."""
-    cfg = apply_flight_profile(load_config("vion"), "sitl_physics")
+    cfg = apply_flight_profile(load_config(), "sitl_physics")
 
     ext = AutoExtinguisher(
         cfg,

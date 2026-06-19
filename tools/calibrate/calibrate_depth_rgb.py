@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from valiant.common.config import repo_root
+from valiant.common.config import default_calibration_example_path, default_calibration_path, repo_root
 
 
 def main() -> int:
@@ -19,11 +19,11 @@ def main() -> int:
     parser.add_argument("--offset-x", type=float, default=0.0)
     parser.add_argument("--offset-y", type=float, default=0.0)
     parser.add_argument("--depth-offset-m", type=float, default=0.0)
-    parser.add_argument("--output", default="config/vion_calibration.yaml")
+    parser.add_argument("--output", default=str(default_calibration_path().relative_to(repo_root())))
     args = parser.parse_args()
 
     out_path = repo_root() / args.output
-    example = repo_root() / "config/vion_calibration.yaml.example"
+    example = default_calibration_example_path()
     if out_path.is_file():
         with open(out_path, encoding="utf-8") as f:
             cal = yaml.safe_load(f) or {}

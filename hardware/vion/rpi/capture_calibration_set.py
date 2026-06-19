@@ -28,7 +28,7 @@ def main() -> int:
     parser.add_argument("--camera", type=int, default=0)
     args = parser.parse_args()
 
-    cfg = load_config("vion")
+    cfg = load_config()
     out_dir = repo_root() / args.output / f"{args.distance:.1f}m"
     out_dir.mkdir(parents=True, exist_ok=True)
 

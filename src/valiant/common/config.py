@@ -12,22 +12,60 @@ from valiant.autonomy.conops import apply_conops_to_runtime
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _CONFIG_DIR = _REPO_ROOT / "config"
 
+# Default platform id (Remotely Piloted Aircraft System).
+DEFAULT_DRONE = "rpas"
+
+# Platform config may inherit airframe tuning from another YAML file.
+_CONFIG_BASE: dict[str, str] = {"rpas": "vion"}
+
 
 def repo_root() -> Path:
     return _REPO_ROOT
 
 
-def load_config(drone: str) -> dict[str, Any]:
+def config_dir() -> Path:
+    return _CONFIG_DIR
+
+
+def default_config_name() -> str:
+    return DEFAULT_DRONE
+
+
+def default_config_path() -> Path:
+    return _CONFIG_DIR / f"{DEFAULT_DRONE}.yaml"
+
+
+def default_calibration_path() -> Path:
+    return _CONFIG_DIR / f"{DEFAULT_DRONE}_calibration.yaml"
+
+
+def default_calibration_example_path() -> Path:
+    return _CONFIG_DIR / f"{DEFAULT_DRONE}_calibration.yaml.example"
+
+
+def load_default_config() -> dict[str, Any]:
+    """Load the default RPAS platform config."""
+    return load_config(DEFAULT_DRONE)
+
+
+def _config_layers(drone: str) -> list[str]:
+    base = _CONFIG_BASE.get(drone)
+    if base and base != drone:
+        return [base, drone]
+    return [drone]
+
+
+def load_config(drone: str | None = None) -> dict[str, Any]:
     """Load config for a drone, merging defaults.yaml underneath.
 
     Parameters
     ----------
     drone:
-        One of ``vion``, ``vivi``, ``vulcan2``.
+        Platform or airframe id (default ``rpas``). Fleet ids: ``vion``, ``vivi``,
+        ``vulcan2``. ``rpas`` inherits ``vion.yaml`` then applies ``rpas.yaml``.
     """
+    drone = drone or DEFAULT_DRONE
     defaults_path = _CONFIG_DIR / "defaults.yaml"
-    drone_path = _CONFIG_DIR / f"{drone}.yaml"
-
     conops_path = _CONFIG_DIR / "conops.yaml"
 
     cfg: dict[str, Any] = {}
@@ -40,10 +78,12 @@ def load_config(drone: str) -> dict[str, Any]:
             conops_cfg = yaml.safe_load(f) or {}
         cfg = deep_merge(cfg, conops_cfg)
 
-    if drone_path.is_file():
-        with open(drone_path, encoding="utf-8") as f:
-            drone_cfg = yaml.safe_load(f) or {}
-        cfg = deep_merge(cfg, drone_cfg)
+    for layer in _config_layers(drone):
+        drone_path = _CONFIG_DIR / f"{layer}.yaml"
+        if drone_path.is_file():
+            with open(drone_path, encoding="utf-8") as f:
+                drone_cfg = yaml.safe_load(f) or {}
+            cfg = deep_merge(cfg, drone_cfg)
 
     cfg["drone"] = drone
     return apply_conops_to_runtime(cfg)

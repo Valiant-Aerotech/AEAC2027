@@ -16,7 +16,7 @@ Invoke-ValiantPythonStep -Label "Environment" -Arguments @("python", "tools\vali
     "Run: .\tools\setup.ps1"
 )
 Invoke-ValiantPythonStep -Label "CONOPS config" -Arguments @("python", "tools\valiant.py", "conops", "check") -Hints @(
-    "Edit config\vion.yaml"
+    "Edit config\rpas.yaml"
 )
 Invoke-ValiantPythonStep -Label "Safety logic" -Arguments @("python", "tools\valiant.py", "bench", "safety")
 
@@ -25,7 +25,7 @@ if (-not $SkipMavlink) {
     $hbRc = Invoke-ValiantPythonStep -Label "MAVLink heartbeat" -Arguments @(
         "python", "tools\valiant.py", "gcs", "heartbeat"
     ) -AllowFail -Hints @(
-        "Set config/vion.yaml mavlink.connection to your radio COM port",
+        "Set config/rpas.yaml mavlink.connection to your radio COM port",
         "Re-run with -SkipMavlink for laptop-only checks"
     )
     if ($hbRc -ne 0) {
