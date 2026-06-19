@@ -40,6 +40,7 @@ class GuidedMotionRunner:
         self._stream = VelocityStream(self._servo, rate_hz=20.0)
         self._last_hb = 0.0
         self._last_pose = None
+        self._z_hold: float | None = None
         self._ensure_guided = ensure_guided or (lambda: None)
 
     @property
@@ -52,6 +53,18 @@ class GuidedMotionRunner:
 
     def set_last_pose(self, pose) -> None:
         self._last_pose = pose
+
+    def set_z_hold(self, z_ned: float | None) -> None:
+        """Hold this LOCAL NED z during orbit (None = use target altitude)."""
+        self._z_hold = z_ned
+
+    @staticmethod
+    def altitude_label(current_alt_m: float, target_alt_m: float, *, tolerance_m: float = 0.35) -> str:
+        if current_alt_m > target_alt_m + tolerance_m:
+            return f"Descending to {target_alt_m:.0f} m"
+        if current_alt_m < target_alt_m - tolerance_m:
+            return f"Climbing to {target_alt_m:.0f} m"
+        return f"Holding {target_alt_m:.0f} m"
 
     def say(self, message: str, *, force: bool = True) -> None:
         print(f"[{self._log_tag}] {message}")
@@ -187,15 +200,22 @@ class GuidedMotionRunner:
         self.stop_stream()
         return False
 
-    def altitude_vz(self, target_alt_m: float) -> float:
+    def altitude_vz(
+        self,
+        target_alt_m: float,
+        *,
+        tolerance_m: float = 0.35,
+    ) -> float:
         """Vertical velocity command for ongoing altitude hold."""
         orbit_cfg = self.cfg.get("field_orbit", {})
         kp_z = float(orbit_cfg.get("altitude_kp", self.cfg.get("sitl", {}).get("altitude_kp", 0.22)))
         max_vz = float(orbit_cfg.get("max_vz", self.cfg.get("sitl", {}).get("max_vz", 0.15)))
         if self._last_pose is None or not self._last_pose.ok:
             return 0.0
-        z_target = -target_alt_m
+        z_target = self._z_hold if self._z_hold is not None else -target_alt_m
         err_z = z_target - self._last_pose.z
+        if abs(err_z) < tolerance_m:
+            return 0.0
         return max(-max_vz, min(max_vz, kp_z * err_z))
 
     def set_loiter(self, *, message: str = "Loiter - manual control") -> None:

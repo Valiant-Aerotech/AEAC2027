@@ -139,6 +139,7 @@ flight_profiles:
       direction: clockwise
       orbit_speed_m_s: 0.40
       radial_kp: 0.25
+      altitude_kp: 0.22
       max_vz: 0.15
       geofence_radius_m: 12.0
       max_duration_s: 600
@@ -170,8 +171,9 @@ flight_profiles:
       direction: clockwise
       orbit_speed_m_s: 0.40
       radial_kp: 0.25
+      altitude_kp: 0.22
       max_vz: 0.15
-      geofence_radius_m: 12.0
+      geofence_radius_m: 20.0
       max_duration_s: 600
     gcs_monitor:
       statustext_interval_s: 2.0

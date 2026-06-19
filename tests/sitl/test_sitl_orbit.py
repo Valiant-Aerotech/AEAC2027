@@ -31,6 +31,7 @@ def test_sitl_orbit_one_lap(sitl_master):
     pose = drain_vehicle_pose(sitl_master)
     assert pose.ok
     assert runner._laps >= 0.95  # noqa: SLF001
+    assert -pose.z > 5.0
     if runner._center is not None:
         cx, cy = runner._center
         dist = math.hypot(pose.x - cx, pose.y - cy)

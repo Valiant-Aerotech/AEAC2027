@@ -38,19 +38,23 @@ def orbit_velocity_ned(
     radial_kp: float,
     *,
     clockwise: bool,
+    min_dist_m: float = 0.5,
 ) -> tuple[float, float, float]:
     """Tangential + radial hold velocity in LOCAL NED (vn, ve, radius_error)."""
     dx = x - center_x
     dy = y - center_y
-    dist = math.hypot(dx, dy)
-    if dist < 1e-3:
-        return 0.0, 0.0, radius_m - dist
+    actual_dist = math.hypot(dx, dy)
+    err_r = radius_m - actual_dist
+    if actual_dist < min_dist_m:
+        angle = math.atan2(dy, dx) if actual_dist > 1e-6 else 0.0
+        dx = math.cos(angle) * min_dist_m
+        dy = math.sin(angle) * min_dist_m
+        actual_dist = min_dist_m
     if clockwise:
-        tn, te = dy / dist, -dx / dist
+        tn, te = -dy / actual_dist, dx / actual_dist
     else:
-        tn, te = -dy / dist, dx / dist
-    err_r = radius_m - dist
-    rn, re = dx / dist, dy / dist
+        tn, te = dy / actual_dist, -dx / actual_dist
+    rn, re = (x - center_x) / max(actual_dist, 1e-6), (y - center_y) / max(actual_dist, 1e-6)
     vn = orbit_speed_m_s * tn + radial_kp * err_r * rn
     ve = orbit_speed_m_s * te + radial_kp * err_r * re
     return vn, ve, err_r
@@ -74,9 +78,9 @@ def update_lap_progress(
         return lap_progress_rad, lap_progress_rad / (2 * math.pi), phi
     delta = wrap_pi(phi - phi_prev)
     if clockwise:
-        lap_progress_rad -= delta
-    else:
         lap_progress_rad += delta
+    else:
+        lap_progress_rad -= delta
     return lap_progress_rad, lap_progress_rad / (2 * math.pi), phi
 
 
@@ -95,3 +99,54 @@ def velocity_toward_ned(
         return 0.0, 0.0
     scale = min(speed_m_s, dist * 0.5)
     return scale * dx / dist, scale * dy / dist
+
+
+def simulate_orbit_path(
+    center_x: float,
+    center_y: float,
+    radius_m: float,
+    *,
+    clockwise: bool = True,
+    orbit_speed_m_s: float = 0.4,
+    radial_kp: float = 0.25,
+    dt_s: float = 0.05,
+    duration_s: float = 90.0,
+    start_angle_rad: float = 0.0,
+) -> tuple[float, list[tuple[float, float]], float]:
+    """Integrate orbit velocity; return (laps, path, min_radius)."""
+    angle = start_angle_rad
+    x = center_x + radius_m * math.cos(angle)
+    y = center_y + radius_m * math.sin(angle)
+    path: list[tuple[float, float]] = [(x, y)]
+    lap_progress = 0.0
+    phi_prev: float | None = None
+    min_radius = radius_m
+    steps = int(duration_s / dt_s)
+    for _ in range(steps):
+        vn, ve, _ = orbit_velocity_ned(
+            x,
+            y,
+            center_x,
+            center_y,
+            radius_m,
+            orbit_speed_m_s,
+            radial_kp,
+            clockwise=clockwise,
+        )
+        x += vn * dt_s
+        y += ve * dt_s
+        path.append((x, y))
+        dist = math.hypot(x - center_x, y - center_y)
+        min_radius = min(min_radius, dist)
+        lap_progress, laps, phi_prev = update_lap_progress(
+            x,
+            y,
+            center_x,
+            center_y,
+            phi_prev,
+            lap_progress,
+            clockwise=clockwise,
+        )
+        if laps >= 1.0:
+            return laps, path, min_radius
+    return lap_progress / (2 * math.pi), path, min_radius

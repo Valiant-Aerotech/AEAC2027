@@ -32,6 +32,20 @@ Pick the step that matches where you are. Run from the **repo root** with the ve
 
 Accept ~0.5 m radius error in wind. Mission Planner shows plain `T2:` lines (`Lap 2/5`, `Returning to center`, `Loiter - manual control`).
 
+## SITL-first rule
+
+All new autonomous navigation scripts (orbit, pattern, mission legs) must pass in **SITL** before Pi field flight. Use `python tools\valiant.py sitl orbit --laps 1` as the smoke test for this script.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|----------------|-----|
+| Reverse / backward motion when orbit starts | Old tangent sign bug | Pull latest `main`; re-run SITL `--laps 1` |
+| Steady descent ~0.15 m/s, no circle | Wrong tangent + center collapse | Same; verify MP vertical speed near 0 during orbit |
+| `Geofence - switching to loiter` early in SITL | Radius too tight vs orbit path | `sitl_orbit` profile uses 20 m geofence; field uses 12 m |
+| No `T2:` in Mission Planner | STATUSTEXT / sysid config | `python tools\valiant.py gcs verify-statustext` |
+| Overshoot to 16 m after takeoff | SITL takeoff tuning | Script shows `Descending to 10 m` and holds before forward leg |
+
 ## Validate in SITL first
 
 **Terminal 1:** `.\tools\launch_sitl.ps1`

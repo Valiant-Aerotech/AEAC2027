@@ -78,6 +78,7 @@ class FieldOrbitRunner:
         self._origin: tuple[float, float] | None = None
         self._center: tuple[float, float] | None = None
         self._clockwise = _direction_clockwise(str(self._ocfg.get("direction", "clockwise")))
+        self._orbit_aborted = False
         self._motion = GuidedMotionRunner(
             master,
             cfg,
@@ -147,6 +148,18 @@ class FieldOrbitRunner:
             return True
         return (time.time() - self._start_time) <= max_s
 
+    def _abort_to_loiter(self, message: str) -> None:
+        """Stop GUIDED velocity and hand off to LOITER (geofence / timeout)."""
+        self._orbit_aborted = True
+        self._motion.stop_stream()
+        self._motion.say(message)
+        try:
+            self._motion.set_loiter()
+        except RuntimeError:
+            self._motion.say("LOITER unavailable - stopping commands")
+        self._phase = OrbitPhase.DONE
+        self._motion.say("Orbit complete - manual control")
+
     def _wait_trigger(self) -> tuple[float, float, float, float]:
         trigger_alt = float(self._ocfg.get("trigger_alt_m", 10.0))
         tol = float(self._ocfg.get("alt_tolerance_m", 0.35))
@@ -185,11 +198,12 @@ class FieldOrbitRunner:
 
         alt_agl = -z0
         if abs(alt_agl - trigger_alt) > tol:
-            self._set_phase(OrbitPhase.ALT_HOLD, message=f"Climbing to {trigger_alt:.0f} m")
+            alt_label = GuidedMotionRunner.altitude_label(alt_agl, trigger_alt, tolerance_m=tol)
+            self._set_phase(OrbitPhase.ALT_HOLD, message=alt_label)
             self._motion.hold_altitude(
                 trigger_alt,
                 tolerance_m=tol,
-                label=f"Climbing to {trigger_alt:.0f} m",
+                label=alt_label,
             )
         if self._abort_if_left_guided():
             return
@@ -201,9 +215,26 @@ class FieldOrbitRunner:
 
         pose = self._motion.pose(need_position=True, need_attitude=True)
         p1x, p1y = pose.x, pose.y
-        cx, cy = circle_center(p1x, p1y, psi0, radius_m, clockwise=self._clockwise)
+        entry_yaw = pose.yaw
+        cx, cy = circle_center(p1x, p1y, entry_yaw, radius_m, clockwise=self._clockwise)
         self._center = (cx, cy)
-        print(f"[Orbit] Center ({cx:.1f}, {cy:.1f}) R={radius_m:.1f} m")
+        dist_entry = math.hypot(p1x - cx, p1y - cy)
+        vn0, ve0, err_r0 = orbit_velocity_ned(
+            p1x,
+            p1y,
+            cx,
+            cy,
+            radius_m,
+            orbit_speed,
+            radial_kp,
+            clockwise=self._clockwise,
+        )
+        self._motion.set_z_hold(pose.z)
+        print(
+            f"[Orbit] Center ({cx:.1f}, {cy:.1f}) R={radius_m:.1f} m "
+            f"entry_dist={dist_entry:.2f}m err_r={err_r0:.2f} "
+            f"vn={vn0:.2f} ve={ve0:.2f} yaw={math.degrees(entry_yaw):.0f}deg"
+        )
 
         self._set_phase(OrbitPhase.ORBIT, message="Starting orbit")
         lap_progress = 0.0
@@ -218,15 +249,15 @@ class FieldOrbitRunner:
             if self._abort_if_left_guided():
                 return
             if not self._duration_ok():
-                self._motion.say("Max duration - switching to loiter")
-                break
+                self._abort_to_loiter("Max duration - switching to loiter")
+                return
             pose = self._motion.pose(pose, need_position=True)
             if not pose.ok:
                 time.sleep(0.05)
                 continue
             if not self._geofence_ok(pose.x, pose.y):
-                self._motion.say("Geofence - switching to loiter")
-                break
+                self._abort_to_loiter("Geofence - switching to loiter")
+                return
             vn, ve, err_r = orbit_velocity_ned(
                 pose.x,
                 pose.y,
@@ -238,7 +269,7 @@ class FieldOrbitRunner:
                 clockwise=self._clockwise,
             )
             self._radius_err = err_r
-            vz = self._motion.altitude_vz(trigger_alt)
+            vz = self._motion.altitude_vz(trigger_alt, tolerance_m=tol)
             self._motion.servo.send_velocity_ned(vn, ve, vz)
             self._motion.start_stream()
             lap_progress, self._laps, phi_prev = update_lap_progress(
@@ -281,7 +312,7 @@ class FieldOrbitRunner:
             if dist < center_tol:
                 break
             vn, ve = velocity_toward_ned(pose.x, pose.y, cx, cy, return_speed)
-            vz = self._motion.altitude_vz(trigger_alt)
+            vz = self._motion.altitude_vz(trigger_alt, tolerance_m=tol)
             self._motion.servo.send_velocity_ned(vn, ve, vz)
             self._motion.start_stream()
             self._telemetry_send(pose)
