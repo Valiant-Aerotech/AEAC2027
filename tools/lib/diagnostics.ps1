@@ -165,9 +165,8 @@ function Invoke-ValiantWslBashScript {
         }) -join ' '
         $argSuffix = " $quoted"
     }
-    # Single-line -lc string: PowerShell here-strings use CRLF on Windows, which breaks
-    # "set -o pipefail" (terminal shows garbled ": invalid option namepefail").
-    $bashCmd = "set -o pipefail; TMP=`$(mktemp); sed 's/\r`$//' '$WslScript' > `"`$TMP`"; bash `"`$TMP`"$argSuffix 2>&1 | tee -a $LogFile; ec=`${PIPESTATUS[0]}; rm -f `"`$TMP`"; exit `$ec"
+    # Use a single-quoted PS string so bash vars ($TMP, ${PIPESTATUS[0]}) are not expanded by PowerShell.
+    $bashCmd = 'set -o pipefail; TMP=$(mktemp); sed ''s/\r$//'' ''' + $WslScript + ''' > "$TMP"; bash "$TMP"' + $argSuffix + ' 2>&1 | tee -a ' + $LogFile + '; ec=${PIPESTATUS[0]}; rm -f "$TMP"; exit $ec'
     $code = Invoke-ValiantWslBashLc -Distro $distro -Command $bashCmd
 
     if ($code -ne 0 -and $TreatSitlBuiltAsSuccess -and (Test-ValiantSitlBuilt -DistroName $distro)) {
