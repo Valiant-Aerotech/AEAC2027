@@ -23,9 +23,12 @@ def main() -> int:
     parser.add_argument("--connection", default=None, help="MAVLink URL override")
     parser.add_argument("--gcs-ip", default=None, help="GCS laptop IP for UDP telemetry")
     parser.add_argument("--drone", default="vion", help="Config id (default: vion)")
+    parser.add_argument("--laps", type=int, default=None, help="Override orbit lap count")
     args = parser.parse_args()
 
     cfg = apply_flight_profile(load_config(args.drone), args.profile)
+    if args.laps is not None:
+        cfg.setdefault("field_orbit", {})["laps"] = args.laps
     conn, baud = mavlink_connection_for_host(cfg)
     if args.connection:
         conn = args.connection

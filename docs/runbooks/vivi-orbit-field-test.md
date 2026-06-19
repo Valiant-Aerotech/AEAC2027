@@ -13,10 +13,14 @@ Pick the step that matches where you are. Run from the **repo root** with the ve
 | **Windows + SITL (quick check)** | Terminal 1: `.\tools\launch_sitl.ps1` running | `python tools\valiant.py sitl orbit --laps 1` |
 | **Windows + SITL (full 5 laps)** | Same | `python tools\valiant.py sitl orbit` |
 | **Windows + SITL (with monitor)** | SITL up; optional third window | `python tools\valiant.py gcs monitor` then run orbit in another terminal |
-| **Pi companion (field)** | Repo on Pi, GPS lock, laptop IP known | `python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <laptop-ip>` |
-| **GCS laptop (dev, Pi UART)** | Pi connected by radio/USB relay | `python tools\valiant.py field orbit --gcs-ip <laptop-ip>` |
+| **Pi companion (field)** | Repo on Pi, GPS lock, laptop IP known | `python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <laptop-ip> --laps 1` |
+| **GCS laptop (dev, Pi UART)** | Pi connected by radio/USB relay | `python tools\valiant.py field orbit --gcs-ip <laptop-ip> --laps 1` |
 
-**Pilot steps (field):** start the script before arming → arm and climb to ~10 m in STABILIZE/ALT_HOLD → switch RC to **GUIDED** → script runs orbit → ends in **LOITER** → switch RC back to manual and fly home.
+**Pilot steps (field):** start the script before arming → arm and climb to ~10 m in STABILIZE/ALT_HOLD → flip **mode switch to GUIDED** (channel TBD in Mission Planner) → script runs orbit → ends in **LOITER** → flip switch **off GUIDED** for manual control → fly home.
+
+**Pilot override:** At any time during the auto segment, flip the mode switch **off GUIDED** (STABILIZE / ALT_HOLD / LOITER per your MP mapping). Companion stops velocity commands immediately (`Pilot takeover - companion stopped`) and returns to **STANDBY** (waits for next GUIDED trigger without restarting the script).
+
+**Kill switch:** Hardware kill (RC channel 8 via [`safety.lua`](../../hardware/vion/lua/safety.lua)) commands **LAND immediately** on the flight controller. Companion detects kill PWM or LAND mode and stops streaming (`Emergency stop - companion stopped`). Verify `safety.lua` is loaded before field flight.
 
 **What you should see:** Mission Planner **Messages** shows `T2:` lines (`Climbing to 10 m`, `Lap 2/5`, `Loiter - manual control`). UDP monitor shows phase and lap if `--gcs-ip` is set.
 
@@ -76,33 +80,41 @@ See [sitl-wsl.md](sitl-wsl.md) orbit section.
 
 ```bash
 python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <laptop-ip>
+python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <laptop-ip> --laps 1
 ```
 
 4. On GCS laptop: `python tools\valiant.py gcs monitor`
-5. Mission Planner on radio: confirm `T2:` Messages during tether test.
+5. Mission Planner: confirm `safety.lua` loaded; map flight-mode switch channel (TBD); confirm `T2:` Messages during tether test.
 
 ## Pilot workflow
 
 ```text
 STANDBY     Script waiting (disarmed or manual climb OK)
      |
-     v  RC switch GUIDED at ~10 m AGL
+     v  RC mode switch -> GUIDED at ~10 m AGL
 ALT_HOLD    Hold 10 m if needed
      |
      v
 FORWARD     2 m straight
      |
      v
-ORBIT       5 m radius, 5 laps (direction from config)
+ORBIT       5 m radius, N laps (direction from config)
      |
      v
-RETURN      Fly to circle center
+RETURN      Fly to circle center (alt hold logged)
+     |
+     v
+HOVER       2 s zero horizontal vel at target alt
      |
      v
 LOITER      Script stops commanding; pilot flies home manually
 ```
 
-If mode leaves **GUIDED** during the auto segment, script aborts with `T2: Aborted - left GUIDED` and returns to standby.
+**Anytime:** flip mode switch **off GUIDED** → companion stops, returns to STANDBY.
+
+**Kill switch:** FC LAND immediately; companion stops streaming.
+
+If mode leaves **GUIDED** during the auto segment, companion stops with `Pilot takeover - companion stopped` and returns to STANDBY (re-trigger with GUIDED switch when ready).
 
 ## Config
 
@@ -118,23 +130,31 @@ Profile `flight_profiles.vivi_orbit` in [`config/vion.yaml`](../../config/vion.y
 | `field_orbit.orbit_speed_m_s` | 0.40 |
 | `field_orbit.geofence_radius_m` | 12.0 |
 | `field_orbit.max_duration_s` | 600 |
+| `field_orbit.loiter_settle_s` | 2.0 (hover before LOITER handoff) |
+| `field_orbit.standby_retrigger` | true (field: wait for next GUIDED after takeover) |
+| `field_orbit.pilot.kill_switch_rc_channel` | 8 (matches `safety.lua`) |
+| `field_orbit.pilot.guided_mode_channel` | null (TBD — set after MP flight-mode mapping) |
 
 ## Safety
 
 - Open field, spotter, kill switch ready.
+- **Pre-flight:** confirm [`safety.lua`](../../hardware/vion/lua/safety.lua) loaded on Kakute (kill → LAND).
+- Document mode-switch channel in Mission Planner after radio setup (GUIDED position TBD).
 - First flights: tether or hold frame; verify GUIDED velocity before full orbit.
 - Geofence aborts to LOITER if horizontal drift from trigger point exceeds config.
 - No force-arm on field (unlike SITL preflight).
-- Pi only sends velocity in GUIDED; avoid stick input during auto segment.
+- Pi only sends velocity in GUIDED; pilot can take manual control anytime via mode switch.
 
 ## Abort
 
-| Condition | Action |
-|-----------|--------|
-| Left GUIDED | Stop stream, standby message |
-| Geofence | Stop stream, LOITER |
-| Max duration | LOITER |
-| GPS fix lost | Standby loop (no start) |
+| Condition | FC action | Companion action |
+|-----------|-----------|------------------|
+| Mode switch off GUIDED | Pilot manual mode | Stop stream, STANDBY, wait for re-trigger |
+| Kill switch (RC ch 8) | **LAND immediately** (`safety.lua`) | Stop stream, do not command LOITER |
+| LAND / RTL / disarm | FC emergency mode | Stop stream |
+| Geofence | — | Stop stream, LOITER |
+| Max duration | — | LOITER |
+| GPS fix lost | — | Standby loop (no start) |
 
 ## Related
 

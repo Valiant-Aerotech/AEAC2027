@@ -12,6 +12,7 @@ from valiant.autonomy.auto_nav.mavlink_stream import VelocityStream
 from valiant.autonomy.auto_nav.visual_servo import VisualServo
 from valiant.autonomy.gcs_hud import GcsHudReporter
 from valiant.autonomy.orbit_math import wrap_pi
+from valiant.autonomy.pilot_override import OverrideKind, PilotOverrideMonitor
 from valiant.common.mavlink import send_companion_heartbeat
 from valiant.common.sitl_physics import drain_vehicle_pose, refresh_vehicle_pose, wait_vehicle_pose
 
@@ -42,6 +43,19 @@ class GuidedMotionRunner:
         self._last_pose = None
         self._z_hold: float | None = None
         self._ensure_guided = ensure_guided or (lambda: None)
+        self._pilot_monitor: PilotOverrideMonitor | None = None
+
+    def set_pilot_monitor(self, monitor: PilotOverrideMonitor | None) -> None:
+        self._pilot_monitor = monitor
+
+    def check_pilot_override(self) -> OverrideKind:
+        """Poll pilot override; stop velocity stream if active."""
+        if self._pilot_monitor is None:
+            return OverrideKind.NONE
+        kind = self._pilot_monitor.poll()
+        if kind != OverrideKind.NONE:
+            self.stop_stream()
+        return kind
 
     @property
     def servo(self) -> VisualServo:
@@ -135,6 +149,8 @@ class GuidedMotionRunner:
         self.start_stream()
         deadline = time.time() + max(30.0, distance_m / self._speed * 3.0)
         while time.time() < deadline:
+            if self.check_pilot_override() != OverrideKind.NONE:
+                return pose.x, pose.y
             pose = self.pose(pose)
             traveled = math.hypot(pose.x - x0, pose.y - y0)
             if traveled >= distance_m:
@@ -161,6 +177,8 @@ class GuidedMotionRunner:
             abs(degrees) / max(math.degrees(self._yaw_rate), 10.0) * 4.0,
         )
         while time.time() < deadline:
+            if self.check_pilot_override() != OverrideKind.NONE:
+                break
             pose = self.pose(pose)
             err = abs(wrap_pi(pose.yaw - target_yaw))
             if err < math.radians(4.0):
@@ -195,6 +213,8 @@ class GuidedMotionRunner:
         last_log = 0.0
         self.stop_stream()
         while time.time() < deadline:
+            if self.check_pilot_override() != OverrideKind.NONE:
+                break
             pose = self.refresh_pose(self._last_pose)
             if not pose.ok:
                 time.sleep(0.05)
@@ -260,3 +280,27 @@ class GuidedMotionRunner:
                 if hb.custom_mode == want:
                     return
         print(f"[{self._log_tag}] Warning: LOITER not confirmed")
+
+    def hold_hover_at_altitude(
+        self,
+        target_alt_m: float,
+        *,
+        duration_s: float = 2.0,
+        tolerance_m: float = 0.35,
+    ) -> bool:
+        """Zero horizontal velocity with altitude hold before mode handoff."""
+        deadline = time.time() + duration_s
+        self.stop_stream()
+        while time.time() < deadline:
+            if self.check_pilot_override() != OverrideKind.NONE:
+                return False
+            pose = self.refresh_pose(self._last_pose)
+            if not pose.ok:
+                time.sleep(0.05)
+                continue
+            vz = self.altitude_vz(target_alt_m, tolerance_m=tolerance_m)
+            self._servo.send_velocity_ned(0.0, 0.0, vz)
+            self.start_stream()
+            time.sleep(0.05)
+        self.stop_stream()
+        return True

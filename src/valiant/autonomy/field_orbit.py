@@ -18,8 +18,8 @@ from valiant.autonomy.orbit_math import (
     update_lap_progress,
     velocity_toward_ned,
 )
+from valiant.autonomy.pilot_override import OverrideKind, PilotOverrideMonitor, override_message
 from valiant.autonomy.sitl_preflight import (
-    _flight_mode_from_heartbeat,
     ensure_guided,
     wait_for_guided_trigger,
 )
@@ -28,8 +28,8 @@ from valiant.common.mavlink import (
     connect,
     gcs_statustext_options_from_cfg,
     request_guided_telemetry_streams,
+    send_land,
 )
-from valiant.common.mavlink_io import mavlink_io
 from valiant.common.sitl_physics import wait_vehicle_pose
 
 
@@ -82,6 +82,7 @@ class FieldOrbitRunner:
         self._clockwise = _direction_clockwise(str(self._ocfg.get("direction", "clockwise")))
         self._orbit_aborted = False
         self._last_status_log = 0.0
+        self._pilot_monitor = PilotOverrideMonitor(master, cfg)
         self._motion = GuidedMotionRunner(
             master,
             cfg,
@@ -90,6 +91,7 @@ class FieldOrbitRunner:
             speed_m_s=float(self._ocfg.get("forward_speed_m_s", 0.45)),
             ensure_guided=lambda: ensure_guided(master, force=True),
         )
+        self._motion.set_pilot_monitor(self._pilot_monitor)
 
     @property
     def phase(self) -> OrbitPhase:
@@ -131,20 +133,23 @@ class FieldOrbitRunner:
             },
         )
 
-    def _in_guided(self) -> bool:
-        with mavlink_io(self.master):
-            hb = self.master.recv_match(type="HEARTBEAT", blocking=True, timeout=0.3)
-        if hb is None or hb.get_srcSystem() != self.master.target_system:
-            return self.master.flightmode == "GUIDED"
-        return _flight_mode_from_heartbeat(self.master, hb) == "GUIDED"
-
-    def _abort_if_left_guided(self) -> bool:
-        if self._in_guided():
-            return False
-        self._motion.stop_stream()
-        self._set_phase(OrbitPhase.ABORT, message="Aborted - left GUIDED")
+    def _handle_pilot_override(self) -> str | None:
+        """Stop companion commands on pilot override. Returns 'standby' if takeover."""
+        kind = self._motion.check_pilot_override()
+        if kind == OverrideKind.NONE:
+            return None
+        msg = override_message(kind)
+        if msg:
+            self._motion.say(msg)
+        if kind in (OverrideKind.KILL_SWITCH, OverrideKind.EMERGENCY):
+            pilot_cfg = self._ocfg.get("pilot", {})
+            if pilot_cfg.get("companion_land_on_kill", False):
+                try:
+                    send_land(self.master)
+                except Exception as exc:
+                    print(f"[Orbit] Warning: companion LAND failed: {exc}")
         self._phase = OrbitPhase.STANDBY
-        return True
+        return "standby"
 
     def _geofence_ok(self, x: float, y: float) -> bool:
         if not self.cfg.get("safety", {}).get("geofence_abort", True):
@@ -166,6 +171,10 @@ class FieldOrbitRunner:
         self._orbit_aborted = True
         self._motion.stop_stream()
         self._motion.say(message)
+        kind = self._pilot_monitor.poll()
+        if kind != OverrideKind.NONE:
+            self._phase = OrbitPhase.STANDBY
+            return
         try:
             self._motion.set_loiter()
         except RuntimeError:
@@ -252,6 +261,21 @@ class FieldOrbitRunner:
 
     def run(self) -> None:
         request_guided_telemetry_streams(self.master)
+        retrigger = bool(self._ocfg.get("standby_retrigger", True)) and not self._skip_standby
+        while True:
+            outcome = self._execute_mission()
+            if outcome == "complete" or not retrigger:
+                break
+            if outcome == "standby":
+                self._laps = 0.0
+                self._radius_err = 0.0
+                self._orbit_aborted = False
+                print("[Orbit] Standby - waiting for next GUIDED trigger")
+                continue
+            break
+
+    def _execute_mission(self) -> str:
+        """Run one orbit cycle from GUIDED trigger through LOITER handoff."""
         x0, y0, z0, psi0 = self._wait_trigger()
         self._origin = (x0, y0)
         self._start_time = time.time()
@@ -262,6 +286,7 @@ class FieldOrbitRunner:
         orbit_speed = float(self._ocfg.get("orbit_speed_m_s", 0.40))
         radial_kp = float(self._ocfg.get("radial_kp", 0.25))
         center_tol = float(self._ocfg.get("center_tolerance_m", 0.5))
+        loiter_settle_s = float(self._ocfg.get("loiter_settle_s", 2.0))
 
         pose = wait_vehicle_pose(self.master, need_position=True, need_attitude=True)
         self._motion.set_last_pose(pose)
@@ -269,14 +294,16 @@ class FieldOrbitRunner:
 
         if not self._ensure_at_altitude(trigger_alt, tol):
             self._abort_to_loiter("Altitude not reached - loiter")
-            return
-        if self._abort_if_left_guided():
-            return
+            return "complete"
+        override = self._handle_pilot_override()
+        if override:
+            return override
 
         self._set_phase(OrbitPhase.FORWARD, silent=True)
         self._motion.drive_forward(forward_m, label=f"Flying forward {forward_m:.0f} m")
-        if self._abort_if_left_guided():
-            return
+        override = self._handle_pilot_override()
+        if override:
+            return override
 
         pose = self._motion.pose(need_position=True, need_attitude=True)
         p1x, p1y = pose.x, pose.y
@@ -318,11 +345,12 @@ class FieldOrbitRunner:
         self._motion.stop_stream()
         orbit_exit = "timeout"
         while time.time() < deadline:
-            if self._abort_if_left_guided():
-                return
+            override = self._handle_pilot_override()
+            if override:
+                return override
             if not self._duration_ok():
                 self._abort_to_loiter("Max duration - switching to loiter")
-                return
+                return "complete"
             pose = self._motion.refresh_pose(pose)
             if not pose.ok:
                 time.sleep(orbit_tick_dt)
@@ -330,7 +358,7 @@ class FieldOrbitRunner:
             if not self._geofence_ok(pose.x, pose.y):
                 orbit_exit = "geofence"
                 self._abort_to_loiter("Geofence - switching to loiter")
-                return
+                return "complete"
             blend = max(0.0, 1.0 - (time.time() - orbit_start) / max(entry_blend_s, 0.1))
             effective_radial = radial_kp + (entry_radial_kp - radial_kp) * blend
             vn, ve, err_r = orbit_velocity_ned(
@@ -385,22 +413,24 @@ class FieldOrbitRunner:
             f"pos=({pose.x:.2f},{pose.y:.2f})"
         )
 
-        if self._abort_if_left_guided():
-            return
+        override = self._handle_pilot_override()
+        if override:
+            return override
 
         if self._laps < self._lap_target and not return_on_timeout:
             self._abort_to_loiter(
                 f"Orbit incomplete (lap={self._laps:.1f}/{self._lap_target:.0f}) - loiter"
             )
-            return
+            return "complete"
 
         self._set_phase(OrbitPhase.RETURN_CENTER, message="Returning to center")
         return_speed = float(self._ocfg.get("return_speed_m_s", orbit_speed))
         deadline = time.time() + 120.0
         self._motion.stop_stream()
         while time.time() < deadline:
-            if self._abort_if_left_guided():
-                return
+            override = self._handle_pilot_override()
+            if override:
+                return override
             pose = self._motion.refresh_pose(pose)
             if not pose.ok:
                 time.sleep(0.05)
@@ -412,9 +442,23 @@ class FieldOrbitRunner:
             vz = self._motion.altitude_vz(trigger_alt, tolerance_m=tol)
             self._motion.servo.send_velocity_ned(vn, ve, vz)
             self._motion.start_stream()
-            self._telemetry_send(pose)
+            self._log_status(pose, "RETURN", trigger_alt, vn=vn, ve=ve)
+            self._telemetry_send(pose, vn=vn, ve=ve)
             time.sleep(0.05)
         self._motion.stop_stream()
+
+        override = self._handle_pilot_override()
+        if override:
+            return override
+
+        self._motion.hold_hover_at_altitude(
+            trigger_alt,
+            duration_s=loiter_settle_s,
+            tolerance_m=tol,
+        )
+        override = self._handle_pilot_override()
+        if override:
+            return override
 
         self._set_phase(OrbitPhase.LOITER, silent=True)
         try:
@@ -425,6 +469,7 @@ class FieldOrbitRunner:
         self._motion.say("Orbit complete - manual control")
         self._telemetry_send(pose)
         time.sleep(2.0)
+        return "complete"
 
 
 def run_field_orbit(

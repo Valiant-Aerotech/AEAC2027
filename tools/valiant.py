@@ -258,6 +258,8 @@ def cmd_field_orbit(args: argparse.Namespace) -> int:
         argv.extend(["--connection", args.connection])
     if args.gcs_ip:
         argv.extend(["--gcs-ip", args.gcs_ip])
+    if args.laps is not None:
+        argv.extend(["--laps", str(args.laps)])
     return _run("field/run_field_orbit.py", argv)
 
 
@@ -387,6 +389,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--profile", default="vivi_orbit")
     sp.add_argument("--connection", default=None)
     sp.add_argument("--gcs-ip", default=None)
+    sp.add_argument("--laps", type=int, default=None, help="Override lap count")
     sp.add_argument("extra", nargs=argparse.REMAINDER)
     sp.set_defaults(func=cmd_field_orbit)
 

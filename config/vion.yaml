@@ -146,6 +146,13 @@ flight_profiles:
       geofence_radius_m: 12.0
       max_duration_s: 600
       return_on_timeout: false
+      loiter_settle_s: 2.0
+      standby_retrigger: true
+      pilot:
+        guided_mode_channel: null
+        kill_switch_rc_channel: 8
+        kill_switch_pwm_high: 1300
+        companion_land_on_kill: false
     gcs_monitor:
       statustext_interval_s: 2.0
     safety:
@@ -181,6 +188,13 @@ flight_profiles:
       geofence_radius_m: 20.0
       max_duration_s: 600
       return_on_timeout: false
+      loiter_settle_s: 2.0
+      standby_retrigger: true
+      pilot:
+        guided_mode_channel: null
+        kill_switch_rc_channel: 8
+        kill_switch_pwm_high: 1300
+        companion_land_on_kill: false
     gcs_monitor:
       statustext_interval_s: 2.0
       mp_use_autopilot_sysid: true

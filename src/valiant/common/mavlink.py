@@ -289,3 +289,27 @@ def send_rtl(master: mavutil.mavfile) -> None:
             0,
             0,
         )
+
+
+def send_land(master: mavutil.mavfile) -> None:
+    """Command immediate LAND mode (companion backup when FC safety script absent)."""
+    mapping = master.mode_mapping()
+    land_id = mapping.get("LAND")
+    if land_id is not None:
+        with mavlink_io(master):
+            master.set_mode(land_id)
+        return
+    with mavlink_io(master):
+        master.mav.command_long_send(
+            master.target_system,
+            master.target_component,
+            mavutil.mavlink.MAV_CMD_NAV_LAND,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        )

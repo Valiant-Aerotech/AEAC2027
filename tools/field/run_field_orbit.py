@@ -21,9 +21,12 @@ def main() -> int:
     parser.add_argument("--connection", default=None)
     parser.add_argument("--gcs-ip", default=None)
     parser.add_argument("--drone", default="vion")
+    parser.add_argument("--laps", type=int, default=None, help="Override orbit lap count")
     args = parser.parse_args()
 
     cfg = apply_flight_profile(load_config(args.drone), args.profile)
+    if args.laps is not None:
+        cfg.setdefault("field_orbit", {})["laps"] = args.laps
     mavlink = cfg.get("mavlink", {})
     conn = args.connection or mavlink.get("rpi_connection") or mavlink.get("connection")
     run_field_orbit(connection=conn, cfg=cfg, sitl=False, gcs_ip=args.gcs_ip)
