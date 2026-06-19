@@ -171,7 +171,8 @@ Tests include timeline synthetic reaching `APPROACHING` and `COMPLETE` (spray di
 
 | Issue | Fix |
 |-------|-----|
-| `externally-managed-environment` / pip blocked | In **WSL**: `sudo apt install -y python3-empy` (do not use Windows pip) |
+| `Unable to locate package python3-future` | Fixed in latest `setup_wsl.sh` (pull repo). Re-run `.\tools\setup_wsl.ps1` |
+| `externally-managed-environment` / pip blocked | Script uses `--break-system-packages` on Noble; prefer `sudo apt install python3-empy` |
 | `No module named pip` | In **WSL**: `sudo apt install -y python3-empy` |
 | `you need to install empy` | In **WSL**: `sudo apt install -y python3-empy` |
 | `mavproxy.py` not found | Expected — use `launch_sitl.ps1` (`--no-mavproxy`). Or install MAVProxy in WSL if you want map/console |
