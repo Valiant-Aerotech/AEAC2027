@@ -168,6 +168,7 @@ class GuidedMotionRunner:
         stable_s: float = 1.0,
         label: str = "Holding altitude",
         max_duration_s: float = 60.0,
+        log_interval_s: float = 2.0,
     ) -> bool:
         """Hold target AGL until within tolerance for stable_s. Returns success."""
         self.say(label)
@@ -178,17 +179,27 @@ class GuidedMotionRunner:
         z_target = -target_alt_m
         stable_since: float | None = None
         deadline = time.time() + max_duration_s
+        last_log = 0.0
         self.stop_stream()
         while time.time() < deadline:
             pose = self.pose(self._last_pose, need_position=True)
             if not pose.ok:
                 time.sleep(0.05)
                 continue
+            alt_m = -pose.z
             err_z = z_target - pose.z
+            now = time.time()
+            if now - last_log >= log_interval_s:
+                print(
+                    f"[{self._log_tag}] alt={alt_m:.1f}m target={target_alt_m:.1f}m "
+                    f"err={abs(alt_m - target_alt_m):.2f}m"
+                )
+                last_log = now
             if abs(err_z) < tolerance_m:
                 if stable_since is None:
-                    stable_since = time.time()
-                elif time.time() - stable_since >= stable_s:
+                    stable_since = now
+                elif now - stable_since >= stable_s:
+                    print(f"[{self._log_tag}] Altitude hold OK at {alt_m:.1f}m")
                     self.stop_stream()
                     return True
             else:
@@ -197,6 +208,8 @@ class GuidedMotionRunner:
             self._servo.send_velocity_body(0.0, 0.0, vz)
             self.start_stream()
             time.sleep(0.05)
+        alt_m = -self._last_pose.z if self._last_pose and self._last_pose.ok else 0.0
+        print(f"[{self._log_tag}] Altitude hold timed out at {alt_m:.1f}m")
         self.stop_stream()
         return False
 

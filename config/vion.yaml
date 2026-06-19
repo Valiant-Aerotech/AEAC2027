@@ -139,6 +139,8 @@ flight_profiles:
       direction: clockwise
       orbit_speed_m_s: 0.40
       radial_kp: 0.25
+      orbit_entry_radial_kp: 0.65
+      orbit_entry_blend_s: 4.0
       altitude_kp: 0.22
       max_vz: 0.15
       geofence_radius_m: 12.0
@@ -170,7 +172,9 @@ flight_profiles:
       laps: 5
       direction: clockwise
       orbit_speed_m_s: 0.40
-      radial_kp: 0.25
+      radial_kp: 0.45
+      orbit_entry_radial_kp: 0.75
+      orbit_entry_blend_s: 5.0
       altitude_kp: 0.22
       max_vz: 0.15
       geofence_radius_m: 20.0

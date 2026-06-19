@@ -171,6 +171,47 @@ def _wait_altitude(master: mavutil.mavfile, min_alt_m: float, timeout_s: float) 
     raise RuntimeError(f"Timed out waiting for takeoff ({min_alt_m}m)")
 
 
+def wait_altitude_settled(
+    master: mavutil.mavfile,
+    target_alt_m: float,
+    *,
+    tolerance_m: float = 0.35,
+    stable_s: float = 2.0,
+    timeout_s: float = 45.0,
+) -> float:
+    """Wait until relative altitude is within tolerance for stable_s. Returns final alt (m)."""
+    from valiant.common.mavlink import request_message_interval
+    from valiant.common.sitl_physics import drain_vehicle_pose
+
+    request_message_interval(master, mavutil.mavlink.MAVLINK_MSG_ID_LOCAL_POSITION_NED, 10)
+    stable_since: float | None = None
+    deadline = time.time() + timeout_s
+    last_alt = 0.0
+    last_log = 0.0
+    while time.time() < deadline:
+        pose = drain_vehicle_pose(master)
+        if not pose.ok:
+            time.sleep(0.1)
+            continue
+        last_alt = -pose.z
+        err = abs(last_alt - target_alt_m)
+        now = time.time()
+        if now - last_log >= 2.0:
+            print(f"[SITL] Altitude {last_alt:.1f}m -> target {target_alt_m:.1f}m")
+            last_log = now
+        if err <= tolerance_m:
+            if stable_since is None:
+                stable_since = now
+            elif now - stable_since >= stable_s:
+                print(f"[SITL] Altitude settled at {last_alt:.1f}m (target {target_alt_m:.1f}m)")
+                return last_alt
+        else:
+            stable_since = None
+        time.sleep(0.1)
+    print(f"[SITL] Warning: altitude not settled (at {last_alt:.1f}m, want {target_alt_m:.1f}m)")
+    return last_alt
+
+
 def arm_guided_takeoff(
     master: mavutil.mavfile,
     *,
@@ -214,6 +255,13 @@ def arm_guided_takeoff(
             takeoff_alt_m,
         )
     _wait_altitude(master, takeoff_alt_m * 0.85, timeout_s)
+    wait_altitude_settled(
+        master,
+        takeoff_alt_m,
+        tolerance_m=max(0.35, takeoff_alt_m * 0.05),
+        stable_s=1.5,
+        timeout_s=min(30.0, timeout_s * 0.4),
+    )
     print(f"[SITL] Takeoff complete (~{takeoff_alt_m}m)")
 
     master.set_mode(master.mode_mapping()[mode])

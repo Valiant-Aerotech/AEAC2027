@@ -79,6 +79,7 @@ class FieldOrbitRunner:
         self._center: tuple[float, float] | None = None
         self._clockwise = _direction_clockwise(str(self._ocfg.get("direction", "clockwise")))
         self._orbit_aborted = False
+        self._last_status_log = 0.0
         self._motion = GuidedMotionRunner(
             master,
             cfg,
@@ -160,6 +161,45 @@ class FieldOrbitRunner:
         self._phase = OrbitPhase.DONE
         self._motion.say("Orbit complete - manual control")
 
+    def _altitude_m(self, pose) -> float:
+        return -pose.z if pose.ok else 0.0
+
+    def _log_status(self, pose, phase: str, target_alt: float, *, force: bool = False) -> None:
+        now = time.time()
+        if not force and now - self._last_status_log < 2.0:
+            return
+        self._last_status_log = now
+        alt = self._altitude_m(pose)
+        msg = (
+            f"alt={alt:.1f}m target={target_alt:.1f}m phase={phase} "
+            f"lap={self._laps:.1f}/{self._lap_target:.0f} r_err={self._radius_err:.2f}m"
+        )
+        print(f"[Orbit] {msg}")
+
+    def _ensure_at_altitude(self, target_alt: float, tol: float) -> bool:
+        """Block until altitude is within tolerance; return False on timeout."""
+        pose = self._motion.pose(need_position=True)
+        alt = self._altitude_m(pose)
+        if abs(alt - target_alt) <= tol:
+            print(f"[Orbit] Already at {alt:.1f}m (target {target_alt:.1f}m)")
+            self._motion.set_z_hold(-target_alt)
+            return True
+        alt_label = GuidedMotionRunner.altitude_label(alt, target_alt, tolerance_m=tol)
+        self._set_phase(OrbitPhase.ALT_HOLD, message=alt_label)
+        ok = self._motion.hold_altitude(
+            target_alt,
+            tolerance_m=tol,
+            label=alt_label,
+            max_duration_s=90.0,
+        )
+        if ok:
+            self._motion.set_z_hold(-target_alt)
+            return True
+        pose = self._motion.pose(need_position=True)
+        self._log_status(pose, "ALT_HOLD_FAIL", target_alt, force=True)
+        self._motion.say(f"Alt hold failed at {self._altitude_m(pose):.1f}m")
+        return False
+
     def _wait_trigger(self) -> tuple[float, float, float, float]:
         trigger_alt = float(self._ocfg.get("trigger_alt_m", 10.0))
         tol = float(self._ocfg.get("alt_tolerance_m", 0.35))
@@ -195,16 +235,11 @@ class FieldOrbitRunner:
 
         pose = wait_vehicle_pose(self.master, need_position=True, need_attitude=True)
         self._motion.set_last_pose(pose)
+        self._log_status(pose, "START", trigger_alt, force=True)
 
-        alt_agl = -z0
-        if abs(alt_agl - trigger_alt) > tol:
-            alt_label = GuidedMotionRunner.altitude_label(alt_agl, trigger_alt, tolerance_m=tol)
-            self._set_phase(OrbitPhase.ALT_HOLD, message=alt_label)
-            self._motion.hold_altitude(
-                trigger_alt,
-                tolerance_m=tol,
-                label=alt_label,
-            )
+        if not self._ensure_at_altitude(trigger_alt, tol):
+            self._abort_to_loiter("Altitude not reached - loiter")
+            return
         if self._abort_if_left_guided():
             return
 
@@ -229,11 +264,14 @@ class FieldOrbitRunner:
             radial_kp,
             clockwise=self._clockwise,
         )
-        self._motion.set_z_hold(pose.z)
+        entry_radial_kp = float(self._ocfg.get("orbit_entry_radial_kp", radial_kp * 2.5))
+        entry_blend_s = float(self._ocfg.get("orbit_entry_blend_s", 4.0))
+        orbit_start = time.time()
         print(
             f"[Orbit] Center ({cx:.1f}, {cy:.1f}) R={radius_m:.1f} m "
             f"entry_dist={dist_entry:.2f}m err_r={err_r0:.2f} "
-            f"vn={vn0:.2f} ve={ve0:.2f} yaw={math.degrees(entry_yaw):.0f}deg"
+            f"vn={vn0:.2f} ve={ve0:.2f} yaw={math.degrees(entry_yaw):.0f}deg "
+            f"alt={self._altitude_m(pose):.1f}m"
         )
 
         self._set_phase(OrbitPhase.ORBIT, message="Starting orbit")
@@ -258,6 +296,8 @@ class FieldOrbitRunner:
             if not self._geofence_ok(pose.x, pose.y):
                 self._abort_to_loiter("Geofence - switching to loiter")
                 return
+            blend = max(0.0, 1.0 - (time.time() - orbit_start) / max(entry_blend_s, 0.1))
+            effective_radial = radial_kp + (entry_radial_kp - radial_kp) * blend
             vn, ve, err_r = orbit_velocity_ned(
                 pose.x,
                 pose.y,
@@ -265,13 +305,14 @@ class FieldOrbitRunner:
                 cy,
                 radius_m,
                 orbit_speed,
-                radial_kp,
+                effective_radial,
                 clockwise=self._clockwise,
             )
             self._radius_err = err_r
             vz = self._motion.altitude_vz(trigger_alt, tolerance_m=tol)
             self._motion.servo.send_velocity_ned(vn, ve, vz)
             self._motion.start_stream()
+            self._log_status(pose, "ORBIT", trigger_alt)
             lap_progress, self._laps, phi_prev = update_lap_progress(
                 pose.x,
                 pose.y,
@@ -366,6 +407,9 @@ def run_field_orbit(
                 timeout_s=float(cfg.get("sitl", {}).get("preflight_timeout_s", 75.0)),
                 ekf_wait_s=float(cfg.get("sitl", {}).get("ekf_wait_s", 45.0)),
             )
+            trigger = float(cfg.get("field_orbit", {}).get("trigger_alt_m", alt))
+            if abs(trigger - alt) > 0.01:
+                print(f"[Orbit] SITL takeoff at {alt:.0f}m; orbit target alt {trigger:.0f}m")
             skip_standby = True
         request_guided_telemetry_streams(master)
         runner = FieldOrbitRunner(
