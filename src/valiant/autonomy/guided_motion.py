@@ -13,7 +13,7 @@ from valiant.autonomy.auto_nav.visual_servo import VisualServo
 from valiant.autonomy.gcs_hud import GcsHudReporter
 from valiant.autonomy.orbit_math import wrap_pi
 from valiant.common.mavlink import send_companion_heartbeat
-from valiant.common.sitl_physics import drain_vehicle_pose, wait_vehicle_pose
+from valiant.common.sitl_physics import drain_vehicle_pose, refresh_vehicle_pose, wait_vehicle_pose
 
 
 class GuidedMotionRunner:
@@ -77,9 +77,18 @@ class GuidedMotionRunner:
             send_companion_heartbeat(self.master)
             self._last_hb = now
 
-    def pose(self, previous=None, *, need_position: bool = False, need_attitude: bool = False):
+    def pose(
+        self,
+        previous=None,
+        *,
+        need_position: bool = False,
+        need_attitude: bool = False,
+        fresh: bool = False,
+    ):
         self.heartbeat()
-        if need_position or need_attitude:
+        if fresh or (not need_position and not need_attitude):
+            pose = refresh_vehicle_pose(self.master, previous or self._last_pose)
+        elif need_position or need_attitude:
             pose = wait_vehicle_pose(
                 self.master,
                 timeout_s=15.0,
@@ -93,6 +102,10 @@ class GuidedMotionRunner:
         if pose.ok:
             self._servo.set_yaw_rad(pose.yaw)
         return pose
+
+    def refresh_pose(self, previous=None):
+        """Drain inbox for latest LOCAL NED (20 Hz control loops)."""
+        return self.pose(previous, fresh=True)
 
     def stop_stream(self) -> None:
         self._stream.stop()
@@ -182,7 +195,7 @@ class GuidedMotionRunner:
         last_log = 0.0
         self.stop_stream()
         while time.time() < deadline:
-            pose = self.pose(self._last_pose, need_position=True)
+            pose = self.refresh_pose(self._last_pose)
             if not pose.ok:
                 time.sleep(0.05)
                 continue

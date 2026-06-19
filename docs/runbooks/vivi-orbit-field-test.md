@@ -20,7 +20,7 @@ Pick the step that matches where you are. Run from the **repo root** with the ve
 
 **What you should see:** Mission Planner **Messages** shows `T2:` lines (`Climbing to 10 m`, `Lap 2/5`, `Loiter - manual control`). UDP monitor shows phase and lap if `--gcs-ip` is set.
 
-**Terminal altitude lines:** every ~2 s during alt hold and orbit you should see `[Orbit] alt=10.2m target=10.0m phase=ORBIT ...`. Do not proceed to forward until alt is within ~0.35 m of target.
+**Terminal altitude lines:** every ~2 s during alt hold and orbit you should see `[Orbit] alt=10.2m target=10.0m phase=ORBIT pos=(2.10,4.85) vn=0.35 ve=0.12 t=42s lap=0.8/1 ...`. **`pos=(x,y)` must change** during ORBIT; if it stays fixed, pose polling is broken. Do not proceed to forward until alt is within ~0.35 m of target.
 
 **Help:** `python tools\valiant.py sitl orbit --help` (via underlying script) or read [sitl-wsl.md](sitl-wsl.md).
 
@@ -46,6 +46,9 @@ All new autonomous navigation scripts (orbit, pattern, mission legs) must pass i
 | Steady descent ~0.15 m/s, no circle | Wrong tangent + center collapse | Same; verify MP vertical speed near 0 during orbit |
 | Climbs to 17 m instead of 10 m | Takeoff overshoot before alt hold | Watch terminal `alt=Xm target=10m`; script waits to settle before forward |
 | Straight line then sharp right turn | Orbit entry tangent matches forward leg | Normal at entry; path should curve within ~5 s (boosted radial hold) |
+| `lap=0.0/1` forever, frozen `pos=(x,y)` | Stale LOCAL NED in orbit loop | Pull latest; terminal should show **changing** `pos=(x,y)` every ~2 s during ORBIT |
+| `Returning to center` with lap=0 | Orbit timed out before lap complete | Script loiters instead (`return_on_timeout: false`); fix pose polling first |
+| Duplicate `Flying forward` / `Loiter` in terminal | Double `say()` on phase change | One line per phase after dedupe fix; MP may still duplicate if `mp_use_autopilot_sysid` |
 | `Geofence - switching to loiter` early in SITL | Radius too tight vs orbit path | `sitl_orbit` profile uses 20 m geofence; field uses 12 m |
 | No `T2:` in Mission Planner | STATUSTEXT / sysid config | `python tools\valiant.py gcs verify-statustext` |
 | Overshoot to 16 m after takeoff | SITL takeoff tuning | Script shows `Descending to 10 m` and holds before forward leg |

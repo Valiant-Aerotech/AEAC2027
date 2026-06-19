@@ -224,6 +224,11 @@ def drain_vehicle_pose(master, previous: VehiclePose | None = None) -> VehiclePo
     return pose
 
 
+def refresh_vehicle_pose(master, previous: VehiclePose | None = None) -> VehiclePose:
+    """Latest pose for closed-loop control (always drains inbox)."""
+    return drain_vehicle_pose(master, previous)
+
+
 def wait_vehicle_pose(
     master,
     timeout_s: float = 15.0,
@@ -253,13 +258,6 @@ def wait_vehicle_pose(
 
     has_position = not need_position
     has_attitude = not need_attitude
-    if previous is not None and previous.ok:
-        if need_position:
-            has_position = True
-        if need_attitude:
-            has_attitude = True
-    if has_position and has_attitude:
-        return pose
 
     request_sitl_telemetry_streams(master)
     target_sys = getattr(master, "target_system", 0)

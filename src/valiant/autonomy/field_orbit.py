@@ -11,7 +11,9 @@ from pymavlink import mavutil
 from valiant.autonomy.gcs_hud import GcsHudReporter, format_orbit_status
 from valiant.autonomy.guided_motion import GuidedMotionRunner
 from valiant.autonomy.orbit_math import (
+    advance_arc_progress_m,
     circle_center,
+    combined_laps,
     orbit_velocity_ned,
     update_lap_progress,
     velocity_toward_ned,
@@ -93,14 +95,22 @@ class FieldOrbitRunner:
     def phase(self) -> OrbitPhase:
         return self._phase
 
-    def _set_phase(self, phase: OrbitPhase, *, message: str | None = None) -> None:
+    def _set_phase(
+        self,
+        phase: OrbitPhase,
+        *,
+        message: str | None = None,
+        silent: bool = False,
+    ) -> None:
         self._phase = phase
+        if silent:
+            return
         if message:
             self._motion.say(message)
         elif phase != OrbitPhase.STANDBY:
             self._motion.say(format_orbit_status(phase.value, self._laps, self._lap_target))
 
-    def _telemetry_send(self, pose) -> None:
+    def _telemetry_send(self, pose, *, vn: float | None = None, ve: float | None = None) -> None:
         if self._telemetry is None:
             return
         alt_m = -pose.z if pose.ok else None
@@ -116,6 +126,8 @@ class FieldOrbitRunner:
                 "alt_m": alt_m,
                 "pos_x": pose.x if pose.ok else None,
                 "pos_y": pose.y if pose.ok else None,
+                "vn": vn,
+                "ve": ve,
             },
         )
 
@@ -164,15 +176,33 @@ class FieldOrbitRunner:
     def _altitude_m(self, pose) -> float:
         return -pose.z if pose.ok else 0.0
 
-    def _log_status(self, pose, phase: str, target_alt: float, *, force: bool = False) -> None:
+    def _log_status(
+        self,
+        pose,
+        phase: str,
+        target_alt: float,
+        *,
+        vn: float | None = None,
+        ve: float | None = None,
+        orbit_elapsed_s: float | None = None,
+        force: bool = False,
+    ) -> None:
         now = time.time()
         if not force and now - self._last_status_log < 2.0:
             return
         self._last_status_log = now
         alt = self._altitude_m(pose)
+        pos = f"pos=({pose.x:.2f},{pose.y:.2f})" if pose.ok else "pos=?"
+        vel = ""
+        if vn is not None and ve is not None:
+            vel = f" vn={vn:.2f} ve={ve:.2f}"
+        elapsed = ""
+        if orbit_elapsed_s is not None:
+            elapsed = f" t={orbit_elapsed_s:.0f}s"
         msg = (
             f"alt={alt:.1f}m target={target_alt:.1f}m phase={phase} "
-            f"lap={self._laps:.1f}/{self._lap_target:.0f} r_err={self._radius_err:.2f}m"
+            f"{pos}{vel}{elapsed} lap={self._laps:.1f}/{self._lap_target:.0f} "
+            f"r_err={self._radius_err:.2f}m"
         )
         print(f"[Orbit] {msg}")
 
@@ -243,7 +273,7 @@ class FieldOrbitRunner:
         if self._abort_if_left_guided():
             return
 
-        self._set_phase(OrbitPhase.FORWARD, message=f"Flying forward {forward_m:.0f} m")
+        self._set_phase(OrbitPhase.FORWARD, silent=True)
         self._motion.drive_forward(forward_m, label=f"Flying forward {forward_m:.0f} m")
         if self._abort_if_left_guided():
             return
@@ -276,24 +306,29 @@ class FieldOrbitRunner:
 
         self._set_phase(OrbitPhase.ORBIT, message="Starting orbit")
         lap_progress = 0.0
+        arc_progress_m = 0.0
         phi_prev: float | None = None
         last_lap_int = 0
+        orbit_tick_dt = 0.05
+        return_on_timeout = bool(self._ocfg.get("return_on_timeout", False))
         deadline = time.time() + max(
             120.0,
             self._lap_target * 2 * math.pi * radius_m / max(orbit_speed, 0.1) * 1.5,
         )
         self._motion.stop_stream()
+        orbit_exit = "timeout"
         while time.time() < deadline:
             if self._abort_if_left_guided():
                 return
             if not self._duration_ok():
                 self._abort_to_loiter("Max duration - switching to loiter")
                 return
-            pose = self._motion.pose(pose, need_position=True)
+            pose = self._motion.refresh_pose(pose)
             if not pose.ok:
-                time.sleep(0.05)
+                time.sleep(orbit_tick_dt)
                 continue
             if not self._geofence_ok(pose.x, pose.y):
+                orbit_exit = "geofence"
                 self._abort_to_loiter("Geofence - switching to loiter")
                 return
             blend = max(0.0, 1.0 - (time.time() - orbit_start) / max(entry_blend_s, 0.1))
@@ -312,8 +347,16 @@ class FieldOrbitRunner:
             vz = self._motion.altitude_vz(trigger_alt, tolerance_m=tol)
             self._motion.servo.send_velocity_ned(vn, ve, vz)
             self._motion.start_stream()
-            self._log_status(pose, "ORBIT", trigger_alt)
-            lap_progress, self._laps, phi_prev = update_lap_progress(
+            orbit_elapsed = time.time() - orbit_start
+            self._log_status(
+                pose,
+                "ORBIT",
+                trigger_alt,
+                vn=vn,
+                ve=ve,
+                orbit_elapsed_s=orbit_elapsed,
+            )
+            lap_progress, _, phi_prev = update_lap_progress(
                 pose.x,
                 pose.y,
                 cx,
@@ -322,6 +365,8 @@ class FieldOrbitRunner:
                 lap_progress,
                 clockwise=self._clockwise,
             )
+            arc_progress_m = advance_arc_progress_m(arc_progress_m, vn, ve, orbit_tick_dt)
+            self._laps = combined_laps(lap_progress, arc_progress_m, radius_m)
             lap_int = int(self._laps)
             if lap_int > last_lap_int:
                 last_lap_int = lap_int
@@ -329,13 +374,24 @@ class FieldOrbitRunner:
                     format_orbit_status("ORBIT", self._laps, self._lap_target),
                     force=True,
                 )
-            self._telemetry_send(pose)
+            self._telemetry_send(pose, vn=vn, ve=ve)
             if self._laps >= self._lap_target:
+                orbit_exit = "lap complete"
                 break
-            time.sleep(0.05)
+            time.sleep(orbit_tick_dt)
         self._motion.stop_stream()
+        print(
+            f"[Orbit] Orbit exit: {orbit_exit} lap={self._laps:.1f}/{self._lap_target:.0f} "
+            f"pos=({pose.x:.2f},{pose.y:.2f})"
+        )
 
         if self._abort_if_left_guided():
+            return
+
+        if self._laps < self._lap_target and not return_on_timeout:
+            self._abort_to_loiter(
+                f"Orbit incomplete (lap={self._laps:.1f}/{self._lap_target:.0f}) - loiter"
+            )
             return
 
         self._set_phase(OrbitPhase.RETURN_CENTER, message="Returning to center")
@@ -345,7 +401,7 @@ class FieldOrbitRunner:
         while time.time() < deadline:
             if self._abort_if_left_guided():
                 return
-            pose = self._motion.pose(pose, need_position=True)
+            pose = self._motion.refresh_pose(pose)
             if not pose.ok:
                 time.sleep(0.05)
                 continue
@@ -360,7 +416,7 @@ class FieldOrbitRunner:
             time.sleep(0.05)
         self._motion.stop_stream()
 
-        self._set_phase(OrbitPhase.LOITER)
+        self._set_phase(OrbitPhase.LOITER, silent=True)
         try:
             self._motion.set_loiter()
         except RuntimeError:

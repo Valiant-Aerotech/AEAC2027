@@ -84,6 +84,29 @@ def update_lap_progress(
     return lap_progress_rad, lap_progress_rad / (2 * math.pi), phi
 
 
+def advance_arc_progress_m(
+    arc_progress_m: float,
+    vn: float,
+    ve: float,
+    dt_s: float,
+) -> float:
+    """Integrate path length from commanded horizontal velocity."""
+    return arc_progress_m + math.hypot(vn, ve) * dt_s
+
+
+def combined_laps(
+    lap_progress_rad: float,
+    arc_progress_m: float,
+    radius_m: float,
+) -> float:
+    """Angle-based laps with arc-length backup (use higher estimate)."""
+    laps_angle = lap_progress_rad / (2 * math.pi)
+    if radius_m <= 0:
+        return laps_angle
+    laps_arc = arc_progress_m / (2 * math.pi * radius_m)
+    return max(laps_angle, laps_arc)
+
+
 def velocity_toward_ned(
     x: float,
     y: float,

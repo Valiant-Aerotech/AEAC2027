@@ -8,7 +8,9 @@ import pytest
 
 from valiant.autonomy.gcs_hud import format_orbit_status
 from valiant.autonomy.orbit_math import (
+    advance_arc_progress_m,
     circle_center,
+    combined_laps,
     orbit_velocity_ned,
     simulate_orbit_path,
     update_lap_progress,
@@ -115,6 +117,41 @@ def test_simulate_orbit_path_one_lap():
     assert laps >= 0.95
     assert min_r > 3.5
     assert len(path) > 100
+
+
+def test_combined_laps_arc_backup_reaches_one():
+    """Moving integration with arc backup completes one lap."""
+    cx, cy, radius = 0.0, 5.0, 5.0
+    x, y = 0.0, 0.0
+    lap_progress = 0.0
+    arc_progress_m = 0.0
+    phi_prev = None
+    dt_s = 0.05
+    orbit_speed = 0.4
+    radial_kp = 0.25
+    for _ in range(int(120.0 / dt_s)):
+        vn, ve, _ = orbit_velocity_ned(
+            x, y, cx, cy, radius, orbit_speed, radial_kp, clockwise=True
+        )
+        x += vn * dt_s
+        y += ve * dt_s
+        lap_progress, _, phi_prev = update_lap_progress(
+            x, y, cx, cy, phi_prev, lap_progress, clockwise=True
+        )
+        arc_progress_m = advance_arc_progress_m(arc_progress_m, vn, ve, dt_s)
+        laps = combined_laps(lap_progress, arc_progress_m, radius)
+        if laps >= 0.95:
+            break
+    assert laps >= 0.95
+
+
+def test_combined_laps_uses_higher_of_angle_and_arc():
+    laps_angle = 0.2
+    circumference = 2 * math.pi * 5.0
+    laps_arc = 0.6
+    combined = combined_laps(laps_angle * 2 * math.pi, laps_arc * circumference, 5.0)
+    assert combined >= 0.6
+    assert combined <= 0.61
 
 
 def test_velocity_toward_center():
