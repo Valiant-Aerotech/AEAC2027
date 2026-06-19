@@ -12,6 +12,7 @@ from valiant.autonomy.auto_nav.mavlink_stream import VelocityStream
 from valiant.autonomy.auto_nav.visual_servo import VisualServo
 from valiant.autonomy.gcs_hud import GcsHudReporter
 from valiant.common.mavlink import (
+    command_yaw_relative,
     connect,
     gcs_statustext_options_from_cfg,
     request_sitl_telemetry_streams,
@@ -125,21 +126,34 @@ class SitlPatternRunner:
 
     def _turn_degrees(self, degrees: float, *, label: str) -> None:
         self._say(label)
-        self._stream.start()
+        self._stop()
         pose = self._pose(need_attitude=True)
-        target_delta = math.radians(degrees)
-        yaw0 = pose.yaw
-        rate = self._yaw_rate if degrees >= 0 else -self._yaw_rate
-        deadline = time.time() + max(20.0, abs(target_delta) / self._yaw_rate * 2.5)
+        target_yaw = _wrap_pi(pose.yaw + math.radians(degrees))
+        clockwise = degrees >= 0
+        rate_deg_s = max(10.0, math.degrees(self._yaw_rate))
+        command_yaw_relative(
+            self.master,
+            abs(degrees),
+            rate_deg_s=rate_deg_s,
+            clockwise=clockwise,
+        )
+        print(
+            f"[Pattern] Yaw command: {'CW' if clockwise else 'CCW'} "
+            f"{abs(degrees):.0f} deg @ {rate_deg_s:.0f} deg/s"
+        )
+        self._servo.send_velocity_body(0.0, 0.0, 0.0)
+        self._stream.start()
+        deadline = time.time() + max(30.0, abs(degrees) / rate_deg_s * 3.0)
         while time.time() < deadline:
             pose = self._pose(pose)
-            delta = _wrap_pi(pose.yaw - yaw0)
-            if degrees >= 0 and delta >= target_delta - math.radians(2.0):
+            err = abs(_wrap_pi(pose.yaw - target_yaw))
+            if err < math.radians(4.0):
+                print(f"[Pattern] Turn complete (err {math.degrees(err):.1f} deg)")
                 break
-            if degrees < 0 and delta <= target_delta + math.radians(2.0):
-                break
-            self._servo.send_yaw_rate(rate)
             time.sleep(0.05)
+        else:
+            err = abs(_wrap_pi(pose.yaw - target_yaw))
+            print(f"[Pattern] Warning: turn timed out (err {math.degrees(err):.1f} deg)")
         self._stop()
         time.sleep(0.3)
 
@@ -179,6 +193,8 @@ class SitlPatternRunner:
                 raise ValueError(f"Unknown leg kind: {leg.kind}")
         self._set_loiter()
         self._say("Pattern complete - hold in loiter")
+        # Hold altitude briefly in LOITER before exit (avoid drift into ground).
+        time.sleep(2.0)
 
 
 def run_pattern_flight(

@@ -219,6 +219,31 @@ def request_sitl_telemetry_streams(master: mavutil.mavfile) -> None:
     request_sys_status_stream(master, rate_hz=2)
 
 
+def command_yaw_relative(
+    master: mavutil.mavfile,
+    angle_deg: float,
+    *,
+    rate_deg_s: float = 25.0,
+    clockwise: bool = True,
+) -> None:
+    """ArduPilot GUIDED yaw via MAV_CMD_CONDITION_YAW (relative heading)."""
+    direction = 1.0 if clockwise else -1.0
+    with mavlink_io(master):
+        master.mav.command_long_send(
+            master.target_system,
+            master.target_component,
+            mavutil.mavlink.MAV_CMD_CONDITION_YAW,
+            0,
+            abs(angle_deg),
+            rate_deg_s,
+            direction,
+            1,  # relative to current heading
+            0,
+            0,
+            0,
+        )
+
+
 def send_companion_heartbeat(master: mavutil.mavfile) -> None:
     """Companion heartbeat (onboard computer, not GCS)."""
     with mavlink_io(master):
