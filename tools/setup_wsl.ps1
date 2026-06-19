@@ -78,16 +78,25 @@ Write-Host ""
 
 $ShForward = $ShWin -replace '\\', '/'
 $WslScript = (wsl -d $distro wslpath -a $ShForward).Trim()
-$code = Invoke-ValiantWsl -WslArgs @("bash", $WslScript)
+# Strip CRLF when repo lives on /mnt/c (Windows checkout); avoids silent bash failures.
+$bashCmd = "sed 's/\r$//' '$WslScript' | bash -s"
+$code = Invoke-ValiantWsl -WslArgs @("bash", "-lc", $bashCmd)
 if ($code -ne 0) {
     Write-Host ""
     Write-Host "WSL setup failed. See docs\runbooks\sitl-wsl.md" -ForegroundColor Red
     Write-Host ""
+    Write-Host "Last setup log (WSL):" -ForegroundColor Yellow
+    wsl -d $distro bash -lc "tail -50 ~/.valiant_sitl_setup.log 2>/dev/null || echo '(no setup log yet)'"
+    Write-Host ""
     Write-Host "Last build log (WSL):" -ForegroundColor Yellow
-    wsl -d $distro bash -lc "tail -40 ~/.valiant_sitl_build.log 2>/dev/null || echo '(no build log yet - failure may be in prereqs step)'"
+    wsl -d $distro bash -lc "tail -40 ~/.valiant_sitl_build.log 2>/dev/null || echo '(no build log yet)'"
     Write-Host ""
     Write-Host "If prereqs already finished, retry build only:" -ForegroundColor Yellow
     Write-Host "  .\tools\setup_wsl.ps1"
+    Write-Host ""
+    Write-Host "Or finish manually in Ubuntu:" -ForegroundColor Yellow
+    Write-Host "  source ~/venv-ardupilot/bin/activate"
+    Write-Host "  cd ~/ardupilot && ./waf configure --board sitl && ./waf copter -j4"
     exit $code
 }
 

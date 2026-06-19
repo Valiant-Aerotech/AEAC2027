@@ -7,7 +7,19 @@ ARDUPILOT_DIR="${ARDUPILOT_DIR:-$HOME/ardupilot}"
 MARKER="$HOME/.valiant_ardupilot_sitl_built"
 PREREQS_MARKER="$HOME/.valiant_ardupilot_prereqs_done"
 BUILD_LOG="$HOME/.valiant_sitl_build.log"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SETUP_LOG="$HOME/.valiant_sitl_setup.log"
+
+# Line-buffered log (PowerShell->WSL often buffers stdout until exit).
+exec > >(tee -a "$SETUP_LOG") 2>&1
+
+on_err() {
+  local rc=$?
+  echo ""
+  echo "ERROR: setup failed at line ${BASH_LINENO[0]} (exit $rc)"
+  echo "Full session log: $SETUP_LOG"
+  exit "$rc"
+}
+trap on_err ERR
 
 apt_install_if_available() {
   local pkg="$1"
@@ -26,7 +38,7 @@ pip_install_user() {
   if python3 -m pip install --user --break-system-packages "$pkg" 2>/dev/null; then
     return 0
   fi
-  python3 -m pip install --user "$pkg"
+  python3 -m pip install --user "$pkg" || return 1
 }
 
 prereqs_ok() {
@@ -101,22 +113,29 @@ echo "=== Valiant SITL / WSL setup (inside Ubuntu) ==="
 echo "ArduPilot dir: $ARDUPILOT_DIR"
 echo ""
 
-echo "[1/4] System packages..."
-sudo apt-get update -qq
-sudo apt-get install -y \
-  git python3 python3-pip python3-dev python3-empy python3-venv \
-  build-essential ccache g++ gawk wget curl \
-  libxml2-dev libxslt1-dev zlib1g-dev libffi-dev
+if [[ -f "$PREREQS_MARKER" ]]; then
+  echo "[1/4] System packages... skipping (prereqs already done; no sudo needed)"
+else
+  echo "[1/4] System packages..."
+  if ! sudo -n true 2>/dev/null; then
+    echo "  sudo will ask for your Linux password (same as Ubuntu login)."
+  fi
+  sudo apt-get update -qq
+  sudo apt-get install -y \
+    git python3 python3-pip python3-dev python3-empy python3-venv \
+    build-essential ccache g++ gawk wget curl \
+    libxml2-dev libxslt1-dev zlib1g-dev libffi-dev
 
-# Optional on older Ubuntu; Noble (24.04) drops some python3-* apt packages
-for pkg in python3-lxml python3-future python3-pexpect; do
-  apt_install_if_available "$pkg" || true
-done
+  # Optional on older Ubuntu; Noble (24.04) drops some python3-* apt packages
+  for pkg in python3-lxml python3-future python3-pexpect; do
+    apt_install_if_available "$pkg" || true
+  done
 
-# Pip fallback for Noble / missing apt packages (needed by pymavlink/waf)
-for pkg in future pexpect lxml; do
-  pip_install_user "$pkg" || echo "  WARN: pip install $pkg failed (install-prereqs may fix)"
-done
+  # Pip fallback for Noble / missing apt packages (needed by pymavlink/waf)
+  for pkg in future pexpect lxml; do
+    pip_install_user "$pkg" || echo "  WARN: pip install $pkg failed (install-prereqs may fix)"
+  done
+fi
 
 echo ""
 echo "[2/4] ArduPilot source..."
@@ -161,12 +180,14 @@ else
   echo "  Skipping (marker $PREREQS_MARKER exists)"
 fi
 
-# install-prereqs updates ~/.profile; load paths for waf
+# install-prereqs appends to ~/.profile (completion, PATH). Must not use set -e while sourcing.
 if [[ -f "$HOME/.profile" ]]; then
-  # shellcheck disable=SC1090
+  set +e
   set +u
-  source "$HOME/.profile" 2>/dev/null || true
+  # shellcheck disable=SC1090
+  source "$HOME/.profile" 2>/dev/null
   set -u
+  set -e
 fi
 
 activate_ardupilot_venv

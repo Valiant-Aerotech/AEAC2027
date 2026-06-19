@@ -192,6 +192,7 @@ Tests include timeline synthetic reaching `APPROACHING` and `COMPLETE` (spray di
 
 | Issue | Fix |
 |-------|-----|
+| `WSL setup failed` with no build log | Check `~/.valiant_sitl_setup.log` in Ubuntu (`tail -50`). Often sudo password, CRLF on `/mnt/c`, or `.profile` sourcing — fixed in latest `setup_wsl.sh` (pull + re-run) |
 | `WSL setup failed` after `install-prereqs-ubuntu.sh end` | Prereqs OK; waf build failed. Re-run `.\tools\setup_wsl.ps1` or manual waf commands in [If setup fails after prereqs](#if-setup-fails-after-prereqs) |
 | Build OOM / compiler killed | In Ubuntu: `./waf copter -j2` (lower parallelism) |
 | `you need to install empy` during waf | `source ~/venv-ardupilot/bin/activate` then retry build |
