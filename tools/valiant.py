@@ -147,6 +147,17 @@ def cmd_bringup_phase1_pi(_: argparse.Namespace) -> int:
     return subprocess.call(["bash", str(sh)], cwd=str(ROOT))
 
 
+def cmd_sitl_setup_wsl(_: argparse.Namespace) -> int:
+    ps1 = TOOLS / "setup_wsl.ps1"
+    if not ps1.exists():
+        print(f"ERROR: {ps1} not found")
+        return 1
+    return subprocess.call(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1)],
+        cwd=str(ROOT),
+    )
+
+
 def cmd_sitl_test(_: argparse.Namespace) -> int:
     ps1 = TOOLS / "run_sitl_tests.ps1"
     if ps1.exists():
@@ -222,6 +233,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("sitl", help="Software-in-the-loop")
     s = p.add_subparsers(dest="sub", required=True)
+    sp = s.add_parser("setup-wsl", help="One-time WSL + ArduPilot install (fresh PC)")
+    sp.set_defaults(func=cmd_sitl_setup_wsl)
     sp = s.add_parser("test", help="Run SITL pytest suite")
     sp.set_defaults(func=cmd_sitl_test)
     sp = s.add_parser("mission", help="Run Task 2 SITL mission")

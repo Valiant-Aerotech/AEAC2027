@@ -38,7 +38,23 @@ python tools\valiant.py guide
 
 ## Virtual drone (SITL)
 
-Full Task 2 loop with a simulated Pixhawk — **two terminals**, both in the repo folder.
+### One-time WSL setup (fresh Windows PC)
+
+From an **Administrator** PowerShell (only needed the first time if WSL is not installed):
+
+```powershell
+git clone https://github.com/Valiant-Aerotech/AEAC2027.git
+cd AEAC2027
+.\tools\setup_wsl.ps1
+```
+
+Same command after a reboot if Windows asked you to restart. Open **Ubuntu** once from the Start menu to create your Linux username/password, then run `.\tools\setup_wsl.ps1` again to finish the ArduPilot build.
+
+Equivalent: `python tools\valiant.py sitl setup-wsl`
+
+Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md)
+
+### Run a virtual mission (after WSL setup)
 
 **Terminal 1** — start ArduPilot in WSL (leave running):
 

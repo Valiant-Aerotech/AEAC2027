@@ -19,7 +19,7 @@ No arguments also prints the guide. First laptop setup: `.\start.ps1` from repo 
 | **Brand new laptop** | `.\start.ps1` |
 | **Check install (no drone)** | `python tools\valiant.py quickstart` |
 | **Webcam / CV test** | `python tools\valiant.py bench cv --camera 0` |
-| **Virtual full mission** | Terminal 1: `.\tools\launch_sitl.ps1` → Terminal 2: `python tools\valiant.py sitl mission` |
+| **Virtual full mission** | Once: `.\tools\setup_wsl.ps1` then Terminal 1: `launch_sitl.ps1` -> Terminal 2: `valiant sitl mission` |
 | **First drone connect (GCS)** | `python tools\valiant.py bringup phase1` |
 | **Telemetry HUD** | `python tools\valiant.py gcs monitor` |
 | **Deploy to Pi** | `.\tools\deploy_to_pi.ps1 -PiHost user@ip` |
@@ -34,7 +34,7 @@ No arguments also prints the guide. First laptop setup: `.\start.ps1` from repo 
 | `env` | `check` | Python packages |
 | `conops` | `check` | Competition config |
 | `bench` | `cv`, `metric`, `safety`, `smoke` | Laptop tests (no drone) |
-| `sitl` | `mission`, `test`, `map download` | Virtual drone |
+| `sitl` | `setup-wsl`, `mission`, `test`, `map download` | Virtual drone |
 | `gcs` | `heartbeat`, `spray`, `monitor`, `listen` | Radio + telemetry |
 | `bringup` | `phase1`, `phase1-pi` | Hardware checklists |
 | `calibrate` | `tune`, `validate`, `replay` | Depth calibration |
@@ -55,6 +55,7 @@ python tools\valiant.py --help
 | `verify_ps1.ps1` | Check all `.ps1` parse + ASCII (run after editing scripts) |
 | `setup.ps1` | First-time venv (`valiant setup`) |
 | `launch_sitl.ps1` | Terminal 1 before SITL mission |
+| `setup_wsl.ps1` | One-time WSL + ArduPilot (fresh PC) |
 | `run_sitl_mission.ps1` | Used internally by `valiant sitl mission` |
 | `bringup_gcs.ps1` | Extended first-connect (after `bringup phase1`) |
 | `deploy_to_pi.ps1` | Copy repo + model to Pi |

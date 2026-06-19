@@ -7,7 +7,28 @@ Software-in-the-loop testing with **ArduPilot SITL** + AEAC orchestrator. No phy
 
 Inspired by [Stanley](https://github.com/Matchstic/stanley) patterns; we use **pymavlink** + WSL `sim_vehicle.py` (not dronekit-sitl).
 
-## One-time WSL setup
+## One-time WSL setup (fresh Windows PC)
+
+**One command** from repo root (use **Administrator** PowerShell if WSL is not installed yet):
+
+```powershell
+.\tools\setup_wsl.ps1
+```
+
+Or: `python tools\valiant.py sitl setup-wsl`
+
+What it does:
+
+1. Installs WSL2 + Ubuntu if missing (may require **reboot**)
+2. Inside Ubuntu: apt packages, clone `~/ardupilot`, build ArduCopter SITL
+
+After reboot: open **Ubuntu** once (create Linux user), then run the **same command again** to finish the build.
+
+First ArduPilot build often takes **15-30 minutes**. Re-runs are fast (skipped if already built).
+
+## Manual WSL setup (optional detail)
+
+If you prefer step-by-step or the script fails, use these steps:
 
 1. Install WSL2 Ubuntu
 2. Clone and build ArduPilot ([dev setup](https://ardupilot.org/dev/docs/building-setup-linux.html)):

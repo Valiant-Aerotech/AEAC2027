@@ -30,7 +30,7 @@ python tools\valiant.py guide
 |------|---------|
 | Check install works | `python tools\valiant.py quickstart` |
 | Test CV on webcam | `python tools\valiant.py bench cv --camera 0` |
-| Virtual drone mission | `.\tools\launch_sitl.ps1` then `python tools\valiant.py sitl mission` |
+| Virtual drone mission | `.\tools\setup_wsl.ps1` once, then `launch_sitl.ps1` + `valiant sitl mission` |
 | First connect to drone | `python tools\valiant.py bringup phase1` |
 | Fly on Pi (competition) | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
 | GCS telemetry HUD | `python tools\valiant.py gcs monitor` |

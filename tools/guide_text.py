@@ -14,9 +14,11 @@ NO DRONE - try software on this laptop
   python tools\\valiant.py bench metric --camera 0
 
 VIRTUAL DRONE (SITL) - two terminals
-  Terminal 1:  .\\tools\\launch_sitl.ps1
-  Terminal 2:  python tools\\valiant.py sitl mission
-  Docs:        docs\\runbooks\\sitl-overview.md
+  One-time WSL setup:  .\\tools\\setup_wsl.ps1
+                       (or: python tools\\valiant.py sitl setup-wsl)
+  Terminal 1:          .\\tools\\launch_sitl.ps1
+  Terminal 2:          python tools\\valiant.py sitl mission
+  Docs:                docs\\runbooks\\sitl-wsl.md
 
 FIRST CONNECT - GCS laptop + drone (props off)
   python tools\\valiant.py bringup phase1
