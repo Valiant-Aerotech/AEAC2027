@@ -26,7 +26,7 @@ cd AEAC2027
 | **First connect GCS + drone** | `python tools\valiant.py bringup phase1` | Radio + powered Pixhawk |
 | **First connect Raspberry Pi** | `bash hardware/vion/rpi/first_connect.sh` | SSH to Pi |
 | **Fly Task 2 autonomously** | On Pi: `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` | Full bringup done |
-| **Vivi GUIDED orbit (no CV)** | On Pi: `python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <ip>` | Outdoor GPS; see [vivi-orbit-field-test.md](docs/runbooks/vivi-orbit-field-test.md) |
+| **Vivi GUIDED orbit (no CV)** | On Pi: `python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <ip> --laps 1` | Run `gcs verify-safety` first; see [vivi-orbit-field-test.md](docs/runbooks/vivi-orbit-field-test.md) |
 | **Watch telemetry on GCS** | `python tools\valiant.py gcs monitor` | Pi sending UDP to laptop |
 
 **Forgot the command?** Run:
@@ -111,6 +111,7 @@ python tools\valiant.py bench cv --camera 0
 python tools\valiant.py bench metric --camera 0
 python tools\valiant.py gcs monitor
 python tools\valiant.py gcs verify-statustext
+python tools\valiant.py gcs verify-safety
 python tools\valiant.py sitl mission
 python tools\valiant.py sitl pattern
 python tools\valiant.py sitl orbit

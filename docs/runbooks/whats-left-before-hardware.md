@@ -54,13 +54,15 @@ Read this before connecting to Vion. Bringup steps: [vion-bringup.md](vion-bring
 3. **Pi + FC (props off):** `session_start.sh` with MAVLink heartbeat
 4. **Sim:** `run_mission.py --profile indoor --sim --gcs-ip <ip>`
 5. **Tethered (props off, hold frame):** `run_bringup_tests.sh`
-6. **Props on:** `preflight_indoor.sh` then `run_mission.py --gcs-ip <ip>`
+6. **Props on:** `preflight_indoor.sh` then `run_mission.py --gcs-ip <ip>` (includes `gcs verify-safety` when FC connected)
 
 ## When you are "ready to fly" autonomously
 
 All of:
 
-- [ ] `check_sensors.py --once` passes (RGB + MAVLink)
+- [ ] `check_sensors.py --once` passes (RGB + MAVLink + safety.lua)
+- [ ] `python tools\valiant.py gcs verify-safety` passes
+- [ ] Mission Planner Messages: `safety: kill monitor loaded (RC8)` after FC reboot
 - [ ] `best.onnx` on Pi, purple target detected in sim
 - [ ] H-Flow `opt_qua` OK on venue floor (manual hover)
 - [ ] SERVO15 + RC emergency tested

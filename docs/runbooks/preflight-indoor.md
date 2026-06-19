@@ -9,11 +9,19 @@ cd ~/AEAC2027
 bash hardware/vion/rpi/preflight_indoor.sh
 ```
 
+`check_sensors.py --once` (step 2) verifies MAVLink and, when the FC is connected, runs the **safety.lua preflight** (`SCR_ENABLE=1`, `scripts/safety.lua` on SD). Field scripts (`run_mission.py`, `run_field_orbit.py`) also block at startup if this fails.
+
+```bash
+# Standalone safety check (Pi UART or GCS relay)
+python tools/valiant.py gcs verify-safety --connection /dev/ttyAMA0
+```
+
 ## Manual checks (GCS + spotter)
 
 - [ ] Mission Planner heartbeat via telemetry radio
+- [ ] Messages shows `safety: kill monitor loaded (RC8)` after FC reboot
 - [ ] H-Flow `opt_qua` OK on hover over venue-like floor
-- [ ] Emergency RC switch tested
+- [ ] Emergency RC switch tested (flip → LAND in Messages)
 - [ ] Water tank filled; SERVO15 verified
 - [ ] Spotter assigned; RC pilot ready to override
 - [ ] GCS `python tools\valiant.py gcs monitor` (optional)

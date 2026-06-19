@@ -27,7 +27,21 @@ Restart shit until it works
 - `BATT_VOLT_MULT` : `18.4615`
 
 ## Scripting
-- `SCR_ENABLE` : `1`
+
+Required for onboard kill switch ([`hardware/vion/lua/safety.lua`](../lua/safety.lua)).
+
+| Parameter | Value | Notes |
+|-----------|-------|--------|
+| `SCR_ENABLE` | `1` | Enable Lua scripting; **reboot FC** after change |
+
+**One-time setup:**
+
+1. Set `SCR_ENABLE = 1` in Mission Planner → reboot FC
+2. Copy `hardware/vion/lua/safety.lua` to SD card **`APM/scripts/safety.lua`** (CONFIG → MAVFTP)
+3. Reboot FC; Messages should show: `safety: kill monitor loaded (RC8)`
+4. Verify from repo: `python tools\valiant.py gcs verify-safety`
+
+Kill switch uses **RC channel 8** (PWM high = activated → **LAND** immediately). Test props-off before every field session.
 
 ## Holybro H-Flow (indoor optical flow + downward lidar)
 

@@ -74,6 +74,7 @@ All new autonomous navigation scripts (orbit, pattern, mission legs) must pass i
 | Duplicate `Flying forward` / `Loiter` in terminal | Double `say()` on phase change | One line per phase after dedupe fix; MP may still duplicate if `mp_use_autopilot_sysid` |
 | `Geofence - switching to loiter` early in SITL | Radius too tight vs orbit path | `sitl_orbit` profile uses 20 m geofence; field uses 12 m |
 | No `T2:` in Mission Planner | STATUSTEXT / sysid config | `python tools\valiant.py gcs verify-statustext` |
+| `Safety Lua preflight failed` at startup | SCR_ENABLE off or safety.lua missing | See **Confirm safety.lua is loaded** above; `gcs verify-safety` |
 | Overshoot to 16 m after takeoff | SITL takeoff tuning | Script shows `Descending to 10 m` and holds before forward leg |
 
 ## Validate in SITL first
@@ -95,15 +96,16 @@ See [sitl-wsl.md](sitl-wsl.md) orbit section.
 
 1. Deploy repo to Pi (`tools/deploy/deploy_to_pi.ps1` or rsync).
 2. Every session: `bash hardware/vion/rpi/session_start.sh`
-3. Start orbit script **before** arming:
+3. **Before arming:** `python tools/valiant.py gcs verify-safety --connection /dev/ttyAMA0` (or from GCS laptop via radio)
+4. Start orbit script **before** arming:
 
 ```bash
 python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <laptop-ip>
 python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <laptop-ip> --laps 1
 ```
 
-4. On GCS laptop: `python tools\valiant.py gcs monitor`
-5. Mission Planner: confirm `safety.lua` loaded; map flight-mode switch channel (TBD); confirm `T2:` Messages during tether test.
+5. On GCS laptop: `python tools\valiant.py gcs monitor`
+6. Mission Planner: confirm `safety.lua` loaded; map flight-mode switch channel (TBD); confirm `T2:` Messages during tether test.
 
 ## Pilot workflow
 

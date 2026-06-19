@@ -27,6 +27,7 @@ VIRTUAL DRONE (SITL) - two terminals
 FIRST CONNECT - GCS laptop + drone (props off)
   python tools\\valiant.py bringup phase1
   python tools\\valiant.py gcs spray          # SERVO15 test
+  python tools\\valiant.py gcs verify-safety # SCR_ENABLE + safety.lua (before field)
   Docs:        docs\\runbooks\\vion-bringup.md
 
 FIRST CONNECT - Raspberry Pi (SSH)
@@ -34,8 +35,14 @@ FIRST CONNECT - Raspberry Pi (SSH)
   python tools\\valiant.py bringup phase1-pi   # on Pi, after sensors wired
 
 COMPETITION FLIGHT - Task 2 autonomous
+  python tools\\valiant.py gcs verify-safety   # before arming
   Pi:  python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
   GCS: python tools\\valiant.py gcs monitor
+
+VIVI GUIDED ORBIT (outdoor, no CV)
+  python tools\\valiant.py gcs verify-safety
+  Pi:  python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <ip> --laps 1
+  Docs: docs\\runbooks\\vivi-orbit-field-test.md
 
 GCS DEV / LEGACY (scrcpy or webcam on laptop)
   python missions\\task2_vion_auto_extinguish.py --sim --source webcam --camera 0

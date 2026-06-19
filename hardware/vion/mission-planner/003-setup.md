@@ -31,3 +31,17 @@ See [docs/runbooks/vion-bringup.md](../../../docs/runbooks/vion-bringup.md).
 GCS first connect: `.\tools\gcs\bringup_gcs.ps1`
 
 Pi TELEM + H-Flow params: [002-pi-telem-params.md](002-pi-telem-params.md)
+
+## Onboard Lua scripts (safety)
+
+Copy scripts from [`hardware/vion/lua/`](../../lua/) to the FC SD card under **`APM/scripts/`**:
+
+| Script | Purpose |
+|--------|---------|
+| `safety.lua` | **Required for field flight** — kill switch RC8 → LAND |
+| `payload.lua` | Spray servo cycling (bench) |
+| `arm.lua`, `stabilize.lua` | Dev helpers |
+
+Preflight: `python tools\valiant.py gcs verify-safety` (checks `SCR_ENABLE` and `scripts/safety.lua`).
+
+Orbit / mission scripts on the Pi **refuse to start** if this check fails (`safety.require_lua_safety: true` in `config/vion.yaml`).

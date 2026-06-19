@@ -11,7 +11,9 @@ Bringup reference: [vion-bringup.md](vion-bringup.md)
 - [ ] `config\rpas.yaml` COM port correct (GCS radio)
 - [ ] `config\defaults.yaml` team name and upload settings correct
 - [ ] Pi has `models/best.onnx` and `config/rpas_calibration.yaml` (or legacy `vion_calibration.yaml`)
-- [ ] Emergency RC switch tested (`hardware/vion/lua/safety.lua`)
+- [ ] `python tools\valiant.py gcs verify-safety` passes (SCR_ENABLE + `scripts/safety.lua`)
+- [ ] Mission Planner Messages shows `safety: kill monitor loaded (RC8)` after FC reboot
+- [ ] Emergency RC switch tested (flip → LAND; see [`hardware/vion/lua/safety.lua`](../../hardware/vion/lua/safety.lua))
 - [ ] Water tank filled, SERVO15 spray tested in Mission Planner
 - [ ] H-Flow `opt_qua` OK on venue-like flooring (indoor)
 
@@ -19,7 +21,8 @@ Bringup reference: [vion-bringup.md](vion-bringup.md)
 
 ### Pre-flight
 
-- [ ] Pi: `check_sensors.py` OK (RGB + MAVLink heartbeat)
+- [ ] Pi: `check_sensors.py --once` OK (RGB + MAVLink + safety.lua when FC connected)
+- [ ] GCS: `python tools\valiant.py gcs verify-safety` OK
 - [ ] GCS: Mission Planner heartbeat via telemetry radio
 - [ ] GCS: `python tools\valiant.py gcs monitor` running (optional)
 - [ ] Operator briefed: RC override, emergency switch

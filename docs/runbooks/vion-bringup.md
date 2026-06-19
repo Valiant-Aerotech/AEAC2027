@@ -39,7 +39,9 @@ Props off until tethered tests pass.
 4. `.\tools\bringup\print_fc_params.ps1` then set params in MP (see [002-pi-telem-params.md](../../hardware/vion/mission-planner/002-pi-telem-params.md))
 5. Confirm DroneCAN sees H-Flow
 6. `python tools\valiant.py gcs spray` (SERVO15, props off)
-7. Test emergency RC switch (Lua `safety.lua`)
+7. Enable Lua scripting and load kill-switch script (see [001-parameters.md](../../hardware/vion/mission-planner/001-parameters.md#scripting))
+8. `python tools\valiant.py gcs verify-safety` (must pass before field flight)
+9. Test emergency RC switch (flip kill → LAND in Messages)
 
 ### 2. GCS repo scripts
 
@@ -105,6 +107,11 @@ python tools\valiant.py gcs monitor
 
 ```bash
 bash hardware/vion/rpi/preflight_indoor.sh
+```
+
+Includes automated `check_sensors.py --once` (RGB, MAVLink heartbeat, **safety.lua** / `SCR_ENABLE` when connected).
+
+```bash
 python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
 ```
 

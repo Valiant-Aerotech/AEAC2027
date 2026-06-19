@@ -26,9 +26,11 @@ python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
 | `capture_all_calibration.sh` | C6 | 1/2/3 m calibration captures |
 | `capture_calibration_set.py` | C6 | Single distance capture |
 | `run_bringup_tests.sh` | C7-D | Sim + tethered + optional monitor |
-| `preflight_indoor.sh` | E | Props-on checklist |
+| `preflight_indoor.sh` | E | Props-on checklist (incl. safety.lua via check_sensors) |
 | `run_mission.py` | E | Autonomous flight (CV orchestrator) |
 | `run_field_orbit.py` | E | GUIDED-triggered orbit, then LOITER (no CV) |
+
+Before props-on flight: `python tools/valiant.py gcs verify-safety` (or included in `preflight_indoor.sh` → `check_sensors.py --once`).
 
 ## GCS pairing scripts
 

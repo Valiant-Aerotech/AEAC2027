@@ -29,11 +29,13 @@ python missions\task2_vion_auto_extinguish.py --sim --source webcam --camera 0 -
 
 ## Prerequisites (onboard flight)
 
-- Pi `check_sensors.py` passes (RGB + MAVLink heartbeat)
+- Pi `check_sensors.py --once` passes (RGB + MAVLink + **safety.lua** when FC connected)
+- GCS or Pi: `python tools\valiant.py gcs verify-safety` passes before arming
+- Mission Planner Messages: `safety: kill monitor loaded (RC8)` after FC reboot
 - `config/vion_calibration.yaml` on Pi (10% gate via `python tools\valiant.py calibrate validate`)
 - Vion in GUIDED_NOGPS for indoor (`--profile indoor`)
 - Holybro H-Flow configured; `opt_qua` OK on venue-like floor
-- Emergency RC switch tested (`hardware/vion/lua/safety.lua`)
+- Emergency RC switch tested (flip → LAND; [`hardware/vion/lua/safety.lua`](../../hardware/vion/lua/safety.lua))
 - Spotter + RC override ready
 
 ## Run (GCS legacy)

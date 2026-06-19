@@ -105,6 +105,9 @@ SITL motion: 3D NED velocity toward target (`ned_kinematics.velocity_toward_goal
 | Geofence | `safety.geofence_abort` | Mission abort via `FENCE_STATUS` or STATUSTEXT |
 | Mission timeout | `safety.mission_timeout_s` | Mission abort after elapsed seconds |
 | RTL on abort | `safety.rtl_on_abort` | Optional `MAV_CMD_NAV_RETURN_TO_LAUNCH` |
+| Lua kill script | `safety.require_lua_safety` | Block field flight if `SCR_ENABLE` off or `safety.lua` missing |
+| Lua script name | `safety.lua_safety_script` | Default `safety.lua` on FC SD `APM/scripts/` |
+| Verify via MAVFTP | `safety.verify_lua_file` | Best-effort file check during `gcs verify-safety` |
 
 Target-loss and phase timeouts remain orchestrator-local (return to SEARCHING, not full abort).
 

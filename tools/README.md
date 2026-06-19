@@ -56,6 +56,7 @@ Everything else lives in subfolders and is invoked via `valiant.py` or the scrip
 | **SITL motion check (no CV)** | `launch_sitl.ps1` -> `valiant sitl pattern` |
 | **Custom SITL experiment** | Edit `config\sitl_missions\example_wall.yaml`, then `valiant sitl run config\sitl_missions\example_wall.yaml` |
 | **Mission Planner T2: test** | SITL running -> `valiant gcs verify-statustext` |
+| **Before field flight (real FC)** | `python tools\valiant.py gcs verify-safety` |
 | **First drone connect (GCS)** | `python tools\valiant.py bringup phase1` |
 | **Telemetry HUD** | `python tools\valiant.py gcs monitor` |
 | **Deploy to Pi** | `.\tools\deploy\deploy_to_pi.ps1 -PiHost user@ip` |
@@ -71,7 +72,8 @@ Everything else lives in subfolders and is invoked via `valiant.py` or the scrip
 | `conops` | `check` | Competition config |
 | `bench` | `cv`, `metric`, `safety`, `smoke` | Laptop tests (no drone) |
 | `sitl` | `setup-wsl`, `mission`, `pattern`, `run`, `test`, `map download` | Virtual drone |
-| `gcs` | `heartbeat`, `spray`, `monitor`, `listen`, `verify-statustext` | Radio + telemetry |
+| `gcs` | `heartbeat`, `spray`, `monitor`, `listen`, `verify-statustext`, `verify-safety` | Radio + telemetry |
+| `field` | `orbit` | GUIDED orbit on Pi UART (`--laps`, `--gcs-ip`) |
 | `bringup` | `phase1`, `phase1-pi` | Hardware checklists |
 | `calibrate` | `tune`, `validate`, `replay` | Depth calibration |
 | `upload` | `test` | Photo upload smoke test |

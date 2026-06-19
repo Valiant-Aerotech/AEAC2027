@@ -41,9 +41,10 @@ Automated GCS prep: `python tools\valiant.py bringup phase1` (add `--skip-mavlin
 | 1.2 | Pi MAVLink | `check_sensors.py` on Pi | Heartbeat on `/dev/ttyAMA0` |
 | 1.3 | STATUSTEXT HUD | Pi `run_mission.py --sim` | T2: messages in MP HUD |
 | 1.4 | Spray servo | MP servo test or orchestrator | SERVO15 opens/closes |
-| 1.5 | H-Flow | MP status, bench hover | `opt_qua` reasonable on venue floor |
-| 1.6 | Depth cal | Pi capture 1/2/3 m; GCS `python tools\valiant.py calibrate validate` | Within 10% gate |
-| 1.7 | GCS monitor | Pi `--gcs-connection udpout:<LAPTOP_IP>:14550` | `python tools\valiant.py gcs monitor` shows GOOD |
+| 1.5 | Safety Lua | `python tools\valiant.py gcs verify-safety` | SCR_ENABLE=1; `scripts/safety.lua` on SD; kill switch → LAND |
+| 1.6 | H-Flow | MP status, bench hover | `opt_qua` reasonable on venue floor |
+| 1.7 | Depth cal | Pi capture 1/2/3 m; GCS `python tools\valiant.py calibrate validate` | Within 10% gate |
+| 1.8 | GCS monitor | Pi `--gcs-connection udpout:<LAPTOP_IP>:14550` | `python tools\valiant.py gcs monitor` shows GOOD |
 
 ---
 
