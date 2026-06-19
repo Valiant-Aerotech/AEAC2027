@@ -72,6 +72,8 @@ Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md)
 
 Wait until you see `SERIAL0 on TCP port 5760`.
 
+**Optional — Mission Planner map:** connect **TCP** `127.0.0.1:5762` (leave 5760 for the Valiant mission). Do not start a second SITL from MP Simulation tab. Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md#mission-planner-as-gcs-viewer-optional).
+
 **Terminal 2** - run the mission + dashboard:
 
 ```powershell

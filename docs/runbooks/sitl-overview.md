@@ -43,6 +43,8 @@ cd A:\Code\Valiant-Aerotech\AEAC2027
 
 Wait until ArduCopter shows `SERIAL0 on TCP port 5760`.
 
+**Optional — Mission Planner:** TCP connect to `127.0.0.1:5762` (Valiant mission stays on 5760). See [sitl-wsl.md](sitl-wsl.md#mission-planner-as-gcs-viewer-optional).
+
 **Terminal 2 — mission (Windows):**
 
 ```powershell

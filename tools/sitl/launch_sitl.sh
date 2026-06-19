@@ -64,6 +64,6 @@ SITL_LOC="$(python3 -c "import json; h=json.load(open('${HOME_JSON}')); print(f\
   || valiant_die "Invalid SITL home JSON: $HOME_JSON"
 
 cd "$ARDUPILOT_DIR"
-valiant_log "Starting ArduCopter SITL (TCP 5760, home=${SITL_LOC})..."
+valiant_log "Starting ArduCopter SITL (TCP 5760 = Valiant mission, 5762 = Mission Planner)"
 valiant_log "Arm GUIDED from Windows: .\\tools\\run_sitl_mission.ps1"
 exec ./Tools/autotest/sim_vehicle.py -v ArduCopter --no-mavproxy -l "$SITL_LOC" "$@"

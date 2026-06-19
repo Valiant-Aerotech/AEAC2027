@@ -99,7 +99,45 @@ cd ~/ardupilot
 
 The ArduCopter window shows `SERIAL0 on TCP port 5760` — that is normal. AEAC connects directly; MAVProxy is **not** required.
 
-Optional: install MAVProxy in WSL if you want ArduPilot's map/console UI:
+You may also see `Serial port 2 on TCP port 5762` (and sometimes 5763). Use those for **Mission Planner** so Valiant keeps 5760.
+
+### Mission Planner as GCS viewer (optional)
+
+**SITL is ArduPilot**, not a Mission Planner feature. Mission Planner can either **start** its own SITL (Simulation tab) or **connect** to one you already started. This repo uses the second approach: `launch_sitl.ps1` in WSL, Valiant mission on **5760**, Mission Planner on **5762**.
+
+Do **not** start SITL from Mission Planner **and** `launch_sitl.ps1` at the same time (two simulators).
+
+**Typical layout (3 terminals):**
+
+| Terminal | What |
+|----------|------|
+| 1 | `.\tools\launch_sitl.ps1` — wait for `TCP port 5760` |
+| 2 | Mission Planner — connect **TCP**, host `127.0.0.1`, port **5762** |
+| 3 | `python tools\valiant.py sitl mission` — autonomy on **5760** |
+
+**Mission Planner steps:**
+
+1. Top-right connection dropdown: **TCP**
+2. Click **Connect**
+3. Host: `127.0.0.1` (WSL forwards localhost to Windows)
+4. Port: **5762** (not 5760 — that is reserved for the orchestrator)
+
+If 5762 fails, try **5763**, or check the ArduCopter console for `Serial port N on TCP port XXXX`.
+
+**What you will see in Mission Planner:**
+
+- Map position, altitude, heading, GUIDED mode
+- Arm/disarm state (Valiant arms during mission — avoid fighting it from MP)
+- **Messages** tab: `T2:` STATUSTEXT from the orchestrator (state / lock info)
+
+**What Mission Planner will not show:**
+
+- Valiant internal states (SEARCHING / APPROACHING / AIMING) — those are in the Python orchestrator and the Valiant SITL OpenCV dashboard, not MP waypoint missions
+- Synthetic CV bbox — use the Valiant dashboard window from the mission script
+
+**Alternative HUD:** `python tools\valiant.py gcs monitor` (UDP 14560) shows telemetry without Mission Planner.
+
+Optional: install MAVProxy in WSL if you want ArduPilot's map/console UI inside WSL instead of Mission Planner:
 
 ```bash
 python3 -m pip install --user --break-system-packages MAVProxy

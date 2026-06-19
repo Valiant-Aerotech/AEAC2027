@@ -39,7 +39,7 @@ sitl:
   alt_offset_m: -0.15                    # slight bias downward so AIMING settles closer to target center
   alt_align_tolerance_m: 0.25              # SITL fire gate on metric altitude alignment
   retreat_alt_m: 5.0                     # climb after each kill before next search
-      retreat_home_north_m: 3.0               # staging south of wall between targets (was 4.0, too close)
+  retreat_home_north_m: 3.0              # staging south of wall between targets
   complete_hold_s: 5.0                   # keep streaming zero velocity briefly before mission exit
 
 gcs_monitor:
