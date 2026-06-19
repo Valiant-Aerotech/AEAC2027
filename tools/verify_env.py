@@ -63,6 +63,7 @@ def check_structure() -> None:
         "hardware/vion/rpi/run_mission.py",
         "hardware/vion/rpi/first_connect.sh",
         "hardware/vion/rpi/run_bringup_tests.sh",
+        "tools/wsl_distro.ps1",
         "tools/setup_wsl.ps1",
         "tools/sitl/setup_wsl.sh",
         "tools/verify_ps1.ps1",

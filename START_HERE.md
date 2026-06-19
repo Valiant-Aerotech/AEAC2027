@@ -52,6 +52,10 @@ Same command after a reboot if Windows asked you to restart. Open **Ubuntu** onc
 
 Equivalent: `python tools\valiant.py sitl setup-wsl`
 
+**You do not need the repo inside Ubuntu.** Clone on Windows only (`C:\Users\...\AEAC2027`). The setup script reads this folder from WSL automatically. Only ArduPilot is cloned inside Linux (`~/ardupilot`, public GitHub, no auth).
+
+If the script says Ubuntu not detected but you have an Ubuntu tab: open the **Ubuntu app once** from Start menu (finish username/password), then run `.\tools\setup_wsl.ps1` again from **PowerShell** in the Windows repo folder.
+
 Details: [docs/runbooks/sitl-wsl.md](docs/runbooks/sitl-wsl.md)
 
 ### Run a virtual mission (after WSL setup)

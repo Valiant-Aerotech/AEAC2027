@@ -17,6 +17,10 @@ Inspired by [Stanley](https://github.com/Matchstic/stanley) patterns; we use **p
 
 Or: `python tools\valiant.py sitl setup-wsl`
 
+**Keep the AEAC2027 repo on Windows** (e.g. `C:\Users\...\AEAC2027`). Do not clone it in Ubuntu unless you want to — PowerShell runs the WSL setup using the Windows path. Only **ArduPilot** is cloned inside WSL (`~/ardupilot` via public HTTPS, no GitHub auth).
+
+If setup says Ubuntu not detected but Ubuntu is installed: open the **Ubuntu** app from Start menu once (complete Linux user setup), then re-run from PowerShell.
+
 What it does:
 
 1. Installs WSL2 + Ubuntu if missing (may require **reboot**)
