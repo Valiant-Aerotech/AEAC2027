@@ -74,6 +74,28 @@ function Invoke-ValiantPythonStep {
     return $rc
 }
 
+function ConvertTo-ValiantUnixShell {
+    param([Parameter(Mandatory = $true)][string]$Text)
+    return ($Text -replace "`r`n", "`n" -replace "`r", "`n").Trim()
+}
+
+function Invoke-ValiantWslBashLc {
+    param(
+        [Parameter(Mandatory = $true)][string]$Command,
+        [string]$Distro = ""
+    )
+    if (-not $Distro) {
+        . (Join-Path $script:ValiantToolsDir "wsl_distro.ps1")
+        $Distro = Get-ValiantWslDistro
+    }
+    if (-not $Distro) {
+        throw "No Ubuntu WSL distro found. Run: wsl -l -v"
+    }
+    $cmd = ConvertTo-ValiantUnixShell -Text $Command
+    wsl -d $Distro bash -lc $cmd
+    return $LASTEXITCODE
+}
+
 function Test-ValiantSitlBuilt {
     param([Parameter(Mandatory = $true)][string]$DistroName)
     wsl -d $DistroName bash -lc "test -x ~/ardupilot/build/sitl/bin/arducopter" 2>$null | Out-Null
@@ -92,7 +114,7 @@ function Show-WslSitlDiagnostics {
     Write-ValiantError $Context
     Write-Host ""
     Write-Host "WSL status ($Distro):" -ForegroundColor Yellow
-    wsl -d $Distro bash -lc @"
+    Invoke-ValiantWslBashLc -Distro $Distro -Command @"
 echo -n '  arducopter binary: '; test -x ~/ardupilot/build/sitl/bin/arducopter && echo OK || echo MISSING
 echo -n '  ardupilot clone:   '; test -d ~/ardupilot/.git && echo OK || echo MISSING
 echo -n '  venv-ardupilot:    '; test -f ~/venv-ardupilot/bin/activate && echo OK || echo MISSING
@@ -143,16 +165,10 @@ function Invoke-ValiantWslBashScript {
         }) -join ' '
         $argSuffix = " $quoted"
     }
-    $bashCmd = @"
-set -o pipefail
-TMP=`$(mktemp)
-sed 's/\r$//' '$WslScript' > "`$TMP"
-bash "`$TMP"$argSuffix 2>&1 | tee -a $LogFile
-ec=`${PIPESTATUS[0]}
-rm -f "`$TMP"
-exit `$ec
-"@
-    $code = Invoke-ValiantWsl -WslArgs @("bash", "-lc", $bashCmd)
+    # Single-line -lc string: PowerShell here-strings use CRLF on Windows, which breaks
+    # "set -o pipefail" (terminal shows garbled ": invalid option namepefail").
+    $bashCmd = "set -o pipefail; TMP=`$(mktemp); sed 's/\r`$//' '$WslScript' > `"`$TMP`"; bash `"`$TMP`"$argSuffix 2>&1 | tee -a $LogFile; ec=`${PIPESTATUS[0]}; rm -f `"`$TMP`"; exit `$ec"
+    $code = Invoke-ValiantWslBashLc -Distro $distro -Command $bashCmd
 
     if ($code -ne 0 -and $TreatSitlBuiltAsSuccess -and (Test-ValiantSitlBuilt -DistroName $distro)) {
         Write-ValiantWarn "Exit code $code but arducopter is built; continuing."
