@@ -2,10 +2,19 @@
 
 function Get-ValiantRepoRoot {
     param([string]$FromScriptRoot = "")
-    if ($FromScriptRoot) {
-        return (Resolve-Path -LiteralPath (Join-Path $FromScriptRoot "..")).Path
+    $start = if ($FromScriptRoot) { $FromScriptRoot } else { $PSScriptRoot }
+    $cursor = (Resolve-Path -LiteralPath $start).Path
+    while ($cursor) {
+        if (Test-Path -LiteralPath (Join-Path $cursor "pyproject.toml")) {
+            return $cursor
+        }
+        $parent = Split-Path -Parent $cursor
+        if (-not $parent -or $parent -eq $cursor) {
+            break
+        }
+        $cursor = $parent
     }
-    return (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+    throw "Could not find repo root (pyproject.toml) starting from $start"
 }
 
 function Get-ValiantRepoPath {
@@ -16,6 +25,9 @@ function Get-ValiantRepoPath {
     $repo = Get-ValiantRepoRoot -FromScriptRoot $FromScriptRoot
     $rel = $RelativePath -replace '/', '\'
     if ($rel -like 'tools\*') {
+        return (Join-Path $repo $rel)
+    }
+    if ($rel -like 'hardware\*' -or $rel -like 'config\*' -or $rel -like 'src\*' -or $rel -like 'missions\*') {
         return (Join-Path $repo $rel)
     }
     return (Join-Path $repo (Join-Path "tools" $rel))

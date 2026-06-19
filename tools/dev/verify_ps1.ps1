@@ -55,6 +55,14 @@ if ($wslPath -notmatch '/tools/sitl/wsl_run\.sh$') {
     $pathFailed += "ConvertTo-ValiantWslPath bad suffix: $wslPath"
 }
 
+$fromLib = Get-ValiantRepoPath -RelativePath "sitl\wsl_run.sh"
+if (-not (Test-Path -LiteralPath $fromLib)) {
+    $pathFailed += "Get-ValiantRepoPath from lib context missing: $fromLib"
+}
+if ($fromLib -match '\\tools\\tools\\') {
+    $pathFailed += "Get-ValiantRepoPath doubled tools/: $fromLib"
+}
+
 $grepHits = Select-String -Path (Join-Path $RepoRoot "tools\**\*.ps1") -Pattern '\bwslpath\b' -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -notlike '*\verify_ps1.ps1' }
 if ($grepHits) {

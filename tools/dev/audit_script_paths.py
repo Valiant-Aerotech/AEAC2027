@@ -47,6 +47,17 @@ def main() -> int:
             if not target.is_file():
                 failures.append(f"{ps1.name} RelativePath {match.group(1)} -> MISSING")
 
+    # Simulate diagnostics.ps1 calling Get-ValiantRepoPath without FromScriptRoot.
+    wsl_distro = TOOLS / "lib" / "wsl_distro.ps1"
+    if wsl_distro.is_file():
+        text = wsl_distro.read_text(encoding="utf-8")
+        if "pyproject.toml" not in text:
+            failures.append("wsl_distro.ps1 should locate repo via pyproject.toml")
+
+    runner = TOOLS / "sitl" / "wsl_run.sh"
+    if not runner.is_file():
+        failures.append("tools/sitl/wsl_run.sh MISSING")
+
     stale = re.compile(
         r'ValiantToolsDir.*wsl_distro|Join-Path \$PSScriptRoot "wsl_distro'
     )
