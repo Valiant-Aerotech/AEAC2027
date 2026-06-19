@@ -11,7 +11,7 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $cal = Join-Path $RepoRoot $LocalFile
 
 if (-not (Test-Path $cal)) {
-    Write-Host "ERROR: $LocalFile not found. Run validate_calibration.py first." -ForegroundColor Red
+    Write-Host "ERROR: $LocalFile not found. Run valiant calibrate validate first." -ForegroundColor Red
     exit 1
 }
 

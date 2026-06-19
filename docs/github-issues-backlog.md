@@ -39,7 +39,7 @@ gh auth login
 | **3D motion (SITL)** | `ned_kinematics.py`: rotation matrices, unified 3D velocity toward target; search creep includes descent; world-primary motion + pixel lateral fine-tune |
 | **3D metric recon** | `MetricPacket`: slant/horizontal range, altitude_error_m, vertical clearance; `geometry_3d.py`; depth bbox + RGB→depth calibration remap |
 | **Auto-nav** | Fire/aim gated on altitude alignment; onboard Pi commands vz from altitude_error_m; planner uses horizontal range |
-| **Tools** | Unified `tools/valiant.py` CLI + `tools/README.md`; removed passthrough `run_monitor.ps1`, `download_sitl_map.ps1` |
+| **Tools** | Unified `tools/valiant.py` CLI; removed `run_monitor.ps1`, `download_sitl_map.ps1`, `setup_gcs.ps1`, `yolo_webcam_test.py`, `cv_regression_test.py` |
 | **SITL single-target** | Full loop SEARCHING → COMPLETE; altitude align at AIMING |
 | **Dry YOLO** | `models/best.onnx`; orchestrator `cv.method: yolo` |
 | **Tests** | `test_ned_kinematics.py`, `test_metric_geometry_3d.py`; 39+ motion/metric unit tests passing |

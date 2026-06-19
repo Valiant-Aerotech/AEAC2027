@@ -12,9 +12,9 @@ Phased validation from bench to competition. Each phase has pass criteria before
 
 | # | Test | Command / action | Pass criteria |
 |---|------|------------------|---------------|
-| 0.1 | Environment | `python tools\verify_env.py` | All required packages OK |
-| 0.2 | CONOPS config | `python tools\conops_check.py` | PASSED |
-| 0.3 | Safety logic | `python tools\safety_bench_test.py` | Battery, geofence, timeout aborts |
+| 0.1 | Environment | `python tools\valiant.py env check` | All required packages OK |
+| 0.2 | CONOPS config | `python tools\valiant.py conops check` | PASSED |
+| 0.3 | Safety logic | `python tools\valiant.py bench safety` | Battery, geofence, timeout aborts |
 | 0.4 | CV dry detection | `python tools\valiant.py bench cv --camera 0` | Purple dry targets boxed on synthetic or printed circles |
 | 0.5 | CV shot detection | Wet a blue test circle, run bench cv | Shot list populates after wetting |
 | 0.6 | Metric pipeline (3D) | `python tools\valiant.py bench metric --camera 0` | distance_m, horizontal_range_m, altitude_error_m print steadily |
@@ -40,8 +40,8 @@ Bringup checklist: [vion-bringup.md](vion-bringup.md)
 | 1.3 | STATUSTEXT HUD | Pi `run_mission.py --sim` | T2: messages in MP HUD |
 | 1.4 | Spray servo | MP servo test or orchestrator | SERVO15 opens/closes |
 | 1.5 | H-Flow | MP status, bench hover | `opt_qua` reasonable on venue floor |
-| 1.6 | Depth cal | Pi capture 1/2/3 m; GCS `validate_calibration.py` | Within 10% gate |
-| 1.7 | GCS monitor | Pi `--gcs-connection udpout:<LAPTOP_IP>:14550` | `mission_monitor.py` shows GOOD |
+| 1.6 | Depth cal | Pi capture 1/2/3 m; GCS `python tools\valiant.py calibrate validate` | Within 10% gate |
+| 1.7 | GCS monitor | Pi `--gcs-connection udpout:<LAPTOP_IP>:14550` | `python tools\valiant.py gcs monitor` shows GOOD |
 
 ---
 

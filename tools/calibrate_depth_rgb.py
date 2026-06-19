@@ -47,7 +47,7 @@ def main() -> int:
         yaml.dump(cal, f, default_flow_style=False, sort_keys=False)
 
     print(f"Wrote {out_path}")
-    print("Run tools/validate_calibration.py to check 10% gate.")
+    print("Run python tools/valiant.py calibrate validate to check 10% gate.")
     return 0
 
 

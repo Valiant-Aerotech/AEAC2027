@@ -6,15 +6,15 @@ Two independent MAVLink links. Do not put GCS radio and Pi on the same Pixhawk s
 |------|------|------|
 | GCS telemetry radio | COM port -> Pixhawk | Mission Planner, params, spray test, H-Flow bench |
 | Pi companion | `/dev/ttyAMA0` @ 57600 -> TELEM | Autonomous mission control |
-| GCS WiFi monitor | Pi UDP -> laptop | Read-only `mission_monitor.py` |
+| GCS WiFi monitor | Pi UDP -> laptop | Read-only `python tools\valiant.py gcs monitor` |
 
 Script map by phase:
 
 | Phase | GCS (PowerShell) | Pi (bash) |
 |-------|------------------|-----------|
 | B - GCS connect | `.\tools\bringup_gcs.ps1` | - |
-| B - MAVLink | `python tools\check_mavlink_gcs.py` | - |
-| B - Spray test | `python tools\test_spray_gcs.py` | - |
+| B - MAVLink | `python tools\valiant.py gcs heartbeat` | - |
+| B - Spray test | `python tools\valiant.py gcs spray` | - |
 | B - FC params | `.\tools\print_fc_params.ps1` | - |
 | C - First SSH | `.\tools\deploy_to_pi.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/first_connect.sh` |
 | C - Sensors | - | `bash hardware/vion/rpi/session_start.sh` |
@@ -38,7 +38,7 @@ Props off until tethered tests pass.
 3. Confirm heartbeat, battery, HERE4/GPS status
 4. `.\tools\print_fc_params.ps1` then set params in MP (see [002-pi-telem-params.md](../../hardware/vion/mission-planner/002-pi-telem-params.md))
 5. Confirm DroneCAN sees H-Flow
-6. `python tools\test_spray_gcs.py` (SERVO15, props off)
+6. `python tools\valiant.py gcs spray` (SERVO15, props off)
 7. Test emergency RC switch (Lua `safety.lua`)
 
 ### 2. GCS repo scripts

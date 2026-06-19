@@ -16,4 +16,4 @@ New-Item -ItemType Directory -Force -Path $dest | Out-Null
 Write-Host "Copying calibration from $PiHost..."
 scp -r "${PiHost}:${PiPath}/logs/calibration/*" $dest
 
-Write-Host "OK. Run: python tools\validate_calibration.py --calibration-dir $LocalDir"
+Write-Host "OK. Run: python tools\valiant.py calibrate validate --calibration-dir $LocalDir"

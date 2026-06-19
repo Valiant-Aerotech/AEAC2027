@@ -14,7 +14,7 @@ Write-Host "=== Calibration pipeline ===" -ForegroundColor Cyan
 
 Write-Host ""
 Write-Host "Validating (10% gate)..." -ForegroundColor Yellow
-python tools\validate_calibration.py
+python tools\valiant.py calibrate validate
 if ($LASTEXITCODE -ne 0) {
     Write-Host "FAIL: tune with tools\calibrate_depth_rgb.py and re-capture on Pi" -ForegroundColor Red
     exit 1

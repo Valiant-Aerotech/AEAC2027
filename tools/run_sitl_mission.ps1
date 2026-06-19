@@ -67,7 +67,7 @@ if (-not $NoMonitor) {
     else {
         Start-Process powershell -ArgumentList @(
             "-NoExit", "-Command",
-            "cd '$Root'; `$env:PYTHONPATH='src'; python tools\mission_monitor.py --port $monitorPort"
+            "cd '$Root'; `$env:PYTHONPATH='src'; python tools\valiant.py gcs monitor --port $monitorPort"
         )
         Start-Sleep -Seconds 1
     }

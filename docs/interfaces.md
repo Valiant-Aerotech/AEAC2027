@@ -77,7 +77,7 @@ python tools\valiant.py bench cv --regression --video footage.mp4
 python tools\valiant.py conops check
 ```
 
-Legacy direct scripts (`tools/cv_bench_test.py`, etc.) still work.
+Legacy direct scripts were removed; use `python tools\valiant.py` subcommands only.
 
 ## Auto-Nav and Spray (`config/vion.yaml`)
 

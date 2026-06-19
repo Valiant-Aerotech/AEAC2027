@@ -68,7 +68,7 @@ Add `--help` to any mission for options.
 
 ## Common issues
 
-**`verify_env.py` fails on imports** - re-run `.\tools\setup.ps1`
+**`valiant env check` fails on imports** - re-run `.\tools\setup.ps1`
 
 **No COM port found** - plug in telemetry radio, check Device Manager, update `config/vion.yaml`
 
@@ -104,6 +104,6 @@ Tune purple/blue thresholds in `config/vion.yaml` under `cv.hsv_dry` and `cv.hsv
 
 ## Next steps for new members
 
-1. Run `python tools\conops_check.py` (confirms CONOPS config loads)
+1. Run `python tools\valiant.py conops check` (confirms CONOPS config loads)
 2. Run SITL mission (above) for full state machine without hardware
 3. Pick an issue from [GitHub](https://github.com/Valiant-Aerotech/AEAC2027/issues); see [WELCOME.md](WELCOME.md)

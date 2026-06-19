@@ -15,6 +15,74 @@ from valiant.autonomy.cv.ui import draw_overlay
 from valiant.common.config import load_config
 
 
+def _run_regression(args) -> int:
+    from pathlib import Path
+
+    video_path = Path(args.video)
+    if not video_path.is_file():
+        print(f"ERROR: video not found: {video_path}")
+        return 1
+
+    cfg = load_config("vion")
+    if args.method:
+        cfg.setdefault("cv", {})["method"] = args.method
+
+    detector = TargetDetector(cfg)
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        print(f"ERROR: could not open {video_path}")
+        return 1
+
+    log_path = Path(args.output) if args.output else Path("logs") / "cv_regression.jsonl"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    frames = dry_frames = shot_frames = both_frames = neither_frames = 0
+    with open(log_path, "w", encoding="utf-8") as log_file:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frames += 1
+            if args.max_frames and frames > args.max_frames:
+                break
+
+            packet = detector.detect(frame)
+            has_dry = packet.has_dry_target
+            has_shot = len(packet.shot) > 0
+            dry_frames += int(has_dry)
+            shot_frames += int(has_shot)
+            both_frames += int(has_dry and has_shot)
+            neither_frames += int(not has_dry and not has_shot)
+
+            if frames % 30 == 0:
+                log_file.write(
+                    json.dumps(
+                        {
+                            "frame": frames,
+                            "dry": len(packet.dry),
+                            "shot": len(packet.shot),
+                            "method": packet.method,
+                        }
+                    )
+                    + "\n"
+                )
+
+    cap.release()
+    summary = {
+        "video": str(video_path),
+        "frames": frames,
+        "dry_frames": dry_frames,
+        "shot_frames": shot_frames,
+        "both_frames": both_frames,
+        "neither_frames": neither_frames,
+        "dry_pct": round(100 * dry_frames / max(frames, 1), 1),
+        "shot_pct": round(100 * shot_frames / max(frames, 1), 1),
+        "log": str(log_path),
+    }
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="CV bench test - dry/shot detection")
     parser.add_argument("--camera", type=int, default=0, help="Webcam index")
@@ -22,7 +90,23 @@ def main() -> int:
     parser.add_argument("--log", type=str, default=None, help="Write JSON lines log file")
     parser.add_argument("--method", type=str, default=None, help="Override cv.method")
     parser.add_argument("--max-frames", type=int, default=0, help="0 = unlimited")
+    parser.add_argument(
+        "--regression",
+        action="store_true",
+        help="Batch mode: summarize dry/shot stats over --video (no GUI)",
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Regression JSONL log (default: logs/cv_regression.jsonl)",
+    )
     args = parser.parse_args()
+
+    if args.regression:
+        if not args.video:
+            print("ERROR: --regression requires --video")
+            return 1
+        return _run_regression(args)
 
     cfg = load_config("vion")
     if args.method:

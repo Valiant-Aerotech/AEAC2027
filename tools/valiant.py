@@ -46,9 +46,10 @@ def cmd_sitl_map_download(args: argparse.Namespace) -> int:
 
 
 def cmd_bench_cv(args: argparse.Namespace) -> int:
+    argv = list(args.extra or [])
     if args.regression:
-        return _run("cv_regression_test.py", args.extra)
-    return _run("cv_bench_test.py", args.extra)
+        argv = ["--regression", *argv]
+    return _run("cv_bench_test.py", argv)
 
 
 def cmd_bench_metric(args: argparse.Namespace) -> int:

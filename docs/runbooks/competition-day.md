@@ -6,8 +6,8 @@ Bringup reference: [vion-bringup.md](vion-bringup.md)
 
 ## Before leaving for site
 
-- [ ] `python tools\verify_env.py` passes on competition laptop
-- [ ] `python tools\conops_check.py` passes
+- [ ] `python tools\valiant.py env check` passes on competition laptop
+- [ ] `python tools\valiant.py conops check` passes
 - [ ] `config\vion.yaml` COM port correct (GCS radio)
 - [ ] `config\defaults.yaml` team name and upload settings correct
 - [ ] Pi has `models/best.onnx` and `config/vion_calibration.yaml`
@@ -21,7 +21,7 @@ Bringup reference: [vion-bringup.md](vion-bringup.md)
 
 - [ ] Pi: `check_sensors.py` OK (RGB + MAVLink heartbeat)
 - [ ] GCS: Mission Planner heartbeat via telemetry radio
-- [ ] GCS: `python tools\mission_monitor.py` running (optional)
+- [ ] GCS: `python tools\valiant.py gcs monitor` running (optional)
 - [ ] Operator briefed: RC override, emergency switch
 
 ### Run (primary - onboard Pi)

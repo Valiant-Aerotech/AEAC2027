@@ -42,7 +42,7 @@ def main() -> int:
         battery = f" battery={sys_status.battery_remaining}%"
 
     print(f"OK: heartbeat from system {master.target_system}{battery}")
-    print("Next: python tools\\test_spray_gcs.py  (SERVO15 bench test, props off)")
+    print("Next: python tools\\valiant.py gcs spray  (SERVO15 bench test, props off)")
     return 0
 
 

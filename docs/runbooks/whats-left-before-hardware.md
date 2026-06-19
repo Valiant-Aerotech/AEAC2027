@@ -7,8 +7,8 @@ Read this before connecting to Vion. Bringup steps: [vion-bringup.md](vion-bring
 | Item | Status | Command |
 |------|--------|---------|
 | GCS env + CONOPS | Ready | `.\tools\bringup_gcs.ps1` |
-| MAVLink heartbeat (radio) | Ready | `python tools\check_mavlink_gcs.py` |
-| SERVO15 spray bench | Ready | `python tools\test_spray_gcs.py` |
+| MAVLink heartbeat (radio) | Ready | `python tools\valiant.py gcs heartbeat` |
+| SERVO15 spray bench | Ready | `python tools\valiant.py gcs spray` |
 | Pi first SSH setup | Ready | `bash hardware/vion/rpi/first_connect.sh` |
 | Pi sensor check (RGB + MAVLink) | Ready | `bash hardware/vion/rpi/session_start.sh` |
 | Sim state machine (no props) | Ready | `run_mission.py --profile indoor --sim` |

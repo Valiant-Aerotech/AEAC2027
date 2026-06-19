@@ -45,13 +45,13 @@ python hardware/vion/rpi/run_mission.py --profile indoor
 GCS link loss does not abort the mission. Pi continues autonomously.
 
 ```powershell
-python tools\mission_monitor.py
+python tools\valiant.py gcs monitor
 ```
 
 ## Validation
 
 Before indoor flight:
 
-1. `tools/validate_calibration.py` passes 10% depth gate at 1/2/3 m
+1. `python tools\valiant.py calibrate validate` passes 10% depth gate at 1/2/3 m
 2. Tethered MAVLink velocity test with `--sim` on Pi
 3. Phase 2.2-2.3 from `docs/runbooks/field-test-plan.md` indoors

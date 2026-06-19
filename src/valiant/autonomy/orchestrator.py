@@ -187,7 +187,7 @@ class AutoExtinguisher:
             if manifest:
                 self._sitl_map = SitlMapAsset.load(manifest)
                 if self._sitl_map is None:
-                    print(f"[SITL] Map not found ({manifest}) — run: python tools/download_sitl_map.py")
+                    print(f"[SITL] Map not found ({manifest}) — run: python tools/valiant.py sitl map download")
                 else:
                     print(f"[SITL] Satellite map loaded ({manifest})")
             self._sitl_map_view_radius = float(map_cfg.get("view_radius_m", 24.0))

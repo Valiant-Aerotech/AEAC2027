@@ -89,6 +89,6 @@ Invoke-VenvPip -VenvPython $VenvPython -PipArguments @("install", "-e", ".[gcs,c
 
 Write-Host ""
 Write-Host "Setup complete. Next steps:" -ForegroundColor Green
-Write-Host "  python tools\verify_env.py"
+Write-Host "  python tools\valiant.py env check"
 Write-Host "  notepad config\vion.yaml"
 Write-Host "  python missions\task2_vion_manual_photo.py"

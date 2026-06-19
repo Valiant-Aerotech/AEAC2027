@@ -15,4 +15,4 @@ done
 echo ""
 echo "Done. Copy logs/calibration to GCS:"
 echo "  scp -r <pi>:~/AEAC2027/logs/calibration ./logs/"
-echo "Then on GCS: python tools/validate_calibration.py"
+echo "Then on GCS: python tools/valiant.py calibrate validate"

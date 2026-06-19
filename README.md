@@ -26,8 +26,8 @@ Full checklist: [docs/runbooks/vion-bringup.md](docs/runbooks/vion-bringup.md)
 ```powershell
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
-.\tools\setup_gcs.ps1
-python tools\verify_env.py
+.\tools\setup.ps1
+python tools\valiant.py env check
 notepad config\vion.yaml    # set telemetry radio COM port
 ```
 

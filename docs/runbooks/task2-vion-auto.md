@@ -13,7 +13,7 @@ python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
 GCS monitor (optional, same WiFi):
 
 ```powershell
-python tools\mission_monitor.py
+python tools\valiant.py gcs monitor
 ```
 
 First-time setup: [vion-bringup.md](vion-bringup.md)
@@ -30,7 +30,7 @@ python missions\task2_vion_auto_extinguish.py --sim --source webcam --camera 0 -
 ## Prerequisites (onboard flight)
 
 - Pi `check_sensors.py` passes (RGB + MAVLink heartbeat)
-- `config/vion_calibration.yaml` on Pi (10% gate via `tools\validate_calibration.py`)
+- `config/vion_calibration.yaml` on Pi (10% gate via `python tools\valiant.py calibrate validate`)
 - Vion in GUIDED_NOGPS for indoor (`--profile indoor`)
 - Holybro H-Flow configured; `opt_qua` OK on venue-like floor
 - Emergency RC switch tested (`hardware/vion/lua/safety.lua`)

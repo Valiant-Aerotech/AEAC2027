@@ -36,7 +36,7 @@ Official document: [AEAC Annual Student Competition](https://www.aerialevolution
 
 1. Download new CONOPS PDF from AEAC site
 2. Update `config/conops.yaml` (colours, distances, filenames, scoring notes)
-3. Run `python tools/conops_check.py` - fix any validation warnings
+3. Run `python tools/valiant.py conops check` - fix any validation warnings
 4. Update this doc and `docs/runbooks/competition-day.md`
 5. Only touch module code if rules change detection geometry or mission flow (e.g. new target shapes)
 

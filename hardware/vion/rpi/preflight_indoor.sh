@@ -36,7 +36,7 @@ echo "   [ ] Mission Planner heartbeat via telemetry radio"
 echo "   [ ] H-Flow opt_qua OK on venue-like floor (hover)"
 echo "   [ ] Emergency RC switch tested"
 echo "   [ ] Water tank filled"
-echo "   [ ] GCS mission_monitor.py running (optional)"
+echo "   [ ] GCS python tools/valiant.py gcs monitor running (optional)"
 echo ""
 read -r -p "Type YES if all manual checks done: " confirm
 if [ "$confirm" != "YES" ]; then
