@@ -22,6 +22,7 @@ No arguments also prints the guide. First laptop setup: `.\start.ps1` from repo 
 | `launch_sitl.ps1` | Terminal 1 before SITL mission |
 | `run_sitl_mission.ps1` | Default SITL mission (`valiant sitl mission`) |
 | `run_sitl_mission_file.ps1` | YAML mission (`valiant sitl run …`) |
+| `run_sitl_pattern.ps1` | GUIDED box pattern (`valiant sitl pattern`) |
 
 Everything else lives in subfolders and is invoked via `valiant.py` or the scripts above.
 
@@ -51,7 +52,9 @@ Everything else lives in subfolders and is invoked via `valiant.py` or the scrip
 | **Something failed?** | `python tools\valiant.py diagnose` |
 | **Webcam / CV test** | `python tools\valiant.py bench cv --camera 0` |
 | **Virtual full mission** | `setup_wsl.ps1` -> `launch_sitl.ps1` -> `valiant sitl mission` |
+| **SITL motion check (no CV)** | `launch_sitl.ps1` -> `valiant sitl pattern` |
 | **Custom SITL experiment** | Edit `config\sitl_missions\example_wall.yaml`, then `valiant sitl run config\sitl_missions\example_wall.yaml` |
+| **Mission Planner T2: test** | SITL running -> `valiant gcs verify-statustext` |
 | **First drone connect (GCS)** | `python tools\valiant.py bringup phase1` |
 | **Telemetry HUD** | `python tools\valiant.py gcs monitor` |
 | **Deploy to Pi** | `.\tools\deploy\deploy_to_pi.ps1 -PiHost user@ip` |
@@ -66,8 +69,8 @@ Everything else lives in subfolders and is invoked via `valiant.py` or the scrip
 | `env` | `check` | Python packages |
 | `conops` | `check` | Competition config |
 | `bench` | `cv`, `metric`, `safety`, `smoke` | Laptop tests (no drone) |
-| `sitl` | `setup-wsl`, `mission`, `run`, `test`, `map download` | Virtual drone |
-| `gcs` | `heartbeat`, `spray`, `monitor`, `listen` | Radio + telemetry |
+| `sitl` | `setup-wsl`, `mission`, `pattern`, `run`, `test`, `map download` | Virtual drone |
+| `gcs` | `heartbeat`, `spray`, `monitor`, `listen`, `verify-statustext` | Radio + telemetry |
 | `bringup` | `phase1`, `phase1-pi` | Hardware checklists |
 | `calibrate` | `tune`, `validate`, `replay` | Depth calibration |
 | `upload` | `test` | Photo upload smoke test |

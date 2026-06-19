@@ -1,24 +1,8 @@
 # Git branches
 
-**Default branch: [`main`](https://github.com/Valiant-Aerotech/AEAC2027/tree/main)**. Clone and develop here.
+**Default merge target:** [`main`](https://github.com/Valiant-Aerotech/AEAC2027/tree/main) on GitHub.
 
-As of June 2026, `main` includes the full AEAC2027 stack:
-
-- Task 1 (Vivi survey)
-- Task 2 autonomy (orchestrator, auto-nav, spray, upload)
-- SITL simulation (ArduPilot + synthetic/physics cameras + **3D NED motion**)
-- 3D metric reconstruction (slant/horizontal range, altitude_error_m)
-- Unified dev CLI (`tools/valiant.py`)
-- Pi companion path (`hardware/vion/rpi/`)
-- CV training scripts (`src/valiant/cv/`) and active runtime CV (`src/valiant/autonomy/cv/`)
-
-## Long-lived branches
-
-| Branch | Status | Notes |
-|--------|--------|-------|
-| **`main`** | **Primary** (all features integrated) | Day-to-day development target |
-| `onboard-pi` | Synced with `main` | Historical name; kept for bookmarks - same tip as `main` |
-| `feature/CV` | Merged into `main` | Task 2 CV scripts (PR #80); branch may receive occasional CV-only work |
+**Do not commit feature work directly to `main`.** Create a branch for every change set, open a PR into `main`, and merge after review.
 
 ## Recommended workflow
 
@@ -27,45 +11,59 @@ git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
 git checkout main
 git pull origin main
+git checkout -b feature/your-topic
 ```
 
-1. **Feature branches** branch off `main` (e.g. `feature/sitl-tuning`, `fix/approach-gain`).
-2. Open PRs **into `main`** for review.
-3. Do not force-push `main`.
+1. Branch off latest `main` (examples: `feature/sitl-gcs-hud`, `fix/wsl-script-paths`, `docs/onboarding`).
+2. Push your branch: `git push -u origin feature/your-topic`
+3. Open a PR **into `main`** on GitHub.
+4. Do not force-push `main`.
 
-## Virtual sim vs physical drone
+## What is on `main` today
 
-All modes below use **`main`**. Branch choice is no longer required.
+As of June 2026, integrated stack includes:
+
+- Task 1 (Vivi survey) and Task 2 autonomy (orchestrator, auto-nav, spray, upload)
+- SITL simulation (ArduPilot, synthetic/physics cameras, 3D NED motion)
+- SITL GCS HUD (`T2:` STATUSTEXT in Mission Planner Messages)
+- SITL guided box pattern (`python tools\valiant.py sitl pattern`)
+- 3D metric reconstruction and unified CLI (`tools/valiant.py`)
+- Pi companion path (`hardware/vion/rpi/`)
+
+## Long-lived branches (historical)
+
+| Branch | Status | Notes |
+|--------|--------|-------|
+| **`main`** | Primary merge target | Protected workflow: PRs only |
+| `onboard-pi` | Synced with `main` | Historical bookmark |
+| `feature/CV` | Merged into `main` | Occasional CV-only work may still branch from `main` |
+
+## Sim vs hardware (same repo, any feature branch)
+
+These modes are config/profile choices, not separate git branches:
 
 | Environment | Connection | Camera | Entry |
 |-------------|------------|--------|-------|
 | **SITL (no drone)** | `tcp:127.0.0.1:5760` | Synthetic / physics / video | `python tools/valiant.py sitl mission` |
+| **SITL pattern (no CV)** | `tcp:127.0.0.1:5760` | None (GUIDED legs only) | `python tools/valiant.py sitl pattern` |
 | **Hand-test (FC, props off)** | `COM5` or UDP | scrcpy / webcam | `docs/runbooks/vivi-hand-test.md` |
 | **Vivi bench (Pi)** | Pi UART | RPi camera + ToF | `hardware/vion/rpi/run_mission.py --profile vivi` |
 | **Field (Vion)** | Radio COM | RPi camera | `hardware/vion/rpi/run_mission.py --profile indoor` |
 
 Full SITL guide: [runbooks/sitl-overview.md](runbooks/sitl-overview.md).
 
-## What merged into `main` (2026-06)
-
-| Source | Contents |
-|--------|----------|
-| `metric-reconstruction` | ArduCam ToF drivers, depth-at-target metric recon |
-| `feature/CV` | YOLO training notebook, `autonomy/cv/training/` |
-| `onboard-pi` | SITL 3D motion stack, orchestrator, dashboard, gimbal, flight profiles |
-
-June 2026 follow-up on `main`: **3D kinematics** (`ned_kinematics.py`), **3D metric recon** (`geometry_3d.py`), **tools consolidation** (`valiant.py` CLI).
-
-Key merge commits: `dd0402c` (feature/CV → main), `9a4eb43` (onboard-pi + feature/CV integration).
-
-## Repo map (on `main`)
+## Repo map
 
 ```
-src/valiant/autonomy/     # Task 2 pipeline (orchestrator, SITL, cv runtime + training)
-src/valiant/common/       # ned_kinematics.py (3D motion math)
+src/valiant/autonomy/     # Task 2 pipeline (orchestrator, SITL, cv runtime)
+src/valiant/autonomy/gcs_hud.py
+src/valiant/autonomy/sitl_pattern.py
+src/valiant/common/       # ned_kinematics.py, mavlink.py
 config/rpas.yaml          # default platform (inherits config/vion.yaml)
-config/vion.yaml          # airframe tuning; flight_profiles: sitl, sitl_physics, vivi
-tools/valiant.py          # Unified CLI - see tools/README.md
-tools/launch_sitl.ps1     # WSL ArduPilot
+config/vion.yaml          # flight_profiles: sitl, sitl_physics, vivi
+config/sitl_missions/     # YAML experiments (example_wall, pattern_box)
+tools/valiant.py          # Unified CLI
+tools/launch_sitl.ps1
+tools/run_sitl_pattern.ps1
 tests/sitl/               # Integration tests (need SITL running)
 ```

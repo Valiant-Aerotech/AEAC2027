@@ -18,6 +18,7 @@ REPO = Path(__file__).resolve().parents[1]
         "tools/launch_sitl.ps1",
         "tools/run_sitl_mission.ps1",
         "tools/run_sitl_mission_file.ps1",
+        "tools/run_sitl_pattern.ps1",
         "tools/lib/wsl_distro.ps1",
         "tools/lib/guide_text.py",
         "tools/bench/verify_env.py",
@@ -26,6 +27,8 @@ REPO = Path(__file__).resolve().parents[1]
         "tools/dev/verify_ps1.ps1",
         "tools/dev/audit_script_paths.py",
         "config/sitl_missions/example_wall.yaml",
+        "config/sitl_missions/pattern_box.yaml",
+        "tools/gcs/verify_sitl_statustext.py",
     ],
 )
 def test_tools_layout_paths_exist(rel: str):

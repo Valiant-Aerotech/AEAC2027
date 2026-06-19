@@ -10,6 +10,8 @@ You are joining the AEAC2027 autonomy stack.
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
 git checkout main
+git pull origin main
+git checkout -b feature/your-topic
 .\start.ps1
 python tools\valiant.py guide
 ```

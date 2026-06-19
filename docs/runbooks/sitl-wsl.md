@@ -151,7 +151,7 @@ Expect `T2: VERIFY statustext` in Messages. If missing, open MAVLink Inspector (
 | `debug_statustext` | `false` | Log each send to mission terminal |
 | `sitl_mp_mirror` | (unset) | Optional `udpout:...` duplicate if MP still misses lines |
 
-Pattern flight turns use **SET_POSITION_TARGET_LOCAL_NED** mask **2503** (yaw + zero velocity), streamed at 20 Hz — not CONDITION_YAW.
+Pattern flight turns use **SET_POSITION_TARGET_LOCAL_NED** mask **2503** (yaw + zero velocity), streamed at 20 Hz. Do not use CONDITION_YAW alone with velocity messages.
 
 **What Mission Planner will not show:**
 
@@ -211,7 +211,7 @@ Or with recorded video:
 
 | Run | Command | Typical startup |
 |-----|---------|-----------------|
-| **Cold** (first after `launch_sitl.ps1`) | `.\tools\run_sitl_mission.ps1` | EKF wait + arm + takeoff (~30–90 s), then mission |
+| **Cold** (first after `launch_sitl.ps1`) | `.\tools\run_sitl_mission.ps1` | EKF wait + arm + takeoff (~30-90 s), then mission |
 | **Warm** (SITL still armed/airborne) | `.\tools\run_sitl_mission.ps1 -SkipPreflight` | Mission loop starts immediately |
 
 Arm, GUIDED, and takeoff are handled **inside the orchestrator** (single MAVLink session). No separate arm script is required.
