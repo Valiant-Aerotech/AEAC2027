@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 
 from pymavlink import mavutil
@@ -233,6 +234,73 @@ def _flight_mode_from_heartbeat(master: mavutil.mavfile, hb) -> str:
         if mode_id == hb.custom_mode:
             return name
     return master.flightmode or "UNKNOWN"
+
+
+def ensure_guided(master: mavutil.mavfile, *, force: bool = False) -> None:
+    """Re-command GUIDED if the FC left velocity/yaw offboard control."""
+    ensure_sitl_guided(master, force=force)
+
+
+def _current_gps_fix(master: mavutil.mavfile) -> int:
+    fix = 0
+    deadline = time.time() + 0.5
+    while time.time() < deadline:
+        with mavlink_io(master):
+            msg = master.recv_match(type="GPS_RAW_INT", blocking=True, timeout=0.2)
+        if msg is not None and msg.get_srcSystem() == master.target_system:
+            fix = max(fix, int(msg.fix_type))
+    return fix
+
+
+def wait_for_guided_trigger(
+    master: mavutil.mavfile,
+    *,
+    min_alt_m: float,
+    alt_tolerance_m: float = 0.35,
+    require_armed: bool = True,
+    require_gps: bool = True,
+    min_gps_fix: int = 3,
+    poll_s: float = 0.2,
+    on_standby=None,
+) -> tuple[float, float, float, float]:
+    """Block until pilot selects GUIDED at target altitude.
+
+    Returns (x0, y0, z0, yaw0) snapshot at trigger.
+    """
+    from valiant.common.sitl_physics import drain_vehicle_pose
+
+    print(f"[Orbit] Standby: arm, climb to ~{min_alt_m:.0f} m, select GUIDED on RC")
+    while True:
+        with mavlink_io(master):
+            hb = master.recv_match(type="HEARTBEAT", blocking=True, timeout=poll_s)
+        armed = False
+        mode = master.flightmode or "UNKNOWN"
+        if hb is not None and _vehicle_heartbeat(master, hb):
+            armed = bool(hb.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED)
+            mode = _flight_mode_from_heartbeat(master, hb)
+        pose = drain_vehicle_pose(master)
+        alt_m = -pose.z if pose.ok else 0.0
+        if on_standby is not None:
+            on_standby(mode=mode, armed=armed, alt_m=alt_m, pose=pose)
+        if require_armed and not armed:
+            time.sleep(poll_s)
+            continue
+        if mode != "GUIDED":
+            time.sleep(poll_s)
+            continue
+        if require_gps and _current_gps_fix(master) < min_gps_fix:
+            time.sleep(poll_s)
+            continue
+        if not pose.ok or alt_m < min_alt_m - alt_tolerance_m:
+            time.sleep(poll_s)
+            continue
+        if pose.ok:
+            print(
+                f"[Orbit] GUIDED trigger at alt={alt_m:.1f} m "
+                f"yaw={math.degrees(pose.yaw):.0f} deg"
+            )
+            return pose.x, pose.y, pose.z, pose.yaw
+        time.sleep(poll_s)
 
 
 def ensure_sitl_guided(master: mavutil.mavfile, *, force: bool = False) -> None:

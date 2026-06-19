@@ -31,10 +31,10 @@ def main() -> None:
     sock.settimeout(1.0)
     print(f"Listening for telemetry on UDP :{args.port} (Ctrl+C to stop)")
     print(
-        f"{'time':>8}  {'state':<12}  {'dist':>12}  {'pos':>14}  {'vel':>14}  "
-        f"{'motion':>10}  {'gimbal':>6}  tgt  sitl"
+        f"{'time':>8}  {'state':<14}  {'phase':<14}  {'lap':>7}  {'dist':>12}  "
+        f"{'pos':>14}  {'vel':>14}  {'motion':>10}  {'gimbal':>6}  tgt  sitl"
     )
-    print("-" * 104)
+    print("-" * 120)
 
     while True:
         try:
@@ -65,16 +65,36 @@ def main() -> None:
         pwm_s = str(pwm) if pwm is not None else "?"
         motion_rule = msg.get("motion_rule") or (msg.get("extra") or {}).get("motion_rule")
         motion_s = str(motion_rule)[:10] if motion_rule else "?"
+        extra = msg.get("extra") or {}
+        phase = msg.get("phase") or extra.get("phase") or msg.get("state", "?")
+        lap = msg.get("lap")
+        if lap is None:
+            lap = extra.get("lap")
+        laps_target = extra.get("laps_target")
+        if lap is not None and laps_target is not None:
+            lap_s = f"{float(lap):.1f}/{laps_target}"
+        elif lap is not None:
+            lap_s = f"{float(lap):.1f}"
+        else:
+            lap_s = "?"
         px = msg.get("pos_x")
         py = msg.get("pos_y")
+        if px is None:
+            px = extra.get("pos_x")
+        if py is None:
+            py = extra.get("pos_y")
         alt = msg.get("alt_m")
+        if alt is None:
+            alt = extra.get("alt_m")
         if px is not None and py is not None:
             pos_s = f"{px:.1f},{py:.1f},{alt or 0:.1f}"
         else:
             pos_s = "?"
         print(
             f"{time.strftime('%H:%M:%S'):>8}  "
-            f"{msg.get('state', '?'):<12}  "
+            f"{msg.get('state', '?'):<14}  "
+            f"{str(phase):<14}  "
+            f"{lap_s:>7}  "
             f"{dist_s:>12}  "
             f"{pos_s:>14}  "
             f"{vel_s:>14}  "

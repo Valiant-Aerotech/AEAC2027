@@ -122,6 +122,61 @@ flight_profiles:
       geofence_abort: false
       check_battery: false
 
+  vivi_orbit:
+    camera:
+      source: rpi_local
+    mavlink:
+      rpi_connection: "/dev/ttyAMA0"
+    flight:
+      mode: GUIDED
+      require_gps: true
+    field_orbit:
+      trigger_alt_m: 10.0
+      alt_tolerance_m: 0.35
+      forward_m: 2.0
+      radius_m: 5.0
+      laps: 5
+      direction: clockwise
+      orbit_speed_m_s: 0.40
+      radial_kp: 0.25
+      max_vz: 0.15
+      geofence_radius_m: 12.0
+      max_duration_s: 600
+    gcs_monitor:
+      statustext_interval_s: 2.0
+    safety:
+      geofence_abort: true
+      check_battery: true
+
+  sitl_orbit:
+    camera:
+      source: synthetic
+    mavlink:
+      connection: "tcp:127.0.0.1:5760"
+    spray:
+      method: none
+    safety:
+      geofence_abort: true
+      check_battery: false
+    sitl:
+      velocity_local_ned: true
+      takeoff_alt_m: 10.0
+    field_orbit:
+      trigger_alt_m: 10.0
+      alt_tolerance_m: 0.35
+      forward_m: 2.0
+      radius_m: 5.0
+      laps: 5
+      direction: clockwise
+      orbit_speed_m_s: 0.40
+      radial_kp: 0.25
+      max_vz: 0.15
+      geofence_radius_m: 12.0
+      max_duration_s: 600
+    gcs_monitor:
+      statustext_interval_s: 2.0
+      mp_use_autopilot_sysid: true
+
   sitl:
     camera:
       source: synthetic

@@ -25,6 +25,25 @@ STATE_HUD_LABELS: dict[str, str] = {
     "ABORTED": "Mission aborted",
 }
 
+ORBIT_PHASE_LABELS: dict[str, str] = {
+    "STANDBY": "Waiting for GUIDED",
+    "ALT_HOLD": "Climbing to altitude",
+    "FORWARD": "Flying forward",
+    "ORBIT": "Orbiting",
+    "RETURN_CENTER": "Returning to center",
+    "LOITER": "Loiter - manual control",
+    "DONE": "Orbit complete",
+    "ABORT": "Aborted - left GUIDED",
+}
+
+
+def format_orbit_status(phase: str, lap: float, laps_target: float) -> str:
+    """Human-readable orbit status for GCS Messages."""
+    if phase == "ORBIT":
+        lap_disp = min(int(lap) + 1, int(laps_target))
+        return f"Lap {lap_disp}/{int(laps_target)}"
+    return ORBIT_PHASE_LABELS.get(phase, phase.replace("_", " ").title())
+
 
 def human_state_label(state: str) -> str:
     """Plain-language mission state for GCS Messages."""

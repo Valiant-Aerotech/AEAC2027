@@ -2,31 +2,21 @@
 
 from __future__ import annotations
 
-import math
 import time
 from dataclasses import dataclass
 
-from pymavlink import mavutil
-
-from valiant.autonomy.auto_nav.mavlink_stream import VelocityStream
-from valiant.autonomy.auto_nav.visual_servo import VisualServo
 from valiant.autonomy.gcs_hud import GcsHudReporter
+from valiant.autonomy.guided_motion import GuidedMotionRunner
+from valiant.autonomy.orbit_math import wrap_pi
 from valiant.autonomy.sitl_preflight import ensure_sitl_guided
 from valiant.common.mavlink import (
     connect,
     gcs_statustext_options_from_cfg,
-    request_sitl_telemetry_streams,
-    send_companion_heartbeat,
+    request_guided_telemetry_streams,
 )
-from valiant.common.sitl_physics import drain_vehicle_pose, wait_vehicle_pose
+from valiant.common.sitl_physics import wait_vehicle_pose
 
-
-def _wrap_pi(angle: float) -> float:
-    while angle > math.pi:
-        angle -= 2 * math.pi
-    while angle < -math.pi:
-        angle += 2 * math.pi
-    return angle
+_wrap_pi = wrap_pi  # re-export for tests
 
 
 @dataclass(frozen=True)
@@ -52,7 +42,7 @@ class SitlPatternRunner:
 
     def __init__(
         self,
-        master: mavutil.mavfile,
+        master,
         cfg: dict,
         *,
         hud: GcsHudReporter | None = None,
@@ -60,139 +50,39 @@ class SitlPatternRunner:
         yaw_rate_rad_s: float = 0.35,
     ):
         self.master = master
-        self.cfg = cfg
-        self._hud = hud
-        self._speed = max(0.1, speed_m_s)
-        self._yaw_rate = max(0.1, yaw_rate_rad_s)
-        self._servo = VisualServo(master, cfg)
-        self._stream = VelocityStream(self._servo, rate_hz=20.0)
-        self._last_hb = 0.0
-        self._last_pose = None
-
-    def _say(self, message: str, *, force: bool = True) -> None:
-        print(f"[Pattern] {message}")
-        if self._hud is not None:
-            self._hud.send(message, force=force)
-
-    def _heartbeat(self) -> None:
-        now = time.time()
-        if now - self._last_hb > 1.0:
-            send_companion_heartbeat(self.master)
-            self._last_hb = now
-
-    def _pose(self, previous=None, *, need_position: bool = False, need_attitude: bool = False):
-        self._heartbeat()
-        if need_position or need_attitude:
-            pose = wait_vehicle_pose(
-                self.master,
-                timeout_s=15.0,
-                need_position=need_position,
-                need_attitude=need_attitude,
-                previous=previous or self._last_pose,
-            )
-        else:
-            pose = drain_vehicle_pose(self.master, previous or self._last_pose)
-        self._last_pose = pose
-        if pose.ok:
-            self._servo.set_yaw_rad(pose.yaw)
-        return pose
-
-    def _stop_stream(self) -> None:
-        self._stream.stop()
-        self._servo.clear_stream_target()
-
-    def _drive_forward(self, distance_m: float, *, label: str) -> None:
-        self._say(label)
-        ensure_sitl_guided(self.master, force=True)
-        self._stop_stream()
-        if self._last_pose is None or not self._last_pose.ok:
-            self._last_pose = wait_vehicle_pose(
-                self.master,
-                need_position=True,
-                need_attitude=True,
-            )
-        pose = self._last_pose
-        self._servo.set_yaw_rad(pose.yaw)
-        x0, y0 = pose.x, pose.y
-        self._servo.send_velocity_body(self._speed, 0.0, 0.0)
-        self._stream.start()
-        deadline = time.time() + max(30.0, distance_m / self._speed * 3.0)
-        while time.time() < deadline:
-            pose = self._pose(pose)
-            traveled = math.hypot(pose.x - x0, pose.y - y0)
-            if traveled >= distance_m:
-                break
-            time.sleep(0.05)
-        self._stop_stream()
-        time.sleep(0.3)
-
-    def _turn_degrees(self, degrees: float, *, label: str) -> None:
-        self._say(label)
-        ensure_sitl_guided(self.master, force=True)
-        self._stop_stream()
-        pose = self._pose(need_attitude=True)
-        target_yaw = _wrap_pi(pose.yaw + math.radians(degrees))
-        print(
-            f"[Pattern] Yaw hold -> {math.degrees(target_yaw):.0f} deg "
-            f"({abs(degrees):.0f} deg {'CW' if degrees >= 0 else 'CCW'})"
+        self._motion = GuidedMotionRunner(
+            master,
+            cfg,
+            hud=hud,
+            log_tag="Pattern",
+            speed_m_s=speed_m_s,
+            yaw_rate_rad_s=yaw_rate_rad_s,
+            ensure_guided=lambda: ensure_sitl_guided(master, force=True),
         )
-        self._servo.send_guided_yaw(target_yaw)
-        self._stream.start()
-        deadline = time.time() + max(
-            45.0,
-            abs(degrees) / max(math.degrees(self._yaw_rate), 10.0) * 4.0,
-        )
-        while time.time() < deadline:
-            pose = self._pose(pose)
-            err = abs(_wrap_pi(pose.yaw - target_yaw))
-            if err < math.radians(4.0):
-                print(f"[Pattern] Turn complete (err {math.degrees(err):.1f} deg)")
-                break
-            time.sleep(0.05)
-        else:
-            err = abs(_wrap_pi(pose.yaw - target_yaw))
-            print(f"[Pattern] Warning: turn timed out (err {math.degrees(err):.1f} deg)")
-        self._stop_stream()
-        time.sleep(0.3)
-
-    def _set_loiter(self) -> None:
-        self._stop_stream()
-        mapping = self.master.mode_mapping()
-        if "LOITER" not in mapping:
-            raise RuntimeError(f"LOITER not available: {mapping}")
-        self._say("Loiter - manual control")
-        self.master.set_mode(mapping["LOITER"])
-        deadline = time.time() + 8.0
-        want = mapping["LOITER"]
-        while time.time() < deadline:
-            self._heartbeat()
-            hb = self.master.recv_match(type="HEARTBEAT", blocking=True, timeout=1.0)
-            if hb is not None and hb.get_srcSystem() == self.master.target_system:
-                if hb.custom_mode == want:
-                    return
-        print("[Pattern] Warning: LOITER not confirmed")
 
     def run(self, legs: tuple[PatternLeg, ...] | None = None) -> None:
         legs = legs or DEFAULT_PATTERN
-        self._say("Pattern flight starting")
-        request_sitl_telemetry_streams(self.master)
+        self._motion.say("Pattern flight starting")
+        request_guided_telemetry_streams(self.master)
         ensure_sitl_guided(self.master, force=True)
         print("[Pattern] Waiting for position telemetry...")
-        self._last_pose = wait_vehicle_pose(
-            self.master,
-            timeout_s=20.0,
-            need_position=True,
-            need_attitude=True,
+        self._motion.set_last_pose(
+            wait_vehicle_pose(
+                self.master,
+                timeout_s=20.0,
+                need_position=True,
+                need_attitude=True,
+            )
         )
         for leg in legs:
             if leg.kind == "forward":
-                self._drive_forward(leg.value, label=leg.label)
+                self._motion.drive_forward(leg.value, label=leg.label)
             elif leg.kind == "turn":
-                self._turn_degrees(leg.value, label=leg.label)
+                self._motion.turn_degrees(leg.value, label=leg.label)
             else:
                 raise ValueError(f"Unknown leg kind: {leg.kind}")
-        self._set_loiter()
-        self._say("Pattern complete - hold in loiter")
+        self._motion.set_loiter()
+        self._motion.say("Pattern complete - hold in loiter")
         time.sleep(2.0)
 
 
@@ -224,7 +114,7 @@ def run_pattern_flight(
                 timeout_s=float(cfg.get("sitl", {}).get("preflight_timeout_s", 75.0)),
                 ekf_wait_s=float(cfg.get("sitl", {}).get("ekf_wait_s", 45.0)),
             )
-            request_sitl_telemetry_streams(master)
+            request_guided_telemetry_streams(master)
         runner = SitlPatternRunner(master, cfg, hud=hud, speed_m_s=speed_m_s)
         runner.run()
     finally:

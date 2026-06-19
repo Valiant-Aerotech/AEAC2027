@@ -26,6 +26,7 @@ cd AEAC2027
 | **First connect GCS + drone** | `python tools\valiant.py bringup phase1` | Radio + powered Pixhawk |
 | **First connect Raspberry Pi** | `bash hardware/vion/rpi/first_connect.sh` | SSH to Pi |
 | **Fly Task 2 autonomously** | On Pi: `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` | Full bringup done |
+| **Vivi GUIDED orbit (no CV)** | On Pi: `python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <ip>` | Outdoor GPS; see [vivi-orbit-field-test.md](docs/runbooks/vivi-orbit-field-test.md) |
 | **Watch telemetry on GCS** | `python tools\valiant.py gcs monitor` | Pi sending UDP to laptop |
 
 **Forgot the command?** Run:
@@ -76,6 +77,8 @@ Wait until you see `SERIAL0 on TCP port 5760`.
 
 **Optional - GUIDED box pattern (no CV):** after SITL is up, `python tools\valiant.py sitl pattern` flies forward/turn legs and ends in LOITER. Good for MAVLink motion check before a full fire mission.
 
+**Optional - GUIDED orbit (field geometry):** `python tools\valiant.py sitl orbit` validates the Vivi orbit script in sim before field (`--laps 1` for a quick check). Runbook: [docs/runbooks/vivi-orbit-field-test.md](docs/runbooks/vivi-orbit-field-test.md).
+
 **Terminal 2** - run the Task 2 mission + dashboard:
 
 ```powershell
@@ -110,6 +113,8 @@ python tools\valiant.py gcs monitor
 python tools\valiant.py gcs verify-statustext
 python tools\valiant.py sitl mission
 python tools\valiant.py sitl pattern
+python tools\valiant.py sitl orbit
+python tools\valiant.py field orbit --gcs-ip <laptop-ip>
 python tools\valiant.py sitl run config\sitl_missions\example_wall.yaml
 python tools\valiant.py bringup phase1
 ```

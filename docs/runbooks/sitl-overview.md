@@ -93,6 +93,7 @@ Configured in `config/vion.yaml` under `flight_profiles`:
 | **`sitl`** (default) | `run_sitl_mission.ps1` | Timeline synthetic + world scene | JSON keyframes **linked to mavlink pose** | Fast mission logic, dashboard, single-target default |
 | **`sitl_physics`** | `run_sitl_mission.ps1 -Physics` | Pose + gimbal projection | `sitl_physics_wall.json` | Geometry, approach tuning, harder CV |
 | **Pattern only** | `valiant sitl pattern` | None | N/A | GUIDED forward/turn box, LOITER; no CV |
+| **Orbit only** | `valiant sitl orbit` | None | N/A | GUIDED orbit (field geometry), LOITER; no CV |
 | **Video replay** | `-Video path\to\clip.mp4` | Recorded footage | N/A | Regression from bench recordings |
 | **Field** | `task2_vion_auto_extinguish.py` (no `--sitl`) | scrcpy | Real world | Competition |
 

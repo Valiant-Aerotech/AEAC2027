@@ -1,0 +1,7 @@
+# SITL orbit validation (GUIDED circle + LOITER)
+# Run: python tools\valiant.py sitl orbit
+# Quick test: python tools\valiant.py sitl orbit --laps 1
+
+field_orbit:
+  laps: 5
+  trigger_alt_m: 10.0

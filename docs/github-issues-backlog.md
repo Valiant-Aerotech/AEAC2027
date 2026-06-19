@@ -38,11 +38,12 @@ gh auth login
 |------|--------|
 | **SITL GCS HUD** | `T2:` STATUSTEXT in Mission Planner Messages; human-readable state lines; `gcs verify-statustext` |
 | **SITL pattern flight** | `sitl pattern`: GUIDED box (10 m / turns / LOITER); yaw via SET_POSITION_TARGET mask 2503 at 20 Hz |
+| **Vivi orbit (GUIDED)** | `sitl orbit` / `field orbit`; circle R=5 m, LOITER handoff; SITL validate then Vivi field |
 | **WSL / tools paths** | `wsl_distro.ps1`, `diagnostics.ps1`, `audit_script_paths.py`; diagnose checklist |
 | **3D motion (SITL)** | `ned_kinematics.py`, world-primary motion, search creep with descent |
 | **3D metric recon** | `MetricPacket` slant/horizontal range, `geometry_3d.py`, altitude alignment gates |
-| **Tools** | `tools/valiant.py` CLI; `sitl run`, `sitl pattern`, `gcs verify-statustext` |
-| **Tests** | 100+ unit tests including `test_gcs_hud`, `test_visual_servo_guided`, `test_sitl_pattern` |
+| **Tools** | `tools/valiant.py` CLI; `sitl run`, `sitl pattern`, `sitl orbit`, `field orbit`, `gcs verify-statustext` |
+| **Tests** | 100+ unit tests including `test_field_orbit`, `test_gcs_hud`, `test_visual_servo_guided`, `test_sitl_pattern` |
 
 ### Closed on create (done in repo)
 
@@ -74,6 +75,7 @@ E9: Script path audit and WSL distro fixes
 | Task 1 Vivi field test (Phase 5) | #77 | - | medium | task1 | open |
 | Autonomous takeoff/landing (CONOPS 5+5 pts) | #75 | F | low | auto-nav | open; SITL NAV_TAKEOFF preflight only |
 | Adapt config when 2027 CONOPS publishes | #76 | F | low | infra | open |
+| Vivi GUIDED orbit field test (Phase E10) | - | E | high | field-test | **SITL path in repo**; outdoor Vivi pending |
 | Vivi/Vulcan2 FC Lua + Mission Planner docs | #17 | B | low | infra | open |
 
 See [field-test-plan.md](runbooks/field-test-plan.md). SITL: [sitl-overview.md](runbooks/sitl-overview.md). Interfaces: [interfaces.md](interfaces.md).

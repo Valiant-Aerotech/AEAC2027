@@ -27,7 +27,8 @@ python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
 | `capture_calibration_set.py` | C6 | Single distance capture |
 | `run_bringup_tests.sh` | C7-D | Sim + tethered + optional monitor |
 | `preflight_indoor.sh` | E | Props-on checklist |
-| `run_mission.py` | E | Autonomous flight |
+| `run_mission.py` | E | Autonomous flight (CV orchestrator) |
+| `run_field_orbit.py` | E | GUIDED-triggered orbit, then LOITER (no CV) |
 
 ## GCS pairing scripts
 

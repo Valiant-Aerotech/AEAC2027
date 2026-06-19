@@ -228,6 +228,39 @@ def cmd_sitl_pattern(args: argparse.Namespace) -> int:
     return _run("sitl/sitl_pattern_flight.py", argv)
 
 
+def cmd_sitl_orbit(args: argparse.Namespace) -> int:
+    ps1 = TOOLS / "run_sitl_orbit.ps1"
+    extra: list[str] = []
+    if args.skip_preflight:
+        extra.append("-SkipPreflight")
+    if args.no_monitor:
+        extra.append("-NoMonitor")
+    if args.laps is not None:
+        extra.extend(["-Laps", str(args.laps)])
+    if ps1.exists() and not args.extra:
+        return subprocess.call(
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1), *extra],
+            cwd=str(ROOT),
+        )
+    argv = list(args.extra or [])
+    if args.skip_preflight:
+        argv.append("--skip-preflight")
+    if args.laps is not None:
+        argv.extend(["--laps", str(args.laps)])
+    return _run("sitl/sitl_orbit_flight.py", argv)
+
+
+def cmd_field_orbit(args: argparse.Namespace) -> int:
+    argv = list(args.extra or [])
+    if args.profile:
+        argv.extend(["--profile", args.profile])
+    if args.connection:
+        argv.extend(["--connection", args.connection])
+    if args.gcs_ip:
+        argv.extend(["--gcs-ip", args.gcs_ip])
+    return _run("field/run_field_orbit.py", argv)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="valiant",
@@ -299,6 +332,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--no-monitor", action="store_true")
     sp.add_argument("extra", nargs=argparse.REMAINDER)
     sp.set_defaults(func=cmd_sitl_pattern)
+    sp = s.add_parser("orbit", help="Guided orbit then LOITER (field geometry, SITL first)")
+    sp.add_argument("--skip-preflight", action="store_true")
+    sp.add_argument("--no-monitor", action="store_true")
+    sp.add_argument("--laps", type=int, default=None, help="Override lap count")
+    sp.add_argument("extra", nargs=argparse.REMAINDER)
+    sp.set_defaults(func=cmd_sitl_orbit)
     sp = s.add_parser("map", help="SITL map assets")
     sm = sp.add_subparsers(dest="map_cmd", required=True)
     sp2 = sm.add_parser("download", help="Download satellite tiles")
@@ -341,6 +380,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_bringup_phase1)
     sp = s.add_parser("phase1-pi", help="Phase 1 Pi checks (run on companion)")
     sp.set_defaults(func=cmd_bringup_phase1_pi)
+
+    p = sub.add_parser("field", help="Field flight scripts (no CV orchestrator)")
+    s = p.add_subparsers(dest="sub", required=True)
+    sp = s.add_parser("orbit", help="GUIDED-triggered orbit on Pi UART")
+    sp.add_argument("--profile", default="vivi_orbit")
+    sp.add_argument("--connection", default=None)
+    sp.add_argument("--gcs-ip", default=None)
+    sp.add_argument("extra", nargs=argparse.REMAINDER)
+    sp.set_defaults(func=cmd_field_orbit)
 
     p = sub.add_parser("upload", help="Photo upload tools")
     s = p.add_subparsers(dest="sub", required=True)

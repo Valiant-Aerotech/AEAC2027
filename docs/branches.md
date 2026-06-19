@@ -27,6 +27,7 @@ As of June 2026, integrated stack includes:
 - SITL simulation (ArduPilot, synthetic/physics cameras, 3D NED motion)
 - SITL GCS HUD (`T2:` STATUSTEXT in Mission Planner Messages)
 - SITL guided box pattern (`python tools\valiant.py sitl pattern`)
+- Vivi GUIDED orbit (`python tools\valiant.py sitl orbit`, then field runbook)
 - 3D metric reconstruction and unified CLI (`tools/valiant.py`)
 - Pi companion path (`hardware/vion/rpi/`)
 
@@ -46,6 +47,7 @@ These modes are config/profile choices, not separate git branches:
 |-------------|------------|--------|-------|
 | **SITL (no drone)** | `tcp:127.0.0.1:5760` | Synthetic / physics / video | `python tools/valiant.py sitl mission` |
 | **SITL pattern (no CV)** | `tcp:127.0.0.1:5760` | None (GUIDED legs only) | `python tools/valiant.py sitl pattern` |
+| **SITL orbit (no CV)** | `tcp:127.0.0.1:5760` | None (field orbit geometry) | `python tools/valiant.py sitl orbit` |
 | **Hand-test (FC, props off)** | `COM5` or UDP | scrcpy / webcam | `docs/runbooks/vivi-hand-test.md` |
 | **Vivi bench (Pi)** | Pi UART | RPi camera + ToF | `hardware/vion/rpi/run_mission.py --profile vivi` |
 | **Field (Vion)** | Radio COM | RPi camera | `hardware/vion/rpi/run_mission.py --profile indoor` |

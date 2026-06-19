@@ -23,6 +23,7 @@ No arguments also prints the guide. First laptop setup: `.\start.ps1` from repo 
 | `run_sitl_mission.ps1` | Default SITL mission (`valiant sitl mission`) |
 | `run_sitl_mission_file.ps1` | YAML mission (`valiant sitl run …`) |
 | `run_sitl_pattern.ps1` | GUIDED box pattern (`valiant sitl pattern`) |
+| `run_sitl_orbit.ps1` | GUIDED orbit (`valiant sitl orbit`) |
 
 Everything else lives in subfolders and is invoked via `valiant.py` or the scripts above.
 

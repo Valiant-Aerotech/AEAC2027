@@ -38,6 +38,7 @@ class VisualServo:
         self._stream_mode: str | None = None
         self._last_yaw_target: float | None = None
         self._last_yaw_rate = 0.0
+        self.last_vel_ned = (0.0, 0.0, 0.0)
 
     def set_yaw_rad(self, yaw_rad: float) -> None:
         self._yaw_rad = yaw_rad
@@ -106,8 +107,26 @@ class VisualServo:
                 yaw_rate,
             )
 
+    def send_velocity_ned(self, vn: float, ve: float, vz: float = 0.0) -> None:
+        """Horizontal/vertical velocity in LOCAL NED (for orbit tangential commands)."""
+        self.last_vel_ned = (vn, ve, vz)
+        self.last_vel_body = (0.0, 0.0, 0.0)
+        self._stream_mode = "velocity_ned"
+        self._last_yaw_target = None
+        self._last_yaw_rate = 0.0
+        self._send_position_target(
+            frame=mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+            type_mask=GUIDED_MASK_VELOCITY,
+            vx=vn,
+            vy=ve,
+            vz=vz,
+            yaw=0.0,
+            yaw_rate=0.0,
+        )
+
     def send_velocity_body(self, vel_x: float, vel_y: float, vel_z: float = 0.0) -> None:
         self.last_vel_body = (vel_x, vel_y, vel_z)
+        self.last_vel_ned = (0.0, 0.0, 0.0)
         self._stream_mode = "velocity"
         self._last_yaw_target = None
         self._last_yaw_rate = 0.0
@@ -184,6 +203,12 @@ class VisualServo:
             return
         if self._stream_mode == "yaw_rate" and abs(self._last_yaw_rate) > 1e-6:
             self.send_yaw_rate(self._last_yaw_rate)
+            return
+        if self._stream_mode == "velocity_ned":
+            vn, ve, vz = self.last_vel_ned
+            if abs(vn) + abs(ve) + abs(vz) < 1e-6:
+                return
+            self.send_velocity_ned(vn, ve, vz)
             return
         vx, vy, vz = self.last_vel_body
         if abs(vx) + abs(vy) + abs(vz) < 1e-6:

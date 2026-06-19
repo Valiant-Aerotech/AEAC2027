@@ -212,11 +212,16 @@ def request_message_interval(master: mavutil.mavfile, message_id: int, rate_hz: 
         )
 
 
-def request_sitl_telemetry_streams(master: mavutil.mavfile) -> None:
-    """LOCAL_POSITION_NED + ATTITUDE for physics maps and guided velocity."""
+def request_guided_telemetry_streams(master: mavutil.mavfile) -> None:
+    """LOCAL_POSITION_NED + ATTITUDE for guided velocity and orbit control."""
     request_message_interval(master, mavutil.mavlink.MAVLINK_MSG_ID_LOCAL_POSITION_NED, 20)
     request_message_interval(master, mavutil.mavlink.MAVLINK_MSG_ID_ATTITUDE, 20)
     request_sys_status_stream(master, rate_hz=2)
+
+
+def request_sitl_telemetry_streams(master: mavutil.mavfile) -> None:
+    """Alias for request_guided_telemetry_streams (SITL and field GUIDED)."""
+    request_guided_telemetry_streams(master)
 
 
 def command_yaw_relative(

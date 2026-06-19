@@ -64,6 +64,51 @@ def test_send_yaw_rate_includes_zero_velocity():
     assert abs(args[15] - 0.35) < 1e-6
 
 
+def test_send_velocity_ned_uses_local_ned():
+    from valiant.autonomy.auto_nav.visual_servo import GUIDED_MASK_VELOCITY
+
+    sent: list[tuple] = []
+
+    class FakeMav:
+        target_system = 1
+        target_component = 1
+
+        class mav:
+            @staticmethod
+            def set_position_target_local_ned_send(*args):
+                sent.append(args)
+
+    servo = VisualServo(FakeMav(), {})
+    servo.send_velocity_ned(0.2, -0.1, 0.05)
+    assert len(sent) == 1
+    args = sent[0]
+    assert args[3] == mavutil.mavlink.MAV_FRAME_LOCAL_NED
+    assert args[4] == GUIDED_MASK_VELOCITY
+    assert args[8] == 0.2 and args[9] == -0.1 and args[10] == 0.05
+
+
+def test_resend_last_guided_repeats_ned_velocity():
+    from valiant.autonomy.auto_nav.visual_servo import GUIDED_MASK_VELOCITY
+
+    sent: list[tuple] = []
+
+    class FakeMav:
+        target_system = 1
+        target_component = 1
+
+        class mav:
+            @staticmethod
+            def set_position_target_local_ned_send(*args):
+                sent.append(args)
+
+    servo = VisualServo(FakeMav(), {})
+    servo.send_velocity_ned(0.3, 0.0, 0.0)
+    servo.resend_last_guided()
+    assert len(sent) == 2
+    assert sent[0][4] == GUIDED_MASK_VELOCITY
+    assert sent[1][4] == GUIDED_MASK_VELOCITY
+
+
 def test_resend_last_guided_repeats_yaw_hold():
     sent: list[tuple] = []
 

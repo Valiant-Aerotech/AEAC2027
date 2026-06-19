@@ -183,6 +183,17 @@ python tools\valiant.py sitl pattern
 
 Or `.\tools\run_sitl_pattern.ps1`. Expect `T2:` lines like `Flying forward 10 m` and `Loiter - manual control` in Mission Planner.
 
+### GUIDED orbit (Vivi field geometry)
+
+After SITL is up:
+
+```powershell
+python tools\valiant.py sitl orbit
+python tools\valiant.py sitl orbit --laps 1
+```
+
+Or `.\tools\run_sitl_orbit.ps1`. Validates altitude hold, 2 m forward, circle, return to center, LOITER before outdoor Vivi flight. Field runbook: [vivi-orbit-field-test.md](vivi-orbit-field-test.md).
+
 ### Daily driver (timeline synthetic - fast iteration)
 
 **Terminal 2** (from repo root):
