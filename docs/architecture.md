@@ -24,6 +24,7 @@ Pixhawk 6C + Holybro H-Flow (DroneCAN) handle indoor hover stability. H-Flow is 
 
 ## GCS role
 
+- **Start here:** [START_HERE.md](../START_HERE.md) and `python tools/valiant.py guide`
 - Unified tooling: `python tools/valiant.py` ([tools/README.md](../tools/README.md))
 - Calibration: `valiant calibrate tune|validate|replay` (wraps `calibrate_depth_rgb.py`, etc.)
 - Mission monitor: `valiant gcs monitor` (UDP, read-only)

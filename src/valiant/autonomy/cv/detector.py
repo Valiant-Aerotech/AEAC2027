@@ -43,6 +43,44 @@ def _resolve_model_path(cfg: dict) -> Path | None:
     return None
 
 
+def _resolve_shot_model_path(cfg: dict) -> Path | None:
+    cv_cfg = cfg.get("cv", {})
+    model_rel = cv_cfg.get("models", {}).get("shot", "models/shot.onnx")
+    candidates = [
+        repo_root() / model_rel,
+        repo_root() / "models" / "shot.onnx",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+class _ShotYOLOBackend:
+    """Optional YOLO ONNX for wet/shot target confirmation."""
+
+    def __init__(self, cfg: dict):
+        self.cfg = cfg
+        self._onnx: YoloOnnxDetector | None = None
+        self.model_path: Path | None = None
+        self.conf_thresh = cfg.get("cv", {}).get("confidence_threshold", CONF_THRESH)
+
+    def _ensure_loaded(self) -> bool:
+        if self._onnx is not None:
+            return True
+        path = _resolve_shot_model_path(self.cfg)
+        if path is None:
+            return False
+        self.model_path = path
+        self._onnx = YoloOnnxDetector(path, conf_thresh=self.conf_thresh)
+        return True
+
+    def detect_shot(self, frame: npt.NDArray[np.uint8]) -> TargetHit | None:
+        if not self._ensure_loaded() or self._onnx is None:
+            return None
+        return self._onnx.detect_dry(frame)
+
+
 class _YOLOBackend:
     """Lazy-loaded YOLO backend (.onnx via onnxruntime, .pt via ultralytics)."""
 
@@ -127,11 +165,14 @@ class TargetDetector:
         self.cfg = cfg
         self.method = cfg.get("cv", {}).get("method", "hsv").lower()
         self._yolo: _YOLOBackend | None = None
+        self._shot_yolo: _ShotYOLOBackend | None = None
         self._frame_id = 0
         self.min_confidence = cfg.get("cv", {}).get("confidence_threshold", CONF_THRESH)
 
         if self.method in ("yolo", "both"):
             self._yolo = _YOLOBackend(cfg)
+        if self.method in ("yolo", "both") and _resolve_shot_model_path(cfg):
+            self._shot_yolo = _ShotYOLOBackend(cfg)
         print(f"[CV] TargetDetector method={self.method}")
 
     def _append_yolo_dry(self, packet: CVPacket, frame: npt.NDArray[np.uint8]) -> None:
@@ -145,6 +186,16 @@ class TargetDetector:
                 f"YOLO confidence {yolo_hit.confidence:.2f} below {self.min_confidence}"
             )
         packet.dry.append(yolo_hit)
+
+    def _append_shot(self, packet: CVPacket, frame: npt.NDArray[np.uint8]) -> None:
+        if self._shot_yolo:
+            shot_hit = self._shot_yolo.detect_shot(frame)
+            if shot_hit is not None and shot_hit.confidence >= self.min_confidence:
+                packet.shot.append(shot_hit)
+                return
+        _, shot_hit = detect_hsv(frame, self.cfg)
+        if shot_hit:
+            packet.shot.append(shot_hit)
 
     def detect(self, frame: npt.NDArray[np.uint8] | None) -> CVPacket:
         if frame is None or frame.size == 0:
@@ -162,10 +213,8 @@ class TargetDetector:
             return packet
 
         if self.method in ("yolo", "both"):
-            # Trained YOLO for dry purple; HSV still used for blue/wet shot confirmation.
-            _, shot_hit = detect_hsv(frame, self.cfg)
-            if shot_hit:
-                packet.shot.append(shot_hit)
+            # Trained YOLO for dry purple; shot via shot ONNX or HSV blue/wet.
+            self._append_shot(packet, frame)
 
             if self.method == "yolo":
                 if self._yolo and _resolve_model_path(self.cfg):

@@ -225,6 +225,64 @@ flight_profiles:
       approach_speed: 0.14
       side_clearance_m: 0.0
 
+  indoor:
+    flight:
+      profile: indoor
+      require_gps: false
+      mode: GUIDED_NOGPS
+      arm_check_gps: false
+    camera:
+      source: rpi_local
+    metric_recon:
+      mode: depth_at_target
+      rangefinder: depth_at_target
+      camera_down: false
+    safety:
+      geofence_abort: false
+      check_battery: false
+    cv:
+      hsv_min_area_px: 450
+    auto_nav:
+      kp_x: 0.0006
+      kp_y: 0.0006
+      kd_x: 0.0014
+      kd_y: 0.0014
+      vel_smooth: 0.42
+      deadband_px: 50
+      approach_speed: 0.10
+      side_clearance_m: 0.8
+      lateral_pixel_blend: 0.30
+
+  outdoor:
+    flight:
+      profile: outdoor
+      require_gps: true
+      mode: GUIDED
+    camera:
+      source: rpi_local
+    metric_recon:
+      mode: depth_at_target
+      rangefinder: depth_at_target
+      camera_down: false
+    cv:
+      method: yolo
+      hsv_dry: { h_min: 125, h_max: 175, s_min: 40, v_min: 40 }
+      hsv_shot: { h_min: 95, h_max: 135, s_min: 40, v_min: 40 }
+      hsv_min_area_px: 400
+      confidence_threshold: 0.30
+    auto_nav:
+      kp_x: 0.0005
+      kp_y: 0.0005
+      kd_x: 0.0018
+      kd_y: 0.0018
+      vel_smooth: 0.45
+      deadband_px: 55
+      approach_speed: 0.08
+      side_clearance_m: 1.2
+      lateral_pixel_blend: 0.25
+    safety:
+      geofence_abort: true
+
 auto_nav:
   kp_x: 0.0006                           # tuned from SITL — softer lateral gain
   kp_y: 0.0006

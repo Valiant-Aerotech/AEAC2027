@@ -6,11 +6,11 @@ Read this before connecting to Vion. Bringup steps: [vion-bringup.md](vion-bring
 
 | Item | Status | Command |
 |------|--------|---------|
-| GCS env + CONOPS | Ready | `.\tools\bringup_gcs.ps1` |
+| GCS env + CONOPS | Ready | `python tools\valiant.py bringup phase1` |
 | MAVLink heartbeat (radio) | Ready | `python tools\valiant.py gcs heartbeat` |
 | SERVO15 spray bench | Ready | `python tools\valiant.py gcs spray` |
 | Pi first SSH setup | Ready | `bash hardware/vion/rpi/first_connect.sh` |
-| Pi sensor check (RGB + MAVLink) | Ready | `bash hardware/vion/rpi/session_start.sh` |
+| Pi sensor check (RGB + MAVLink) | Ready | `python tools/valiant.py bringup phase1-pi` |
 | Sim state machine (no props) | Ready | `run_mission.py --profile indoor --sim` |
 | GCS monitor | Ready | `run_mission.py --gcs-ip <laptop-ip> --sim` + `python tools/valiant.py gcs monitor` |
 
@@ -31,7 +31,7 @@ Read this before connecting to Vion. Bringup steps: [vion-bringup.md](vion-bring
 
 | Item | Impact today | Workaround |
 |------|--------------|------------|
-| **ArduCam ToF driver** | Code wired; needs SDK on Pi | `bash hardware/vion/rpi/install_arducam_tof.sh` then reboot |
+| **ArduCam ToF driver** | Code wired; needs SDK on Pi | `bash hardware/vion/rpi/install_arducam_tof.sh` then `python tools/valiant.py bringup phase1-pi` |
 | **Real depth calibration** | 10% gate cannot pass without ToF frames | Use `--sim` for pipeline test; calibrate after ArduCam wired |
 | **Auto takeoff / land** | Mission sends velocity only when armed + airborne | Manual hover during APPROACHING/AIMING |
 | **Google Drive upload on Pi** | Photos save locally | Copy from Pi after flight |

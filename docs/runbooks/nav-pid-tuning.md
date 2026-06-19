@@ -23,4 +23,6 @@ Tune visual servo gains in `config/vion.yaml` under `auto_nav`.
 
 Indoor profile: `python hardware/vion/rpi/run_mission.py --profile indoor`
 
+Outdoor profile (field-tuned HSV + nav gains): `--profile outdoor`
+
 GCS dev: `python missions/task2_vion_auto_extinguish.py --sim --source webcam`

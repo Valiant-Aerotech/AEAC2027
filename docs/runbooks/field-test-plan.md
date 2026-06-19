@@ -33,6 +33,8 @@ See [sitl-wsl.md](sitl-wsl.md) for WSL ArduPilot setup.
 
 Bringup checklist: [vion-bringup.md](vion-bringup.md)
 
+Automated GCS prep: `python tools\valiant.py bringup phase1` (add `--skip-mavlink` on laptop-only).
+
 | # | Test | Setup | Pass criteria |
 |---|------|-------|---------------|
 | 1.1 | Telemetry | Mission Planner + telemetry radio COM @ 57600 | Heartbeat, GUIDED_NOGPS selectable (indoor) |
@@ -70,12 +72,14 @@ Run on Pi: `python hardware/vion/rpi/run_mission.py --profile indoor`
 
 | # | Test | Setup | Pass criteria |
 |---|------|-------|---------------|
-| 3.1 | Dry detect outdoors | Purple paper target, outdoor light | CV dry hit stable 10+ frames |
+| 3.1 | Dry detect outdoors | Purple paper target, outdoor light | CV dry hit stable 10+ frames (`--profile outdoor`) |
 | 3.2 | Full auto single | `--max-targets 1`, real spray | Water hits target, VERIFYING sees shot colour |
 | 3.3 | Photo naming | Check `task2_photos/` | `Task_2_{team}_target_1.jpg` exists |
 | 3.4 | Upload | `--upload` or default uploader | File in `uploaded/` or Google Drive |
 | 3.5 | Judge workflow | Operator declares to judge, show photo on laptop | Matches CONOPS real-time confirmation |
 | 3.6 | 2 m approach proof | Review logs / HUD distance | max distance seen >= 2 m before fire |
+
+**Software gate (SITL):** `pytest tests/sitl/test_sitl_phase3.py -m sitl` validates COMPLETE + CONOPS photo naming + upload copy.
 
 **Fail common causes:** HSV false negatives outdoors, shot confirmation timeout, aim lock too tight, spray duration too short.
 

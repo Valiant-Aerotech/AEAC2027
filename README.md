@@ -2,76 +2,67 @@
 
 Valiant Aerotech competition software for AEAC 2027.
 
-**New to the team?** Start with [WELCOME.md](WELCOME.md). Clone **`main`**: it has Task 1, Task 2 autonomy, SITL, and CV.
+**Never run this before?** → **[START_HERE.md](START_HERE.md)** (read this first)
+
+**New team member?** → [WELCOME.md](WELCOME.md) → [ONBOARDING.md](ONBOARDING.md)
 
 ## Fleet
 
 | Drone | Role | Mission |
 |-------|------|---------|
-| **Vulcan 2** | Heavy lifter (carries Vivi) | Hardware docs only - `hardware/vulcan2/` |
-| **Vion** | Fire suppression (Pi companion + Pixhawk) | Task 2 - `hardware/vion/rpi/run_mission.py` |
-| **Vivi** | Surveying drone | Task 1 - `missions/task1_vivi_survey.py` |
+| **Vulcan 2** | Heavy lifter (carries Vivi) | Hardware docs only — `hardware/vulcan2/` |
+| **Vion** | Fire suppression (Pi + Pixhawk) | Task 2 — `hardware/vion/rpi/run_mission.py` |
+| **Vivi** | Surveying drone | Task 1 — `missions/task1_vivi_survey.py` |
+
+## Quick start (new laptop)
+
+```powershell
+git clone https://github.com/Valiant-Aerotech/AEAC2027.git
+cd AEAC2027
+.\start.ps1
+notepad config\vion.yaml    # set telemetry COM port when you have a radio
+python tools\valiant.py guide
+```
+
+## What to run today
+
+| Goal | Command |
+|------|---------|
+| Check install works | `python tools\valiant.py quickstart` |
+| Test CV on webcam | `python tools\valiant.py bench cv --camera 0` |
+| Virtual drone mission | `.\tools\launch_sitl.ps1` then `python tools\valiant.py sitl mission` |
+| First connect to drone | `python tools\valiant.py bringup phase1` |
+| Fly on Pi (competition) | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
+| GCS telemetry HUD | `python tools\valiant.py gcs monitor` |
+
+Full table: [START_HERE.md](START_HERE.md)
 
 ## First connect (hardware day)
 
 | Machine | Run first |
 |---------|-----------|
-| GCS laptop + drone | `.\tools\bringup_gcs.ps1` |
+| GCS laptop | `python tools\valiant.py bringup phase1` |
 | Raspberry Pi (SSH) | `bash hardware/vion/rpi/first_connect.sh` |
 
-Full checklist: [docs/runbooks/vion-bringup.md](docs/runbooks/vion-bringup.md)
-
-## Quick start (new GCS laptop)
-
-```powershell
-git clone https://github.com/Valiant-Aerotech/AEAC2027.git
-cd AEAC2027
-.\tools\setup.ps1
-python tools\valiant.py env check
-notepad config\vion.yaml    # set telemetry radio COM port
-```
-
-## Run a mission
-
-**Primary (onboard Pi):**
-
-```bash
-python hardware/vion/rpi/run_mission.py --profile vivi
-```
-
-**GCS / dev:**
-
-```powershell
-python tools\valiant.py gcs monitor
-python missions\task2_vion_auto_extinguish.py      # Task 2 autonomous (field)
-python missions\task2_vion_manual_photo.py         # Task 2 manual fallback
-python missions\task1_vivi_survey.py               # Task 1 surveying
-```
-
-Tooling index: [tools/README.md](tools/README.md) (`python tools\valiant.py --help`).
-
-### Virtual drone (no hardware)
-
-```powershell
-.\tools\launch_sitl.ps1          # terminal 1: ArduPilot in WSL
-python tools\valiant.py sitl mission   # terminal 2: full mission + dashboard
-# or: .\tools\run_sitl_mission.ps1
-```
-
-[docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
+Checklist: [docs/runbooks/vion-bringup.md](docs/runbooks/vion-bringup.md)
 
 ## Repo layout
 
 ```
-missions/          <- GCS entry points (dev / manual)
-hardware/vion/rpi/ <- Pi primary flight entry
+START_HERE.md      <- read first
+missions/          <- GCS dev / manual entry points
+hardware/vion/rpi/ <- Pi competition flight entry
 src/valiant/       <- library code
-config/            <- per-drone YAML + vion_calibration.yaml
-tools/             <- unified CLI (valiant.py), setup, SITL launchers — see tools/README.md
-docs/runbooks/     <- vion-bringup.md, field-test-plan.md
-models/            <- ONNX models (best.onnx)
+config/            <- vion.yaml, conops, calibration
+tools/valiant.py   <- one CLI for bench, SITL, bringup
+docs/runbooks/     <- bringup, field test, SITL
+models/            <- best.onnx (gitignored; copy locally)
 ```
 
-See [WELCOME.md](WELCOME.md) for new members and [ONBOARDING.md](ONBOARDING.md) for full setup. See [docs/architecture.md](docs/architecture.md) for the modular pipeline design. **Branches:** [docs/branches.md](docs/branches.md). **SITL sim:** [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md). Competition rules: [docs/conops.md](docs/conops.md).
+## More docs
 
-**Before hardware:** [docs/runbooks/whats-left-before-hardware.md](docs/runbooks/whats-left-before-hardware.md)
+- Architecture: [docs/architecture.md](docs/architecture.md)
+- SITL sim: [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
+- Before hardware: [docs/runbooks/whats-left-before-hardware.md](docs/runbooks/whats-left-before-hardware.md)
+- Branches: [docs/branches.md](docs/branches.md)
+- Competition rules: [docs/conops.md](docs/conops.md)

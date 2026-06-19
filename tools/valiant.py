@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Unified Valiant AEAC2027 tooling CLI."""
+"""Unified Valiant AEAC2027 tooling CLI.
+
+Run with no arguments to see the scenario guide.
+First time on a laptop: .\\start.ps1  or  python tools\\valiant.py setup
+"""
 
 from __future__ import annotations
 
@@ -11,10 +15,61 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = Path(__file__).resolve().parent
 
+from guide_text import GUIDE, QUICKSTART_NEXT  # noqa: E402
+
 
 def _run(module_main: str, argv: list[str] | None = None) -> int:
-    cmd = [sys.executable, str(TOOLS / module_main), *(argv or [])]
-    return subprocess.call(cmd, cwd=str(ROOT))
+    """Run a tools/*.py script without tools/valiant.py shadowing the package."""
+    src = str(ROOT / "src")
+    script = str(TOOLS / module_main)
+    extra_argv = argv or []
+    bootstrap = (
+        "import runpy, sys\n"
+        f"sys.path.insert(0, {src!r})\n"
+        f"sys.argv = [{script!r}] + {extra_argv!r}\n"
+        f"raise SystemExit(runpy.run_path({script!r}, run_name='__main__') or 0)\n"
+    )
+    return subprocess.call([sys.executable, "-c", bootstrap], cwd=str(ROOT))
+
+
+def cmd_guide(_: argparse.Namespace) -> int:
+    print(GUIDE.strip())
+    return 0
+
+
+def cmd_quickstart(_: argparse.Namespace) -> int:
+    print("=== Valiant quickstart ===\n")
+    steps = (
+        ("Environment", cmd_env_check),
+        ("CONOPS config", cmd_conops_check),
+        ("Safety logic", cmd_bench_safety),
+    )
+    failed = False
+    for label, fn in steps:
+        print(f"--- {label} ---")
+        rc = fn(argparse.Namespace())
+        if rc != 0:
+            failed = True
+            print(f"FAIL: {label}\n")
+        else:
+            print(f"OK: {label}\n")
+    print(QUICKSTART_NEXT.strip())
+    return 1 if failed else 0
+
+
+def cmd_setup(_: argparse.Namespace) -> int:
+    ps1 = TOOLS / "setup.ps1"
+    if not ps1.exists():
+        print(f"ERROR: {ps1} not found")
+        return 1
+    return subprocess.call(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1)],
+        cwd=str(ROOT),
+    )
+
+
+def cmd_bench_smoke(_: argparse.Namespace) -> int:
+    return cmd_quickstart(_)
 
 
 def cmd_env_check(_: argparse.Namespace) -> int:
@@ -72,6 +127,26 @@ def cmd_calibrate_replay(args: argparse.Namespace) -> int:
     return _run("replay_rpi_recording.py", args.extra)
 
 
+def cmd_upload_test(_: argparse.Namespace) -> int:
+    return _run("test_upload_drive.py")
+
+
+def cmd_bringup_phase1(args: argparse.Namespace) -> int:
+    ps1 = TOOLS / "phase1_bringup.ps1"
+    extra: list[str] = []
+    if getattr(args, "skip_mavlink", False):
+        extra.append("-SkipMavlink")
+    return subprocess.call(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1), *extra],
+        cwd=str(ROOT),
+    )
+
+
+def cmd_bringup_phase1_pi(_: argparse.Namespace) -> int:
+    sh = ROOT / "hardware" / "vion" / "rpi" / "phase1_bringup.sh"
+    return subprocess.call(["bash", str(sh)], cwd=str(ROOT))
+
+
 def cmd_sitl_test(_: argparse.Namespace) -> int:
     ps1 = TOOLS / "run_sitl_tests.ps1"
     if ps1.exists():
@@ -102,9 +177,24 @@ def cmd_sitl_mission(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="valiant",
-        description="Valiant AEAC2027 unified tooling",
+        description="Valiant AEAC2027 — one CLI for setup, bench, SITL, and bringup",
+        epilog="First time? Run: python tools/valiant.py guide  or read START_HERE.md",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command", required=False)
+
+    sub.add_parser(
+        "guide",
+        help="Show scenario picker (what should I run?)",
+    ).set_defaults(func=cmd_guide)
+    sub.add_parser(
+        "quickstart",
+        help="Run env + CONOPS + safety checks, then show next steps",
+    ).set_defaults(func=cmd_quickstart)
+    sub.add_parser(
+        "setup",
+        help="One-time Windows setup (venv + pip install)",
+    ).set_defaults(func=cmd_setup)
 
     p = sub.add_parser("env", help="Environment checks")
     s = p.add_subparsers(dest="sub", required=True)
@@ -154,6 +244,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_bench_metric)
     sp = s.add_parser("safety", help="Safety monitor unit tests")
     sp.set_defaults(func=cmd_bench_safety)
+    sp = s.add_parser("smoke", help="Same as quickstart (env + CONOPS + safety)")
+    sp.set_defaults(func=cmd_bench_smoke)
 
     p = sub.add_parser("calibrate", help="RGB/depth calibration")
     s = p.add_subparsers(dest="sub", required=True)
@@ -166,12 +258,32 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("extra", nargs=argparse.REMAINDER)
         sp.set_defaults(func=fn)
 
+    p = sub.add_parser("bringup", help="Hardware bringup checklists")
+    s = p.add_subparsers(dest="sub", required=True)
+    sp = s.add_parser("phase1", help="Phase 1 GCS checks (field-test-plan)")
+    sp.add_argument(
+        "--skip-mavlink",
+        action="store_true",
+        help="Skip MAVLink heartbeat (laptop-only)",
+    )
+    sp.set_defaults(func=cmd_bringup_phase1)
+    sp = s.add_parser("phase1-pi", help="Phase 1 Pi checks (run on companion)")
+    sp.set_defaults(func=cmd_bringup_phase1_pi)
+
+    p = sub.add_parser("upload", help="Photo upload tools")
+    s = p.add_subparsers(dest="sub", required=True)
+    s.add_parser("test", help="Smoke-test local/Drive upload path").set_defaults(
+        func=cmd_upload_test
+    )
+
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command is None:
+        return cmd_guide(args)
     return int(args.func(args))
 
 

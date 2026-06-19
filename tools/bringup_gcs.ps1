@@ -4,6 +4,7 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
 Write-Host "=== Vion GCS first-connect bringup ===" -ForegroundColor Cyan
+Write-Host "New laptop? Run .\start.ps1 first. Scenario menu: python tools\valiant.py guide"
 Write-Host ""
 
 Write-Host "1. Mission Planner (manual):" -ForegroundColor Yellow

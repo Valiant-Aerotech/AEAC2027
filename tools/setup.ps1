@@ -89,6 +89,8 @@ Invoke-VenvPip -VenvPython $VenvPython -PipArguments @("install", "-e", ".[gcs,c
 
 Write-Host ""
 Write-Host "Setup complete. Next steps:" -ForegroundColor Green
-Write-Host "  python tools\valiant.py env check"
+Write-Host "  python tools\valiant.py quickstart"
+Write-Host "  python tools\valiant.py guide"
 Write-Host "  notepad config\vion.yaml"
-Write-Host "  python missions\task2_vion_manual_photo.py"
+Write-Host ""
+Write-Host "Full walkthrough: START_HERE.md"

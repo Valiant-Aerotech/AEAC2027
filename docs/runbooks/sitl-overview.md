@@ -32,6 +32,8 @@ No COM port, no props, no phone required for the default sim profile.
 
 ## Two-terminal workflow (daily driver)
 
+> **New to SITL?** Complete [START_HERE.md](../../START_HERE.md) setup first (`.\start.ps1`).
+
 **Terminal 1 — virtual flight controller (WSL):**
 
 ```powershell
@@ -45,8 +47,10 @@ Wait until ArduCopter shows `SERIAL0 on TCP port 5760`.
 
 ```powershell
 cd A:\Code\Valiant-Aerotech\AEAC2027
-.\tools\run_sitl_mission.ps1
+python tools\valiant.py sitl mission
 ```
+
+Equivalent: `.\tools\run_sitl_mission.ps1`
 
 This runs `missions/task2_vion_auto_extinguish.py --sitl --profile sitl` with:
 

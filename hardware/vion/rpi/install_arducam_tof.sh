@@ -25,8 +25,16 @@ echo "Compiling examples..."
 
 echo ""
 echo "Install Python package into AEAC2027 venv:"
-echo "  cd ~/AEAC2027 && source .venv/bin/activate"
-echo "  pip install ArducamDepthCamera"
+AEAC_DIR="${AEAC2027_ROOT:-$HOME/AEAC2027}"
+if [ -d "$AEAC_DIR/.venv" ]; then
+  # shellcheck disable=SC1091
+  source "$AEAC_DIR/.venv/bin/activate"
+  pip install -q ArducamDepthCamera || echo "WARN: pip install ArducamDepthCamera failed"
+  echo "Installed ArducamDepthCamera into $AEAC_DIR/.venv"
+else
+  echo "  cd ~/AEAC2027 && source .venv/bin/activate"
+  echo "  pip install ArducamDepthCamera"
+fi
 echo ""
 echo "On 64-bit Pi OS, if pip installs wrong arch wheel, build from source:"
 echo "  see https://docs.arducam.com/Raspberry-Pi-Camera/Tof-camera/"

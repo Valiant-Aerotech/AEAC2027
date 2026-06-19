@@ -18,6 +18,7 @@ dependencies = [
 [project.optional-dependencies]
 cv = ["onnxruntime>=1.16", "ultralytics>=8.0"]
 gcs = ["mss>=9.0", "pygetwindow>=0.0.9"]
+upload = ["google-api-python-client>=2.0", "google-auth>=2.0"]
 dev = ["pytest>=7.0"]
 
 [tool.setuptools.packages.find]

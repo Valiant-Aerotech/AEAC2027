@@ -23,10 +23,16 @@ class _FakeMaster:
     def __init__(self, messages: list):
         self._messages = list(messages)
 
-    def recv_match(self, blocking=False):
+    def recv_match(self, blocking=False, type=None, **kwargs):
         if not self._messages:
             return None
-        return self._messages.pop(0)
+        if type is None:
+            return self._messages.pop(0)
+        allowed = type if isinstance(type, (list, tuple)) else [type]
+        for idx, msg in enumerate(self._messages):
+            if msg.get_type() in allowed:
+                return self._messages.pop(idx)
+        return None
 
 
 def main() -> int:

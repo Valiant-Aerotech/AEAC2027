@@ -1,109 +1,92 @@
 # Onboarding - AEAC2027
 
-New recruit? Start with [WELCOME.md](WELCOME.md).
+**Start with [START_HERE.md](START_HERE.md)** if you have never run the repo.
 
-## Which branch?
+New recruit overview: [WELCOME.md](WELCOME.md).
 
-**Use `main`** for everything: Task 1, Task 2 autonomy, SITL, CV, and hardware docs are all integrated.
+## Branch
+
+Use **`main`** for everything.
 
 ```powershell
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
-git checkout main
 ```
 
 Details: [docs/branches.md](docs/branches.md).
 
-Welcome. This guide gets you from a fresh Windows laptop to running a mission.
-
 ## Prerequisites
 
-Install these **before** running setup:
-
-| Tool | Purpose | Install |
-|------|---------|---------|
-| Python 3.10+ | Mission software | [python.org](https://www.python.org/downloads/) - check "Add to PATH" |
-| Git | Clone this repo | [git-scm.com](https://git-scm.com/) |
-| Mission Planner | MAVLink to Pixhawk | [ardupilot.org](https://ardupilot.org/planner/) |
-| scrcpy | Phone camera mirror (Task 2 GCS path) | `winget install Genymobile.scrcpy` or [GitHub releases](https://github.com/Genymobile/scrcpy) |
-| ADB | Android debug (wireless scrcpy) | Comes with scrcpy / Android SDK platform-tools |
+| Tool | Purpose |
+|------|---------|
+| Python 3.10+ | Mission software |
+| Git | Clone repo |
+| Mission Planner | MAVLink to Pixhawk (hardware days) |
+| scrcpy | Optional — GCS phone-camera dev path only |
 
 ## Setup (one time per laptop)
 
 ```powershell
-git clone https://github.com/Valiant-Aerotech/AEAC2027.git
-cd AEAC2027
-.\tools\setup.ps1
-python tools\valiant.py env check
+.\start.ps1
 ```
 
-## Configure for this machine
+Or manually: `.\tools\setup.ps1` then `python tools\valiant.py quickstart`.
 
-Edit the YAML for the drone you are flying. The most common change is the COM port:
+## Configure this machine
 
 ```powershell
 notepad config\vion.yaml
 ```
 
-Set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). Use `udpin:127.0.0.1:14550` for SITL or Mission Planner UDP forwarding.
+Set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). Skip until you connect a radio if you are only doing SITL/bench work.
 
-## Run missions
+## What to run (by scenario)
 
-| Mission | Command | Drone |
-|---------|---------|-------|
-| Task 2 auto extinguish | `python missions\task2_vion_auto_extinguish.py` | Vion |
-| Task 2 manual photo | `python missions\task2_vion_manual_photo.py` | Vion |
-| Task 1 survey | `python missions\task1_vivi_survey.py` | Vivi |
+| Scenario | Command |
+|----------|---------|
+| **Forgot what to run** | `python tools\valiant.py guide` |
+| **Health check** | `python tools\valiant.py quickstart` |
+| **Webcam CV** | `python tools\valiant.py bench cv --camera 0` |
+| **Virtual mission (SITL)** | [sitl-overview.md](docs/runbooks/sitl-overview.md) |
+| **GCS + drone first connect** | `python tools\valiant.py bringup phase1` |
+| **Pi first SSH** | `bash hardware/vion/rpi/first_connect.sh` |
+| **Competition flight (Pi)** | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
+| **GCS monitor** | `python tools\valiant.py gcs monitor` |
 
-Add `--help` to any mission for options.
+### GCS dev missions (legacy / bench)
+
+| Mission | Command |
+|---------|---------|
+| Task 2 auto (sim) | `python missions\task2_vion_auto_extinguish.py --sim --source webcam --camera 0` |
+| Task 2 manual photo | `python missions\task2_vion_manual_photo.py --camera 0` |
+| Task 1 survey | `python missions\task1_vivi_survey.py` |
+
+**Competition autonomous runs on the Pi**, not these GCS scripts.
 
 ## Repo navigation
 
-- **Run something?** → `missions/` or `hardware/vion/rpi/run_mission.py`
-- **Change tuning?** → `config/vion.yaml`
-- **Understand the pipeline?** → `docs/architecture.md`
-- **FC parameters / Lua?** → `hardware/<drone>/`
-- **Debug MAVLink?** → `python tools\valiant.py gcs listen`
-- **SITL (no hardware)?** → [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
+| Question | Where |
+|----------|-------|
+| What should I run? | `START_HERE.md` or `valiant guide` |
+| Change tuning? | `config/vion.yaml` |
+| Pipeline design? | `docs/architecture.md` |
+| FC params / Lua? | `hardware/vion/` |
+| Debug MAVLink? | `python tools\valiant.py gcs listen` |
+| All tool commands? | [tools/README.md](tools/README.md) |
 
 ## Common issues
 
-**`valiant env check` fails on imports** - re-run `.\tools\setup.ps1`
+| Problem | Fix |
+|---------|-----|
+| Import errors | Re-run `.\start.ps1` |
+| No COM port | Device Manager → update `config/vion.yaml` |
+| SITL won't connect | Run `launch_sitl.ps1` first; wait for port 5760 |
+| Wrong entry point | Pi flight = `hardware/vion/rpi/run_mission.py` |
 
-**No COM port found** - plug in telemetry radio, check Device Manager, update `config/vion.yaml`
+## Next steps
 
-**scrcpy window not found** - ensure phone is connected; mission launches window titled `ExtinguisherCam`
+1. `python tools\valiant.py quickstart`
+2. SITL mission — [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
+3. Pick a GitHub issue — [WELCOME.md](WELCOME.md)
 
-**MAVLink heartbeat timeout** - open Mission Planner, confirm telemetry link, or use `--connection udpin:127.0.0.1:14550`
-
-## Bench-test (no drone required)
-
-```powershell
-python tools\valiant.py bench cv --camera 0
-python tools\valiant.py bench metric --camera 0
-python tools\valiant.py bench safety
-python tools\valiant.py conops check
-python tools\valiant.py bench cv --regression --video footage.mp4
-python -m valiant.autonomy.cv.training.generate_targets --count 20
-```
-
-See [tools/README.md](tools/README.md) for all subcommands.
-
-### Full virtual mission (SITL)
-
-No Pixhawk, no COM port. Requires WSL + ArduPilot build (one-time):
-
-```powershell
-.\tools\launch_sitl.ps1          # terminal 1
-.\tools\run_sitl_mission.ps1     # terminal 2
-```
-
-See [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md).
-
-Tune purple/blue thresholds in `config/vion.yaml` under `cv.hsv_dry` and `cv.hsv_shot`. For distance tuning see `metric_recon` (FOV estimate) and `auto_nav` (approach speed, side clearance). Safety abort thresholds live under `safety` in the same file - see [docs/runbooks/task2-vion-auto.md](docs/runbooks/task2-vion-auto.md).
-
-## Next steps for new members
-
-1. Run `python tools\valiant.py conops check` (confirms CONOPS config loads)
-2. Run SITL mission (above) for full state machine without hardware
-3. Pick an issue from [GitHub](https://github.com/Valiant-Aerotech/AEAC2027/issues); see [WELCOME.md](WELCOME.md)
+Tune CV in `config/vion.yaml` under `cv.hsv_dry` / `cv.hsv_shot`. Nav gains under `auto_nav`.

@@ -39,7 +39,7 @@ cv:
    python -m valiant.autonomy.cv.training.train
    ```
 
-Shot confirmation (blue/wetted target after spray) still uses **HSV** when `cv.method` is `yolo`.
+Shot confirmation uses **HSV** by default. When `models/shot.onnx` is present and `cv.method` is `yolo` or `both`, the detector prefers the shot ONNX model and falls back to HSV.
 
 ## Test locally
 
