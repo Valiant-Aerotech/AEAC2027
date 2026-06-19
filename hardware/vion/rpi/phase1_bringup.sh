@@ -14,7 +14,7 @@ if [ -d "$CAL_DIR/1m" ] && [ -d "$CAL_DIR/2m" ]; then
   echo ""
   echo "=== Depth calibration validation (10% gate) ==="
   python tools/valiant.py calibrate validate || {
-    echo "WARN: calibration validation failed — re-run capture_all_calibration.sh"
+    echo "WARN: calibration validation failed - re-run capture_all_calibration.sh"
     exit 1
   }
 else

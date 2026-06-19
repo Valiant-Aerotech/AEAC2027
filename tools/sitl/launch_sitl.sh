@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Launch ArduPilot SITL inside WSL (ArduCopter).
-# Prereq: ~/ardupilot cloned and built — see docs/runbooks/sitl-wsl.md
+# Prereq: ~/ardupilot cloned and built - see docs/runbooks/sitl-wsl.md
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

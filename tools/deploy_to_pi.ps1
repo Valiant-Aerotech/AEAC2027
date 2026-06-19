@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
-Write-Host "Deploying repo to $PiHost:$RemoteDir ..."
+Write-Host "Deploying repo to ${PiHost}:${RemoteDir} ..."
 ssh $PiHost "mkdir -p $RemoteDir"
 scp -r src config hardware missions pyproject.toml README.md "${PiHost}:${RemoteDir}/"
 

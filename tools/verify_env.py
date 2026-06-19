@@ -63,6 +63,7 @@ def check_structure() -> None:
         "hardware/vion/rpi/run_mission.py",
         "hardware/vion/rpi/first_connect.sh",
         "hardware/vion/rpi/run_bringup_tests.sh",
+        "tools/verify_ps1.ps1",
         "tools/phase1_bringup.ps1",
         "hardware/vion/rpi/phase1_bringup.sh",
         "hardware/vion/rpi/preflight_indoor.sh",

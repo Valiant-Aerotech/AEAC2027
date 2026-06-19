@@ -52,6 +52,7 @@ python tools\valiant.py --help
 
 | Script | When to use |
 |--------|-------------|
+| `verify_ps1.ps1` | Check all `.ps1` parse + ASCII (run after editing scripts) |
 | `setup.ps1` | First-time venv (`valiant setup`) |
 | `launch_sitl.ps1` | Terminal 1 before SITL mission |
 | `run_sitl_mission.ps1` | Used internally by `valiant sitl mission` |

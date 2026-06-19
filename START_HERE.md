@@ -83,6 +83,7 @@ Do **not** run the other `tools\*.py` files directly — use `valiant.py` subcom
 
 | Problem | Fix |
 |---------|-----|
+| `start.ps1` parse error on `}` | Pull latest; scripts must be ASCII-only (no em-dash characters) |
 | `No module named valiant` | Run from repo root; use `python tools\valiant.py`, not `python valiant.py` |
 | Forgot to activate venv | Use `.\start.ps1` or `.venv\Scripts\Activate.ps1` |
 | MAVLink heartbeat fails | Set `mavlink.connection` in `config\vion.yaml`; or use `--skip-mavlink` with `bringup phase1` on laptop-only |
