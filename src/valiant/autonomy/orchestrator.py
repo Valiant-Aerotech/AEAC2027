@@ -29,7 +29,7 @@ from valiant.autonomy.conops import (
 from valiant.autonomy.safety.monitor import SafetyAbort, SafetyMonitor
 from valiant.autonomy.spray.actuation import WaterTrigger
 from valiant.autonomy.spray.aim import is_aimed
-from valiant.autonomy.gimbal.servo_gimbal import GimbalController
+from valiant.autonomy.gcs_hud import GcsHudReporter, format_sitl_status_line
 from valiant.autonomy.upload.drive import DriveUploader
 from valiant.common.camera_factory import (
     camera_depth_mm,
@@ -44,7 +44,6 @@ from valiant.common.mavlink import (
     request_sys_status_stream,
     send_gcs_heartbeat,
     send_rtl,
-    send_statustext,
 )
 from valiant.common.mavlink_io import mavlink_io
 
@@ -97,6 +96,7 @@ class AutoExtinguisher:
         self._sitl_first_dry_logged = False
         self._sitl_approaching_logged = False
         self._sitl_motion = None
+        self._sitl_last_motion: tuple[str, str] | None = None
         self._last_remediate_log = 0.0
         nav = cfg.get("auto_nav", {})
         cv_cfg = cfg.get("cv", {})
@@ -147,6 +147,12 @@ class AutoExtinguisher:
                 request_sitl_telemetry_streams(self.master)
 
         self.nav = MavlinkDriver(self.master, cfg)
+        gcs_cfg = cfg.get("gcs_monitor", {})
+        self._gcs_hud = GcsHudReporter(
+            self.master,
+            interval_s=float(gcs_cfg.get("statustext_interval_s", 3.0)),
+        )
+        self._gcs_motion_events = bool(gcs_cfg.get("motion_events", True))
         self.gimbal = GimbalController(self.master, cfg)
         self.safety = SafetyMonitor(self.master, cfg, sim=sim_mode and not sitl_mode)
         self.planner = MotionPlanner(cfg)
@@ -199,17 +205,17 @@ class AutoExtinguisher:
     def request_stop(self) -> None:
         self._stop_loop = True
 
-    def send_hud_message(self, message: str) -> None:
-        send_statustext(self.master, message, prefix="T2: ")
+    def send_hud_message(self, message: str, *, force: bool = False) -> None:
+        self._gcs_hud.send(message, force=force)
 
     def set_state(self, new_state: str) -> None:
         if self.state != new_state:
             prev_state = self.state
             if new_state == STATE_SEARCHING and self.state in (STATE_APPROACHING, STATE_AIMING):
                 self._sitl_stop_motion()
-            msg = f"STATE: {self.state} -> {new_state}"
+            msg = f"STATE {self.state}->{new_state}"
             print(f">>> {msg}")
-            self.send_hud_message(msg)
+            self.send_hud_message(msg, force=True)
             self.state = new_state
             self.state_start_time = time.time()
             self._complete_hold_announced = False
@@ -307,6 +313,11 @@ class AutoExtinguisher:
                 "pos_y": round(self._sitl_pose.y, 2),
                 "alt_m": round(-self._sitl_pose.z, 2),
             }
+        if extra is None:
+            extra = {}
+        if self._sitl_last_motion is not None:
+            extra["motion_rule"] = self._sitl_last_motion[0]
+            extra["motion_reason"] = self._sitl_last_motion[1]
         self._telemetry.send(
             state=self.state,
             distance_m=metric.distance_m if metric else None,
@@ -331,7 +342,51 @@ class AutoExtinguisher:
         if time.time() - self._last_remediate_log < 3.0:
             return
         self._last_remediate_log = time.time()
-        print(f"[Nav] Working toward fire prerequisites: {', '.join(blockers)}")
+        text = ", ".join(blockers)
+        print(f"[Nav] Working toward fire prerequisites: {text}")
+        self.send_hud_message(f"Nav: {text}", force=True)
+
+    def _publish_sitl_gcs_status(
+        self,
+        metric: MetricPacket | None,
+        *,
+        target_seen: bool,
+    ) -> None:
+        if not self.sitl:
+            return
+        pose = self._sitl_pose
+        wall_rng = self._sitl_wall_range_m()
+        blockers: tuple[str, ...] = ()
+        if self.state == STATE_AIMING and metric is not None:
+            lock_met = (
+                self.lock_start_time is not None
+                and (time.time() - self.lock_start_time) >= self.lock_duration_s
+            )
+            wall_standoff = float(self.cfg.get("sitl", {}).get("wall_standoff_m", 1.2))
+            blockers = self.planner.fire_blockers(
+                metric,
+                lock_duration_met=lock_met,
+                wall_range_m=wall_rng,
+                wall_standoff_m=wall_standoff,
+            )
+        motion_rule = ""
+        motion_reason = ""
+        if self._sitl_last_motion is not None:
+            motion_rule, motion_reason = self._sitl_last_motion
+        line = format_sitl_status_line(
+            state=self.state,
+            target_seen=target_seen,
+            metric_range_m=metric.planner_range_m() if metric else None,
+            wall_range_m=wall_rng,
+            pose_n=pose.x if pose and pose.ok else None,
+            pose_e=pose.y if pose and pose.ok else None,
+            alt_m=-pose.z if pose and pose.ok else None,
+            vel_n=pose.vx if pose and pose.ok else None,
+            motion_rule=motion_rule,
+            motion_reason=motion_reason,
+            fire_blockers=blockers,
+        )
+        self.send_hud_message(line)
 
     def _apply_approach_motion(
         self,
@@ -419,6 +474,11 @@ class AutoExtinguisher:
         )
         if cmd is None:
             return
+        if self._gcs_motion_events:
+            key = (cmd.rule, cmd.reason or "")
+            if key != self._sitl_last_motion:
+                self._sitl_last_motion = key
+                self.send_hud_message(f"MOV {cmd.rule}: {cmd.reason or 'ok'}", force=True)
         self._ensure_sitl_guided()
         self.nav.start_velocity_stream()
         if cmd.rule in ("backoff", "search", "reposition"):
@@ -702,6 +762,7 @@ class AutoExtinguisher:
                         print(f"[SITL] Post-takeoff gimbal preset PWM={hint}")
         if self.sitl and not self.hand_test:
             self.nav.start_velocity_stream()
+        self.send_hud_message(f"MISSION {self.state}", force=True)
         if host == "GCS":
             print("Waiting for scrcpy window... (Ctrl+C to abort)")
         elif source in ("video", "synthetic", "synthetic_physics"):
@@ -754,13 +815,18 @@ class AutoExtinguisher:
                 metric = self._run_metric(cv_packet, frame_w, frame_h)
                 hit = cv_packet.primary_dry if cv_packet else None
                 self._publish_telemetry(cv_packet, metric)
+                self._publish_sitl_gcs_status(metric, target_seen=bool(hit))
 
                 if hit:
                     self.frames_without_target = 0
                     if self.sitl and not self._sitl_first_dry_logged:
                         self._sitl_first_dry_logged = True
                         print(f"[SITL] T+first_dry {time.time() - self._sitl_boot_t:.1f}s")
-                    if metric and time.time() - self.last_hud_alert_time > 1.5:
+                    if (
+                        metric
+                        and not self.sitl
+                        and time.time() - self.last_hud_alert_time > 1.5
+                    ):
                         self.send_hud_message(self._metric_hud(metric))
                         self.last_hud_alert_time = time.time()
                 else:

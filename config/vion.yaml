@@ -45,6 +45,8 @@ sitl:
 gcs_monitor:
   port: 14560
   ip: null                              # set via --gcs-ip on Pi
+  statustext_interval_s: 3.0            # periodic T2: lines in Mission Planner Messages
+  motion_events: true                   # MOV: lines when SITL motion rule changes
 
 camera:
   source: scrcpy                        # scrcpy | rpi_local

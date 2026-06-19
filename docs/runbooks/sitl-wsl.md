@@ -128,14 +128,20 @@ If 5762 fails, try **5763**, or check the ArduCopter console for `Serial port N 
 
 - Map position, altitude, heading, GUIDED mode
 - Arm/disarm state (Valiant arms during mission - avoid fighting it from MP)
-- **Messages** tab: `T2:` STATUSTEXT from the orchestrator (state / lock info)
+- **Messages** tab: `T2:` STATUSTEXT from the companion (orchestrator):
+  - `STATE SEARCHING->APPROACHING` on every state change
+  - `MOV follow: visual follow` / `MOV backoff: inside wall standoff` when motion changes
+  - Every ~3 s: compact status, e.g. `APPROACH N3E0 z5m tgt rng1.2m follow`
+  - In AIMING: `blk:not_aimed,too_far_wall` when fire prerequisites are not met
+
+Tune rate in `config/vion.yaml` → `gcs_monitor.statustext_interval_s` (inherited by `rpas.yaml`).
 
 **What Mission Planner will not show:**
 
-- Valiant internal states (SEARCHING / APPROACHING / AIMING) - those are in the Python orchestrator and the Valiant SITL OpenCV dashboard, not MP waypoint missions
 - Synthetic CV bbox - use the Valiant dashboard window from the mission script
+- Full planner debug - use the terminal or `gcs monitor` below
 
-**Alternative HUD:** `python tools\valiant.py gcs monitor` (UDP 14560) shows telemetry without Mission Planner.
+**Alternative HUD:** `python tools\valiant.py gcs monitor` (UDP 14560) shows state, distance, position, velocity, and motion rule in a terminal table. SITL missions auto-send to `127.0.0.1:14560` (a monitor window is opened by `run_sitl_mission.ps1` unless `-NoMonitor`).
 
 Optional: install MAVProxy in WSL if you want ArduPilot's map/console UI inside WSL instead of Mission Planner:
 

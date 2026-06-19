@@ -32,9 +32,9 @@ def main() -> None:
     print(f"Listening for telemetry on UDP :{args.port} (Ctrl+C to stop)")
     print(
         f"{'time':>8}  {'state':<12}  {'dist':>12}  {'pos':>14}  {'vel':>14}  "
-        f"{'gimbal':>6}  tgt  sitl"
+        f"{'motion':>10}  {'gimbal':>6}  tgt  sitl"
     )
-    print("-" * 92)
+    print("-" * 104)
 
     while True:
         try:
@@ -63,6 +63,8 @@ def main() -> None:
             vel_s = "?"
         pwm = msg.get("gimbal_pwm")
         pwm_s = str(pwm) if pwm is not None else "?"
+        motion_rule = msg.get("motion_rule") or (msg.get("extra") or {}).get("motion_rule")
+        motion_s = str(motion_rule)[:10] if motion_rule else "?"
         px = msg.get("pos_x")
         py = msg.get("pos_y")
         alt = msg.get("alt_m")
@@ -76,6 +78,7 @@ def main() -> None:
             f"{dist_s:>12}  "
             f"{pos_s:>14}  "
             f"{vel_s:>14}  "
+            f"{motion_s:>10}  "
             f"{pwm_s:>6}  "
             f"{'Y' if msg.get('target_seen') else 'n'}    "
             f"{'Y' if msg.get('sitl') else 'n'}  "
