@@ -38,10 +38,18 @@ def check_rgb(camera) -> bool:
     return True
 
 
-def check_mavlink(conn: str, baud: int) -> bool:
+def check_mavlink(conn: str, baud: int, *, cfg: dict | None = None) -> bool:
     try:
         master = connect(conn, baud, wait_heartbeat=True)
         print("[OK] MAVLink heartbeat received")
+        if cfg is not None and cfg.get("safety", {}).get("require_lua_safety", True):
+            from valiant.autonomy.flight.fc_safety import assert_safety_lua
+
+            try:
+                assert_safety_lua(master, cfg, sitl=False)
+            except RuntimeError:
+                master.close()
+                return False
         master.close()
         return True
     except Exception as exc:
@@ -65,7 +73,7 @@ def main() -> None:
 
     ok_mav = True
     if not args.skip_mavlink and not os.environ.get("SKIP_MAVLINK"):
-        ok_mav = check_mavlink(conn, baud)
+        ok_mav = check_mavlink(conn, baud, cfg=cfg)
 
     if args.once:
         sys.exit(0 if ok_rgb and ok_mav else 1)

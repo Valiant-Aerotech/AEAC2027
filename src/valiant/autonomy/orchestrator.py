@@ -141,6 +141,11 @@ class AutoExtinguisher:
                 self.master = connect(connection_string, baudrate, wait_heartbeat=True)
                 print("[INIT] Heartbeat received")
 
+        if not sim_mode and not sitl_mode and cfg.get("safety", {}).get("require_lua_safety", True):
+            from valiant.autonomy.flight.fc_safety import assert_safety_lua
+
+            assert_safety_lua(self.master, cfg, sitl=False)
+
         if not sim_mode or sitl_mode:
             self.master.mav.request_data_stream_send(
                 self.master.target_system,

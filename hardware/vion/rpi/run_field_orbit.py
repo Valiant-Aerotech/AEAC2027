@@ -24,6 +24,11 @@ def main() -> int:
     parser.add_argument("--gcs-ip", default=None, help="GCS laptop IP for UDP telemetry")
     parser.add_argument("--drone", default="vion", help="Config id (default: vion)")
     parser.add_argument("--laps", type=int, default=None, help="Override orbit lap count")
+    parser.add_argument(
+        "--skip-safety-check",
+        action="store_true",
+        help="Skip safety.lua preflight (dev only)",
+    )
     args = parser.parse_args()
 
     cfg = apply_flight_profile(load_config(args.drone), args.profile)
@@ -34,7 +39,13 @@ def main() -> int:
         conn = args.connection
     cfg.setdefault("mavlink", {})["baud"] = baud
 
-    run_field_orbit(connection=conn, cfg=cfg, sitl=False, gcs_ip=args.gcs_ip)
+    run_field_orbit(
+        connection=conn,
+        cfg=cfg,
+        sitl=False,
+        gcs_ip=args.gcs_ip,
+        skip_safety_check=args.skip_safety_check,
+    )
     return 0
 
 

@@ -26,7 +26,7 @@ check test -f models/best.onnx
 check test -f config/rpas_calibration.yaml -o -f config/vion_calibration.yaml
 
 echo ""
-echo "2. Sensors + MAVLink..."
+echo "2. Sensors + MAVLink + safety.lua..."
 CONN="${MAVLINK_CONN:-/dev/ttyAMA0}"
 check python hardware/vion/rpi/check_sensors.py --once --connection "$CONN"
 
@@ -34,7 +34,8 @@ echo ""
 echo "3. Manual checks (confirm on GCS / physically):"
 echo "   [ ] Mission Planner heartbeat via telemetry radio"
 echo "   [ ] H-Flow opt_qua OK on venue-like floor (hover)"
-echo "   [ ] Emergency RC switch tested"
+echo "   [ ] Messages shows 'safety: kill monitor loaded (RC8)' after FC reboot"
+echo "   [ ] Emergency RC switch tested (flip -> LAND in Messages)"
 echo "   [ ] Water tank filled"
 echo "   [ ] GCS python tools/valiant.py gcs monitor running (optional)"
 echo ""

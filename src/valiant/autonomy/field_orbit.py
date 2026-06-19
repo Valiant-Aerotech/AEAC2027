@@ -481,12 +481,16 @@ def run_field_orbit(
     skip_standby: bool = False,
     takeoff_alt_m: float | None = None,
     gcs_ip: str | None = None,
+    skip_safety_check: bool = False,
 ) -> None:
     """Connect and run the field orbit sequence."""
+    from valiant.autonomy.flight.fc_safety import assert_safety_lua
     from valiant.autonomy.sitl_preflight import arm_guided_takeoff
 
     baud = int(cfg.get("mavlink", {}).get("baud", 57600))
     master = connect(connection, baud)
+    if not sitl and not skip_safety_check:
+        assert_safety_lua(master, cfg, sitl=False)
     gcs_cfg = cfg.get("gcs_monitor", {})
     hud = GcsHudReporter(
         master,

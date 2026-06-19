@@ -20,7 +20,26 @@ Pick the step that matches where you are. Run from the **repo root** with the ve
 
 **Pilot override:** At any time during the auto segment, flip the mode switch **off GUIDED** (STABILIZE / ALT_HOLD / LOITER per your MP mapping). Companion stops velocity commands immediately (`Pilot takeover - companion stopped`) and returns to **STANDBY** (waits for next GUIDED trigger without restarting the script).
 
-**Kill switch:** Hardware kill (RC channel 8 via [`safety.lua`](../../hardware/vion/lua/safety.lua)) commands **LAND immediately** on the flight controller. Companion detects kill PWM or LAND mode and stops streaming (`Emergency stop - companion stopped`). Verify `safety.lua` is loaded before field flight.
+**Kill switch:** Hardware kill (RC channel 8 via [`safety.lua`](../../hardware/vion/lua/safety.lua)) commands **LAND immediately** on the flight controller. Companion detects kill PWM or LAND mode and stops streaming (`Emergency stop - companion stopped`). Verify `safety.lua` is loaded before field flight (see below).
+
+### Confirm safety.lua is loaded
+
+| Method | When | Pass |
+|--------|------|------|
+| **Automated (required before flight)** | Before arming, Pi or GCS | `python tools\valiant.py gcs verify-safety` → `SCR_ENABLE=1` and `safety.lua preflight OK` |
+| **Pi session check** | Every `session_start` / preflight | `check_sensors.py --once` includes safety check when MAVLink up |
+| **Mission Planner (visual)** | After FC power-on / reboot | Messages tab: `safety: kill monitor loaded (RC8)` |
+| **MAVFTP (manual)** | Once per SD card setup | CONFIG → MAVFTP → `scripts/safety.lua` exists |
+| **Kill switch functional test** | Props-off bench, before field | Flip kill switch → Messages: `safety: EMERGENCY...` → FC mode **LAND** |
+
+**Setup checklist (one-time):**
+
+1. Mission Planner → CONFIG → Full Parameter List → `SCR_ENABLE = 1` → **Reboot FC**
+2. Copy [`hardware/vion/lua/safety.lua`](../../hardware/vion/lua/safety.lua) to SD card `APM/scripts/safety.lua` (MAVFTP or remove SD)
+3. Reboot FC; confirm `safety: kill monitor loaded (RC8)` in Messages
+4. Run `python tools\valiant.py gcs verify-safety` from GCS laptop (telemetry radio) or Pi UART
+
+Field orbit and `run_mission.py` **block automatically** if `SCR_ENABLE` is off or `safety.lua` is missing (`safety.require_lua_safety: true` in config). SITL skips this check.
 
 **What you should see:** Mission Planner **Messages** shows `T2:` lines (`Climbing to 10 m`, `Lap 2/5`, `Loiter - manual control`). UDP monitor shows phase and lap if `--gcs-ip` is set.
 

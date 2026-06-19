@@ -397,3 +397,6 @@ safety:
   geofence_abort: true
   mission_timeout_s: 600                # 0 disables global timeout
   rtl_on_abort: false                   # set true to command RTL on battery/geofence abort
+  require_lua_safety: true              # block field flight if SCR_ENABLE off or safety.lua missing
+  lua_safety_script: safety.lua
+  verify_lua_file: true                 # MAVFTP check scripts/safety.lua on FC SD (best-effort)

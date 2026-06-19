@@ -102,6 +102,15 @@ def cmd_gcs_verify_statustext(args: argparse.Namespace) -> int:
     return _run("gcs/verify_sitl_statustext.py", args.extra)
 
 
+def cmd_gcs_verify_safety(args: argparse.Namespace) -> int:
+    argv = list(args.extra or [])
+    if args.connection:
+        argv.extend(["--connection", args.connection])
+    if args.profile:
+        argv.extend(["--profile", args.profile])
+    return _run("gcs/verify_safety_lua.py", argv)
+
+
 def cmd_gcs_listen(args: argparse.Namespace) -> int:
     return _run("gcs/mavproxy_listen.py", args.extra)
 
@@ -309,8 +318,12 @@ def build_parser() -> argparse.ArgumentParser:
         ("monitor", cmd_gcs_monitor),
         ("listen", cmd_gcs_listen),
         ("verify-statustext", cmd_gcs_verify_statustext),
+        ("verify-safety", cmd_gcs_verify_safety),
     ):
         sp = s.add_parser(name)
+        if name == "verify-safety":
+            sp.add_argument("--connection", default=None)
+            sp.add_argument("--profile", default="vivi_orbit")
         sp.add_argument("extra", nargs=argparse.REMAINDER)
         sp.set_defaults(func=fn)
 
