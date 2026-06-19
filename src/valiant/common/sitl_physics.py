@@ -173,6 +173,28 @@ def project_target_ned(
     )
 
 
+def _apply_pose_message(pose: VehiclePose, msg) -> tuple[bool, bool]:
+    """Update pose from MAVLink; return (got_position, got_attitude)."""
+    got_pos = got_att = False
+    mtype = msg.get_type()
+    if mtype == "LOCAL_POSITION_NED":
+        pose.x = float(msg.x)
+        pose.y = float(msg.y)
+        pose.z = float(msg.z)
+        pose.vx = float(msg.vx)
+        pose.vy = float(msg.vy)
+        pose.vz = float(msg.vz)
+        pose.ok = True
+        got_pos = True
+    elif mtype == "ATTITUDE":
+        pose.roll = float(msg.roll)
+        pose.pitch = float(msg.pitch)
+        pose.yaw = float(msg.yaw)
+        pose.ok = True
+        got_att = True
+    return got_pos, got_att
+
+
 def drain_vehicle_pose(master, previous: VehiclePose | None = None) -> VehiclePose:
     """Non-blocking read of LOCAL_POSITION_NED + ATTITUDE; merges with previous sample."""
     from valiant.common.mavlink_io import mavlink_io
@@ -198,18 +220,90 @@ def drain_vehicle_pose(master, previous: VehiclePose | None = None) -> VehiclePo
                 break
             if msg.get_srcSystem() != target_sys:
                 continue
-            mtype = msg.get_type()
-            if mtype == "LOCAL_POSITION_NED":
-                pose.x = float(msg.x)
-                pose.y = float(msg.y)
-                pose.z = float(msg.z)
-                pose.vx = float(msg.vx)
-                pose.vy = float(msg.vy)
-                pose.vz = float(msg.vz)
-                pose.ok = True
-            elif mtype == "ATTITUDE":
-                pose.roll = float(msg.roll)
-                pose.pitch = float(msg.pitch)
-                pose.yaw = float(msg.yaw)
-                pose.ok = True
+            _apply_pose_message(pose, msg)
     return pose
+
+
+def wait_vehicle_pose(
+    master,
+    timeout_s: float = 15.0,
+    *,
+    need_position: bool = True,
+    need_attitude: bool = False,
+    previous: VehiclePose | None = None,
+) -> VehiclePose:
+    """Block until required pose fields arrive (re-requests SITL telemetry streams)."""
+    import time
+
+    from valiant.common.mavlink import request_sitl_telemetry_streams
+    from valiant.common.mavlink_io import mavlink_io
+
+    pose = VehiclePose()
+    if previous is not None and previous.ok:
+        pose.x = previous.x
+        pose.y = previous.y
+        pose.z = previous.z
+        pose.roll = previous.roll
+        pose.pitch = previous.pitch
+        pose.yaw = previous.yaw
+        pose.vx = previous.vx
+        pose.vy = previous.vy
+        pose.vz = previous.vz
+        pose.ok = True
+
+    has_position = not need_position
+    has_attitude = not need_attitude
+    if previous is not None and previous.ok:
+        if need_position:
+            has_position = True
+        if need_attitude:
+            has_attitude = True
+    if has_position and has_attitude:
+        return pose
+
+    request_sitl_telemetry_streams(master)
+    target_sys = getattr(master, "target_system", 0)
+    with mavlink_io(master):
+        while True:
+            msg = master.recv_match(
+                type=["LOCAL_POSITION_NED", "ATTITUDE"],
+                blocking=False,
+            )
+            if msg is None:
+                break
+            if msg.get_srcSystem() != target_sys:
+                continue
+            got_pos, got_att = _apply_pose_message(pose, msg)
+            if got_pos:
+                has_position = True
+            if got_att:
+                has_attitude = True
+    if has_position and has_attitude:
+        return pose
+
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        if has_position and has_attitude:
+            return pose
+        with mavlink_io(master):
+            msg = master.recv_match(
+                type=["LOCAL_POSITION_NED", "ATTITUDE"],
+                blocking=True,
+                timeout=0.5,
+            )
+        if msg is None or msg.get_srcSystem() != target_sys:
+            continue
+        got_pos, got_att = _apply_pose_message(pose, msg)
+        if got_pos:
+            has_position = True
+        if got_att:
+            has_attitude = True
+
+    missing = []
+    if need_position and not has_position:
+        missing.append("LOCAL_POSITION_NED")
+    if need_attitude and not has_attitude:
+        missing.append("ATTITUDE")
+    raise RuntimeError(
+        f"Timed out waiting for {', '.join(missing)} ({timeout_s:.0f}s)"
+    )

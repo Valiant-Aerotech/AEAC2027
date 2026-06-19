@@ -17,7 +17,7 @@ from valiant.common.mavlink import (
     request_sitl_telemetry_streams,
     send_companion_heartbeat,
 )
-from valiant.common.sitl_physics import drain_vehicle_pose
+from valiant.common.sitl_physics import drain_vehicle_pose, wait_vehicle_pose
 
 
 def _wrap_pi(angle: float) -> float:
@@ -66,6 +66,7 @@ class SitlPatternRunner:
         self._servo = VisualServo(master, cfg)
         self._stream = VelocityStream(self._servo, rate_hz=20.0)
         self._last_hb = 0.0
+        self._last_pose = None
 
     def _say(self, message: str, *, force: bool = True) -> None:
         print(f"[Pattern] {message}")
@@ -78,9 +79,19 @@ class SitlPatternRunner:
             send_companion_heartbeat(self.master)
             self._last_hb = now
 
-    def _pose(self, previous=None):
+    def _pose(self, previous=None, *, need_position: bool = False, need_attitude: bool = False):
         self._heartbeat()
-        pose = drain_vehicle_pose(self.master, previous)
+        if need_position or need_attitude:
+            pose = wait_vehicle_pose(
+                self.master,
+                timeout_s=15.0,
+                need_position=need_position,
+                need_attitude=need_attitude,
+                previous=previous or self._last_pose,
+            )
+        else:
+            pose = drain_vehicle_pose(self.master, previous or self._last_pose)
+        self._last_pose = pose
         if pose.ok:
             self._servo.set_yaw_rad(pose.yaw)
         return pose
@@ -92,9 +103,14 @@ class SitlPatternRunner:
     def _drive_forward(self, distance_m: float, *, label: str) -> None:
         self._say(label)
         self._stream.start()
-        pose = self._pose()
-        if not pose.ok:
-            raise RuntimeError("No LOCAL_POSITION_NED for pattern flight")
+        if self._last_pose is None or not self._last_pose.ok:
+            self._last_pose = wait_vehicle_pose(
+                self.master,
+                need_position=True,
+                need_attitude=True,
+            )
+        pose = self._last_pose
+        self._servo.set_yaw_rad(pose.yaw)
         x0, y0 = pose.x, pose.y
         deadline = time.time() + max(30.0, distance_m / self._speed * 3.0)
         while time.time() < deadline:
@@ -110,9 +126,7 @@ class SitlPatternRunner:
     def _turn_degrees(self, degrees: float, *, label: str) -> None:
         self._say(label)
         self._stream.start()
-        pose = self._pose()
-        if not pose.ok:
-            raise RuntimeError("No attitude for pattern turn")
+        pose = self._pose(need_attitude=True)
         target_delta = math.radians(degrees)
         yaw0 = pose.yaw
         rate = self._yaw_rate if degrees >= 0 else -self._yaw_rate
@@ -149,6 +163,13 @@ class SitlPatternRunner:
         legs = legs or DEFAULT_PATTERN
         self._say("Pattern flight starting")
         request_sitl_telemetry_streams(self.master)
+        print("[Pattern] Waiting for position telemetry...")
+        self._last_pose = wait_vehicle_pose(
+            self.master,
+            timeout_s=20.0,
+            need_position=True,
+            need_attitude=True,
+        )
         for leg in legs:
             if leg.kind == "forward":
                 self._drive_forward(leg.value, label=leg.label)
@@ -188,6 +209,7 @@ def run_pattern_flight(
                 timeout_s=float(cfg.get("sitl", {}).get("preflight_timeout_s", 75.0)),
                 ekf_wait_s=float(cfg.get("sitl", {}).get("ekf_wait_s", 45.0)),
             )
+            request_sitl_telemetry_streams(master)
         runner = SitlPatternRunner(master, cfg, hud=hud, speed_m_s=speed_m_s)
         runner.run()
     finally:
