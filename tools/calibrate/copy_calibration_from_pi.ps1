@@ -7,8 +7,9 @@ param(
     [string]$LocalDir = "logs\calibration"
 )
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
-Set-Location $RepoRoot
+. (Join-Path $PSScriptRoot "..\lib\script_paths.ps1")
+$ctx = Initialize-ValiantScript -ScriptRoot $PSScriptRoot
+$RepoRoot = $ctx.RepoRoot
 
 $dest = Join-Path $RepoRoot $LocalDir
 New-Item -ItemType Directory -Force -Path $dest | Out-Null

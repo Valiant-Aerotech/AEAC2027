@@ -1,0 +1,55 @@
+# Example SITL mission - copy and edit for experiments.
+# Run: python tools\valiant.py sitl run config\sitl_missions\example_wall.yaml
+#
+# Useful knobs:
+#   geofence.max_north_m / max_east_m / home_south_limit_m
+#   sitl.wall_standoff_m, sitl.takeoff_alt_m, sitl.retreat_home_north_m
+#   auto_nav.approach_speed
+#   metric_recon.fire_distance_m
+#   scenario (fixture path) OR inline world + missions keyframes
+
+name: example_wall
+description: Single target with tighter geofence on default synthetic wall
+
+profile: sitl
+max_targets: 1
+
+geofence:
+  max_north_m: 5.5
+  max_east_m: 1.5
+  home_south_limit_m: -1.0
+
+sitl:
+  takeoff_alt_m: 5.0
+  wall_standoff_m: 1.2
+  retreat_home_north_m: 3.0
+  approach_lane_y: 0.3
+
+auto_nav:
+  approach_speed: 0.10
+  kp_x: 0.00045
+  kp_y: 0.00045
+
+metric_recon:
+  fire_distance_m: 0.85
+  camera_down: false
+
+scenario: tests/fixtures/sitl_synthetic_multi.json
+
+# Inline world example (comment out scenario above):
+# world:
+#   hfov_deg: 66
+#   vfov_deg: 52
+#   initial_gimbal_pwm: 1680
+#   approach_lane_y: 0.3
+#   wall:
+#     x_m: 5.0
+#     y_min: -3.0
+#     y_max: 3.0
+#     z_top: -3.0
+#     z_base: 0.0
+#   targets:
+#     - id: target_a
+#       position_ned: [5.0, 0.3, -1.1]
+#       diameter_m: 0.22
+#       color: [180, 50, 180]

@@ -1,13 +1,13 @@
 # Phase 1 - GCS link + actuation (field-test-plan.md section 1)
-# Usage: .\tools\phase1_bringup.ps1 [-SkipMavlink]
+# Usage: .\tools\bringup\phase1_bringup.ps1 [-SkipMavlink]
 param(
     [switch]$SkipMavlink
 )
 
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
-Set-Location $RepoRoot
-. (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
+. (Join-Path $PSScriptRoot "..\lib\script_paths.ps1")
+$ctx = Initialize-ValiantScript -ScriptRoot $PSScriptRoot
+$RepoRoot = $ctx.RepoRoot
 
 Write-Host "=== Phase 1 bringup (GCS + tethered prep) ===" -ForegroundColor Cyan
 Write-Host ""

@@ -54,6 +54,14 @@ python tools\valiant.py sitl mission
 
 Equivalent: `.\tools\run_sitl_mission.ps1`
 
+**Custom YAML mission** (geofence, speeds, scenario in one file):
+
+```powershell
+python tools\valiant.py sitl run config\sitl_missions\example_wall.yaml
+```
+
+Copy and edit `config/sitl_missions/example_wall.yaml` for experiments.
+
 This runs `missions/task2_vion_auto_extinguish.py --sitl --profile sitl` with:
 
 - Preflight: EKF wait → GUIDED → arm → takeoff (~5 m)
@@ -110,11 +118,16 @@ src/valiant/common/
 
 tools/
   valiant.py               # Unified CLI (bench, gcs, sitl, calibrate, conops)
-  README.md                # Task → command index
-  launch_sitl.ps1          # WSL ArduPilot launcher
-  run_sitl_mission.ps1     # Thin wrapper → valiant sitl mission
-  run_sitl_tests.ps1       # pytest SITL + motion unit tests
-  sitl/launch_sitl.sh      # Called from WSL
+  README.md                # Task -> command index
+  setup.ps1, setup_wsl.ps1, launch_sitl.ps1
+  run_sitl_mission.ps1     # Default SITL mission
+  run_sitl_mission_file.ps1  # YAML mission (valiant sitl run)
+  bench/                   # verify_env, diagnose, CV/metric benches
+  gcs/                     # monitor, heartbeat, bringup_gcs.ps1
+  sitl/                    # WSL bash, run_sitl_tests.ps1, map download
+  bringup/, calibrate/, deploy/, dev/
+
+config/sitl_missions/      # YAML geofence + scenario experiments
 
 tests/sitl/                # Integration tests (need SITL running)
 tests/fixtures/sitl_*      # Worlds and timelines
@@ -132,13 +145,14 @@ Standalone CV training scripts live in `src/valiant/cv/` (merged from `feature/C
 | `--sitl` | `tcp:127.0.0.1:5760` | On | Profile (`sitl` / `sitl_physics`) |
 | `--sim` | Optional | **Off** | As configured |
 | `--hand-test` | Hardware | **Off** | scrcpy; gimbal + CV only |
+| `--mission-file` | SITL | On | YAML overlays from `config/sitl_missions/` |
 | `--skip-sitl-preflight` | SITL | On | Skips arm/takeoff if already airborne |
 
 ## Tests
 
 ```powershell
 python tools\valiant.py sitl test
-# or: .\tools\run_sitl_tests.ps1
+# or: .\tools\sitl\run_sitl_tests.ps1
 
 # 3D kinematics + metric geometry (no SITL)
 python -m pytest tests/test_ned_kinematics.py tests/test_metric_geometry_3d.py -q

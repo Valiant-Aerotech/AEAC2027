@@ -21,7 +21,7 @@ else
   echo ""
   echo "Depth calibration not captured yet."
   echo "  bash hardware/vion/rpi/capture_all_calibration.sh"
-  echo "  Then on GCS: .\\tools\\run_calibration_pipeline.ps1 -PiHost user@ip"
+  echo "  Then on GCS: .\\tools\\calibrate\\run_calibration_pipeline.ps1 -PiHost user@ip"
 fi
 
 echo ""

@@ -6,9 +6,9 @@ param(
     [string]$PiPath = "~/AEAC2027"
 )
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
-Set-Location $RepoRoot
-. (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
+. (Join-Path $PSScriptRoot "..\lib\script_paths.ps1")
+$ctx = Initialize-ValiantScript -ScriptRoot $PSScriptRoot
+$RepoRoot = $ctx.RepoRoot
 
 Write-Host "=== Calibration pipeline ===" -ForegroundColor Cyan
 & "$PSScriptRoot\copy_calibration_from_pi.ps1" -PiHost $PiHost -PiPath $PiPath

@@ -18,7 +18,7 @@ Read this before connecting to Vion. Bringup steps: [vion-bringup.md](vion-bring
 
 | Item | Why | Action |
 |------|-----|--------|
-| Deploy `best.onnx` to Pi | Gitignored model | `.\tools\deploy_to_pi.ps1 -PiHost user@ip` |
+| Deploy `best.onnx` to Pi | Gitignored model | `.\tools\deploy\deploy_to_pi.ps1 -PiHost user@ip` |
 | Install picamera2 on Pi | Not in pip venv | `sudo apt install python3-picamera2` |
 | Pi serial permissions | `/dev/ttyAMA0` | `sudo usermod -aG dialout $USER`, re-login |
 | Enable Pi UART | MAVLink to FC | `enable_uart=1` or raspi-config, reboot |

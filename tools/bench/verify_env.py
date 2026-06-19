@@ -8,6 +8,8 @@ import shutil
 import sys
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+TOOLS = REPO_ROOT / "tools"
 
 REQUIRED_IMPORTS = [
     ("numpy", "numpy"),
@@ -53,25 +55,25 @@ def check_external() -> None:
 
 
 def check_structure() -> None:
-    root = Path(__file__).resolve().parents[1]
     expected = [
         "START_HERE.md",
         "start.ps1",
         "tools/valiant.py",
-        "tools/guide_text.py",
+        "tools/lib/guide_text.py",
+        "tools/lib/cli_diag.py",
+        "tools/lib/script_paths.ps1",
         "missions/task2_vion_auto_extinguish.py",
         "hardware/vion/rpi/run_mission.py",
         "hardware/vion/rpi/first_connect.sh",
         "hardware/vion/rpi/run_bringup_tests.sh",
         "tools/lib/diagnostics.ps1",
-        "tools/diagnose.py",
-        "tools/cli_diag.py",
+        "tools/bench/diagnose.py",
         "tools/sitl/common.sh",
-        "tools/wsl_distro.ps1",
+        "tools/lib/wsl_distro.ps1",
         "tools/setup_wsl.ps1",
         "tools/sitl/setup_wsl.sh",
-        "tools/verify_ps1.ps1",
-        "tools/phase1_bringup.ps1",
+        "tools/dev/verify_ps1.ps1",
+        "tools/bringup/phase1_bringup.ps1",
         "hardware/vion/rpi/phase1_bringup.sh",
         "hardware/vion/rpi/preflight_indoor.sh",
         "src/valiant/autonomy/orchestrator.py",
@@ -79,13 +81,14 @@ def check_structure() -> None:
         "config/vion_calibration.yaml.example",
         "docs/runbooks/vion-bringup.md",
         "hardware/vion/mission-planner/002-pi-telem-params.md",
-        "tools/bringup_gcs.ps1",
-        "tools/check_mavlink_gcs.py",
-        "tools/test_spray_gcs.py",
-        "tools/run_calibration_pipeline.ps1",
+        "tools/gcs/bringup_gcs.ps1",
+        "tools/gcs/check_mavlink_gcs.py",
+        "tools/gcs/test_spray_gcs.py",
+        "tools/calibrate/run_calibration_pipeline.ps1",
+        "config/sitl_missions/example_wall.yaml",
     ]
     for rel in expected:
-        path = root / rel
+        path = REPO_ROOT / rel
         status = "OK" if path.exists() else "MISSING"
         print(f"  {status}  [PATH] {rel}")
 
@@ -111,13 +114,14 @@ def main() -> int:
 
     try:
         import valiant
+
         print(f"valiant package: OK (version {valiant.__version__})")
     except ImportError:
         print("valiant package: FAIL - run .\\tools\\setup.ps1")
         failures.append("valiant (pip install -e .)")
 
     if failures:
-        print(f"\nFAILED - install missing packages and re-run setup.ps1")
+        print("\nFAILED - install missing packages and re-run setup.ps1")
         return 1
 
     print("\nPASSED - environment ready")

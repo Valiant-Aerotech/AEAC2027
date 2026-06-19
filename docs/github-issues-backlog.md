@@ -1,10 +1,10 @@
 # GitHub Issues Backlog
 
-Use `tools/create_github_issues.ps1` to create issues on [Valiant-Aerotech/AEAC2027](https://github.com/Valiant-Aerotech/AEAC2027).
+Use `tools/dev/create_github_issues.ps1` to create issues on [Valiant-Aerotech/AEAC2027](https://github.com/Valiant-Aerotech/AEAC2027).
 
 ```powershell
 gh auth login
-.\tools\create_github_issues.ps1
+.\tools\dev\create_github_issues.ps1
 ```
 
 **Branch:** develop on **`main`**. See [branches.md](branches.md).

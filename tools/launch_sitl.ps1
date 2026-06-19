@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-. (Join-Path $PSScriptRoot "wsl_distro.ps1")
+. (Join-Path $PSScriptRoot "lib\wsl_distro.ps1")
 $RepoRoot = Get-ValiantRepoRoot -FromScriptRoot $PSScriptRoot
 Set-Location $RepoRoot
 $ShWin = Get-ValiantRepoPath -RelativePath "sitl\launch_sitl.sh" -FromScriptRoot $PSScriptRoot

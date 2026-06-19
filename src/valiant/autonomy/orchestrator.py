@@ -1047,10 +1047,23 @@ def run_auto_extinguish(
     profile: str | None = None,
     video_path: str | None = None,
     scenario_path: str | None = None,
+    mission_file: str | None = None,
     skip_sitl_preflight: bool = False,
 ) -> None:
     cfg = load_config("vion")
-    if profile:
+    if mission_file:
+        from valiant.autonomy.flight.profile import apply_flight_profile
+        from valiant.autonomy.sitl_mission import apply_sitl_mission, load_sitl_mission
+
+        mission = load_sitl_mission(mission_file)
+        mission_profile = mission.get("profile")
+        if mission_profile:
+            cfg = apply_flight_profile(cfg, mission_profile)
+        cfg, scenario_path, mission_max = apply_sitl_mission(cfg, mission)
+        if mission_max is not None:
+            max_targets = mission_max
+        print(f"[SITL] Mission file: {mission_file} (profile={mission_profile})")
+    elif profile:
         from valiant.autonomy.flight.profile import apply_flight_profile
 
         cfg = apply_flight_profile(cfg, profile)
@@ -1111,6 +1124,11 @@ def main() -> None:
     parser.add_argument("--video", default=None, help="Video file for replay camera")
     parser.add_argument("--scenario", default=None, help="Synthetic target JSON scenario")
     parser.add_argument(
+        "--mission-file",
+        default=None,
+        help="SITL mission YAML (config/sitl_missions/*.yaml)",
+    )
+    parser.add_argument(
         "--max-targets",
         type=int,
         default=None,
@@ -1144,6 +1162,7 @@ def main() -> None:
         profile=args.profile,
         video_path=args.video,
         scenario_path=args.scenario,
+        mission_file=args.mission_file,
         skip_sitl_preflight=args.skip_sitl_preflight,
     )
 

@@ -44,4 +44,4 @@ Verify H-Flow appears in Mission Planner DroneCAN / status view.
 - [ ] `opt_qua` > ~100 on venue-like flooring at 0.5-3 m AGL (hover test)
 - [ ] Pi `check_sensors.py` gets MAVLink heartbeat on `/dev/ttyAMA0`
 
-Print quick reference: `.\tools\print_fc_params.ps1`
+Print quick reference: `.\tools\bringup\print_fc_params.ps1`

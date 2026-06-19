@@ -30,7 +30,7 @@ Pixhawk 6C fire suppression drone with Raspberry Pi companion for Task 2 autonom
 
 | Platform | Command |
 |----------|---------|
-| GCS first connect | `.\tools\bringup_gcs.ps1` |
+| GCS first connect | `.\tools\gcs\bringup_gcs.ps1` |
 | RPi first SSH | `bash hardware/vion/rpi/first_connect.sh` |
 | RPi flight | `python hardware/vion/rpi/run_mission.py --profile indoor` |
 | GCS monitor | `python tools/valiant.py gcs monitor` |

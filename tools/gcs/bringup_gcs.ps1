@@ -1,8 +1,9 @@
 # First connect to drone (GCS laptop + telemetry radio)
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
-Set-Location $RepoRoot
-. (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
+. (Join-Path $PSScriptRoot "..\lib\script_paths.ps1")
+$ctx = Initialize-ValiantScript -ScriptRoot $PSScriptRoot
+$RepoRoot = $ctx.RepoRoot
+$ToolsDir = $ctx.ToolsDir
 
 Write-Host "=== Vion GCS first-connect bringup ===" -ForegroundColor Cyan
 Write-Host "New laptop? Run .\start.ps1 first. Scenario menu: python tools\valiant.py guide"
@@ -11,13 +12,13 @@ Write-Host ""
 Write-Host "1. Mission Planner (manual):" -ForegroundColor Yellow
 Write-Host "   - Connect telemetry radio COM @ 57600"
 Write-Host "   - Confirm heartbeat + battery"
-Write-Host "   - Run: .\tools\print_fc_params.ps1  (Pi TELEM + H-Flow params)"
+Write-Host "   - Run: .\tools\bringup\print_fc_params.ps1  (Pi TELEM + H-Flow params)"
 Write-Host "   - Test SERVO15: python tools\valiant.py gcs spray"
 Write-Host "   - Test emergency RC switch"
 Write-Host ""
 
 Write-Host "2. GCS software setup..." -ForegroundColor Yellow
-& "$PSScriptRoot\setup.ps1"
+& (Join-Path $ToolsDir "setup.ps1")
 if ($LASTEXITCODE -ne 0) {
     Show-ValiantFailure "setup.ps1 failed" -Hints @("See errors above", "Run: .\tools\setup.ps1")
 }
@@ -52,8 +53,8 @@ if (Test-Path $vionYaml) {
 
 Write-Host ""
 Write-Host "5. Pi deploy (when Pi is online):" -ForegroundColor Yellow
-Write-Host "   .\tools\deploy_to_pi.ps1 -PiHost <user>@<pi-ip>"
-Write-Host "   .\tools\run_calibration_pipeline.ps1 -PiHost <user>@<pi-ip>"
+Write-Host "   .\tools\deploy\deploy_to_pi.ps1 -PiHost <user>@<pi-ip>"
+Write-Host "   .\tools\calibrate\run_calibration_pipeline.ps1 -PiHost <user>@<pi-ip>"
 Write-Host "   python tools\valiant.py gcs monitor"
 Write-Host ""
 Write-Host "See docs\runbooks\vion-bringup.md"

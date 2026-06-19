@@ -12,6 +12,36 @@ No arguments also prints the guide. First laptop setup: `.\start.ps1` from repo 
 
 ---
 
+## Root folder (run these directly)
+
+| Script | When |
+|--------|------|
+| `valiant.py` | All bench, SITL, GCS, bringup via subcommands |
+| `setup.ps1` | First-time venv (`valiant setup` or `start.ps1`) |
+| `setup_wsl.ps1` | One-time WSL + ArduPilot |
+| `launch_sitl.ps1` | Terminal 1 before SITL mission |
+| `run_sitl_mission.ps1` | Default SITL mission (`valiant sitl mission`) |
+| `run_sitl_mission_file.ps1` | YAML mission (`valiant sitl run …`) |
+
+Everything else lives in subfolders and is invoked via `valiant.py` or the scripts above.
+
+---
+
+## Subfolders
+
+| Folder | Contents |
+|--------|----------|
+| `lib/` | Shared PS1 helpers (`diagnostics.ps1`, `wsl_distro.ps1`, `guide_text.py`) |
+| `sitl/` | WSL bash, SITL tests, map download, YAML mission runner Python |
+| `bench/` | `verify_env`, `diagnose`, `conops_check`, CV/metric/safety benches |
+| `gcs/` | MAVLink monitor, heartbeat, spray test, `bringup_gcs.ps1` |
+| `bringup/` | `phase1_bringup.ps1`, `print_fc_params.ps1` |
+| `calibrate/` | Depth/RGB calibration scripts and Pi sync PS1 |
+| `deploy/` | `deploy_to_pi.ps1`, upload smoke test |
+| `dev/` | `verify_ps1.ps1`, `create_github_issues.ps1` |
+
+---
+
 ## Pick your path
 
 | You are… | Run |
@@ -20,10 +50,11 @@ No arguments also prints the guide. First laptop setup: `.\start.ps1` from repo 
 | **Check install (no drone)** | `python tools\valiant.py quickstart` |
 | **Something failed?** | `python tools\valiant.py diagnose` |
 | **Webcam / CV test** | `python tools\valiant.py bench cv --camera 0` |
-| **Virtual full mission** | Once: `.\tools\setup_wsl.ps1` then Terminal 1: `launch_sitl.ps1` -> Terminal 2: `valiant sitl mission` |
+| **Virtual full mission** | `setup_wsl.ps1` -> `launch_sitl.ps1` -> `valiant sitl mission` |
+| **Custom SITL experiment** | Edit `config\sitl_missions\example_wall.yaml`, then `valiant sitl run config\sitl_missions\example_wall.yaml` |
 | **First drone connect (GCS)** | `python tools\valiant.py bringup phase1` |
 | **Telemetry HUD** | `python tools\valiant.py gcs monitor` |
-| **Deploy to Pi** | `.\tools\deploy_to_pi.ps1 -PiHost user@ip` |
+| **Deploy to Pi** | `.\tools\deploy\deploy_to_pi.ps1 -PiHost user@ip` |
 
 ---
 
@@ -31,11 +62,11 @@ No arguments also prints the guide. First laptop setup: `.\start.ps1` from repo 
 
 | Group | Commands | Purpose |
 |-------|----------|---------|
-| *(top)* | `guide`, `quickstart`, `setup` | Scenario menu, health checks, venv install |
+| *(top)* | `guide`, `quickstart`, `setup`, `diagnose` | Scenario menu, health checks, venv install |
 | `env` | `check` | Python packages |
 | `conops` | `check` | Competition config |
 | `bench` | `cv`, `metric`, `safety`, `smoke` | Laptop tests (no drone) |
-| `sitl` | `setup-wsl`, `mission`, `test`, `map download` | Virtual drone |
+| `sitl` | `setup-wsl`, `mission`, `run`, `test`, `map download` | Virtual drone |
 | `gcs` | `heartbeat`, `spray`, `monitor`, `listen` | Radio + telemetry |
 | `bringup` | `phase1`, `phase1-pi` | Hardware checklists |
 | `calibrate` | `tune`, `validate`, `replay` | Depth calibration |
@@ -43,32 +74,26 @@ No arguments also prints the guide. First laptop setup: `.\start.ps1` from repo 
 
 ```powershell
 python tools\valiant.py --help
+python tools\valiant.py sitl run config\sitl_missions\example_wall.yaml
 ```
 
-**Do not run** `tools\verify_env.py`, `mission_monitor.py`, etc. directly - always use `valiant.py`.
+**Do not run** `bench\verify_env.py`, `gcs\mission_monitor.py`, etc. directly - always use `valiant.py`.
 
 ---
 
-## PowerShell helpers (called by CLI or docs)
+## Dev checks
 
-| Script | When to use |
-|--------|-------------|
-| `verify_ps1.ps1` | Check all `.ps1` parse + ASCII (run after editing scripts) |
-| `setup.ps1` | First-time venv (`valiant setup`) |
-| `launch_sitl.ps1` | Terminal 1 before SITL mission |
-| `setup_wsl.ps1` | One-time WSL + ArduPilot (fresh PC) |
-| `run_sitl_mission.ps1` | Used internally by `valiant sitl mission` |
-| `bringup_gcs.ps1` | Extended first-connect (after `bringup phase1`) |
-| `deploy_to_pi.ps1` | Copy repo + model to Pi |
-| `webcam_bench.ps1` | Same as `valiant quickstart` + hints |
+```powershell
+.\tools\dev\verify_ps1.ps1
+python tools\valiant.py env check
+```
 
 ---
 
-## Removed scripts (use valiant instead)
+## Removed / relocated (use valiant instead)
 
-| Old | New |
-|-----|-----|
-| `setup_gcs.ps1` | `start.ps1` + `valiant bringup phase1` |
-| `yolo_webcam_test.py` | `valiant bench cv` |
-| `cv_regression_test.py` | `valiant bench cv --regression --video …` |
-| `run_monitor.ps1` | `valiant gcs monitor` |
+| Old path | New |
+|----------|-----|
+| `tools\cv_bench_test.py` | `valiant bench cv` |
+| `tools\deploy_to_pi.ps1` | `tools\deploy\deploy_to_pi.ps1` |
+| `tools\create_github_issues.ps1` | `tools\dev\create_github_issues.ps1` |

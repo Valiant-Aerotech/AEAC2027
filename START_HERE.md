@@ -80,6 +80,14 @@ Wait until you see `SERIAL0 on TCP port 5760`.
 python tools\valiant.py sitl mission
 ```
 
+### Custom SITL mission (YAML)
+
+Copy [`config/sitl_missions/example_wall.yaml`](config/sitl_missions/example_wall.yaml), edit geofence, wall distance, speeds, and targets, then:
+
+```powershell
+python tools\valiant.py sitl run config\sitl_missions\example_wall.yaml
+```
+
 Details and troubleshooting: [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md).
 
 ---
@@ -98,6 +106,7 @@ python tools\valiant.py bench cv --camera 0
 python tools\valiant.py bench metric --camera 0
 python tools\valiant.py gcs monitor
 python tools\valiant.py sitl mission
+python tools\valiant.py sitl run config\sitl_missions\example_wall.yaml
 python tools\valiant.py bringup phase1
 ```
 

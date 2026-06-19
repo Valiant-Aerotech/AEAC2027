@@ -1,7 +1,7 @@
 # Create AEAC2027 backlog issues on GitHub
 # Prerequisite: gh auth login
-# Usage: .\tools\create_github_issues.ps1
-#        .\tools\create_github_issues.ps1 -DryRun
+# Usage: .\tools\dev\create_github_issues.ps1
+#        .\tools\dev\create_github_issues.ps1 -DryRun
 
 param(
     [switch]$DryRun
@@ -118,13 +118,13 @@ New-Issue "B4: Migrate YOLO detector baseline" "cv/detector.py baseline.`n`nDone
 New-Issue "B5: Migrate orchestrator baseline" "State machine + --sim.`n`nDone." @("track-b","done","auto-nav") $msB -Close
 New-Issue "B6: Migrate manual_capture" "manual photo fallback mission.`n`nDone." @("track-b","done","upload") $msB -Close
 New-Issue "B7: Vion hardware Lua + MP docs" "hardware/vion/ migrated.`n`nDone for Vion." @("track-b","done","infra") $msB -Close
-New-Issue "B8: mavproxy_listen.py debug tool" "MAVLink STATUSTEXT listener.`n`nDone." @("track-b","done","infra") $msB -Close
+New-Issue "B8: mavproxy_listen.py debug tool" "tools/gcs/mavproxy_listen.py STATUSTEXT listener.`n`nDone." @("track-b","done","infra") $msB -Close
 New-Issue "B9: Vivi/Vulcan2 FC Lua + Mission Planner docs" "## Goal`nMigrate remaining FC scripts from old-codebase into hardware/vivi/ and hardware/vulcan2/.`n`n## Done when`nEach drone folder has lua/ and mission-planner/ with README explaining what goes on which FC." @("track-b","infra","priority-low") $msB
 
 # --- Track C ---
 New-Issue "C1-C7: CV module baseline" "CVPacket, HSV dry/shot, detector refactor, exceptions, ui overlay, generate_targets.py.`n`nDone. See src/valiant/autonomy/cv/" @("track-c","done","cv") $msC -Close
-New-Issue "C8: Train and export dry + shot ONNX models" "## Goal`nProduce models/dry.onnx and models/shot.onnx for cv.method yolo/both.`n`n## Steps`n1. Collect or generate training images (outdoor purple circles, wetted blue)`n2. Label with ultralytics`n3. Run cv/training/train.py`n4. Bench test with cv_bench_test.py`n`n## Done when`nyolo mode detects dry targets on field footage with fewer false positives than HSV-only." @("track-c","cv","refinement","priority-medium") $msC
-New-Issue "C9: CV bench test tooling" "tools/cv_bench_test.py logs CVPacket stream.`n`nDone." @("track-c","done","cv") $msC -Close
+New-Issue "C8: Train and export dry + shot ONNX models" "## Goal`nProduce models/dry.onnx and models/shot.onnx for cv.method yolo/both.`n`n## Steps`n1. Collect or generate training images (outdoor purple circles, wetted blue)`n2. Label with ultralytics`n3. Run cv/training/train.py`n4. Bench test with python tools/valiant.py bench cv`n`n## Done when`nyolo mode detects dry targets on field footage with fewer false positives than HSV-only." @("track-c","cv","refinement","priority-medium") $msC
+New-Issue "C9: CV bench test tooling" "tools/bench/cv_bench_test.py logs CVPacket stream.`n`nDone." @("track-c","done","cv") $msC -Close
 New-Issue "C10: Outdoor HSV tuning - dry and shot targets" "## Problem`nHSV thresholds in config/vion.yaml are tuned for synthetic images. Outdoor sun/shadow will cause missed detections and false positives.`n`n## Tasks`n- [ ] Print 5-30 cm purple competition circles`n- [ ] Run cv_bench_test at field site AM/PM lighting`n- [ ] Tune hsv_dry, hsv_shot, hsv_min_area_px`n- [ ] Document final values in runbook`n`n## Done when`n10 consecutive stable dry detections outdoors; shot detected within 3 s after wetting." @("track-c","cv","refinement","field-test","priority-high") $msC
 New-Issue "C11: CV regression set from recorded footage" "## Goal`nRecord scrcpy footage at field tests; replay through cv_bench_test --video for regression.`n`n## Done when`nAt least 3 clips saved in team Drive; script logs false positive/negative counts per clip." @("track-c","cv","refinement","priority-medium") $msC
 New-Issue "C12: Shot confirmation reliability after real spray" "## Problem`nVERIFYING state waits for CVPacket.shot. Motion blur, glare, and partial wetting may fail confirmation.`n`n## Tasks`n- [ ] Test with real spray at 0.8-1.5 m`n- [ ] Tune hsv_shot or add short post-spray settle delay in orchestrator`n- [ ] Log confirmation latency`n`n## Done when`nPhase 3 field test 3.2 passes 3/3 attempts." @("track-c","cv","field-test","priority-high") $msC

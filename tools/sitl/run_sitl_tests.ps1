@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $PSScriptRoot
-Set-Location $Root
-. (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
+. (Join-Path $PSScriptRoot "..\lib\script_paths.ps1")
+$ctx = Initialize-ValiantScript -ScriptRoot $PSScriptRoot
+$Root = $ctx.RepoRoot
 $env:PYTHONPATH = "src"
 
 Write-Host "SITL integration tests (requires SITL running for some tests)" -ForegroundColor Yellow

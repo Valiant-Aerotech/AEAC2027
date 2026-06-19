@@ -12,13 +12,13 @@ Script map by phase:
 
 | Phase | GCS (PowerShell) | Pi (bash) |
 |-------|------------------|-----------|
-| B - GCS connect | `.\tools\bringup_gcs.ps1` | - |
+| B - GCS connect | `.\tools\gcs\bringup_gcs.ps1` | - |
 | B - MAVLink | `python tools\valiant.py gcs heartbeat` | - |
 | B - Spray test | `python tools\valiant.py gcs spray` | - |
-| B - FC params | `.\tools\print_fc_params.ps1` | - |
-| C - First SSH | `.\tools\deploy_to_pi.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/first_connect.sh` |
+| B - FC params | `.\tools\bringup\print_fc_params.ps1` | - |
+| C - First SSH | `.\tools\deploy\deploy_to_pi.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/first_connect.sh` |
 | C - Sensors | - | `bash hardware/vion/rpi/session_start.sh` |
-| C - Calibration | `.\tools\run_calibration_pipeline.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/capture_all_calibration.sh` |
+| C - Calibration | `.\tools\calibrate\run_calibration_pipeline.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/capture_all_calibration.sh` |
 | C/D - Sim/tether/monitor | `python tools\valiant.py gcs monitor` | `GCS_IP=<ip> bash hardware/vion/rpi/run_bringup_tests.sh` |
 | E - Preflight | - | `bash hardware/vion/rpi/preflight_indoor.sh` |
 | E - Flight | `python tools\valiant.py gcs monitor` | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
@@ -36,7 +36,7 @@ Props off until tethered tests pass.
 1. Plug telemetry radio USB; note COM port (Device Manager)
 2. Mission Planner -> Connect @ **57600**
 3. Confirm heartbeat, battery, HERE4/GPS status
-4. `.\tools\print_fc_params.ps1` then set params in MP (see [002-pi-telem-params.md](../../hardware/vion/mission-planner/002-pi-telem-params.md))
+4. `.\tools\bringup\print_fc_params.ps1` then set params in MP (see [002-pi-telem-params.md](../../hardware/vion/mission-planner/002-pi-telem-params.md))
 5. Confirm DroneCAN sees H-Flow
 6. `python tools\valiant.py gcs spray` (SERVO15, props off)
 7. Test emergency RC switch (Lua `safety.lua`)
@@ -45,7 +45,7 @@ Props off until tethered tests pass.
 
 ```powershell
 cd A:\Code\Valiant-Aerotech\AEAC2027
-.\tools\bringup_gcs.ps1
+.\tools\gcs\bringup_gcs.ps1
 ```
 
 ---
@@ -63,7 +63,7 @@ bash hardware/vion/rpi/first_connect.sh
 From GCS laptop:
 
 ```powershell
-.\tools\deploy_to_pi.ps1 -PiHost <user>@<pi-ip>
+.\tools\deploy\deploy_to_pi.ps1 -PiHost <user>@<pi-ip>
 ```
 
 ### UART (if first_connect warns)
@@ -88,7 +88,7 @@ bash hardware/vion/rpi/capture_all_calibration.sh
 ```
 
 ```powershell
-.\tools\run_calibration_pipeline.ps1 -PiHost <user>@<pi-ip>
+.\tools\calibrate\run_calibration_pipeline.ps1 -PiHost <user>@<pi-ip>
 ```
 
 ### Sim, tethered, monitor

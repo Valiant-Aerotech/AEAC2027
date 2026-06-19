@@ -14,15 +14,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = Path(__file__).resolve().parent
+_LIB = TOOLS / "lib"
+sys.path.insert(0, str(_LIB))
 
 from cli_diag import error, unexpected  # noqa: E402
 from guide_text import GUIDE, QUICKSTART_NEXT  # noqa: E402
 
 
-def _run(module_main: str, argv: list[str] | None = None) -> int:
-    """Run a tools/*.py script without tools/valiant.py shadowing the package."""
+def _run(rel_path: str, argv: list[str] | None = None) -> int:
+    """Run a tools script without tools/valiant.py shadowing the package."""
     src = str(ROOT / "src")
-    script = str(TOOLS / module_main)
+    script = str(TOOLS / rel_path)
     extra_argv = argv or []
     bootstrap = (
         "import runpy, sys\n"
@@ -73,70 +75,70 @@ def cmd_bench_smoke(_: argparse.Namespace) -> int:
 
 
 def cmd_env_check(_: argparse.Namespace) -> int:
-    return _run("verify_env.py")
+    return _run("bench/verify_env.py")
 
 
 def cmd_diagnose(_: argparse.Namespace) -> int:
-    return _run("diagnose.py")
+    return _run("bench/diagnose.py")
 
 
 def cmd_conops_check(_: argparse.Namespace) -> int:
-    return _run("conops_check.py")
+    return _run("bench/conops_check.py")
 
 
 def cmd_gcs_heartbeat(args: argparse.Namespace) -> int:
-    return _run("check_mavlink_gcs.py", args.extra)
+    return _run("gcs/check_mavlink_gcs.py", args.extra)
 
 
 def cmd_gcs_spray(args: argparse.Namespace) -> int:
-    return _run("test_spray_gcs.py", args.extra)
+    return _run("gcs/test_spray_gcs.py", args.extra)
 
 
 def cmd_gcs_monitor(args: argparse.Namespace) -> int:
-    return _run("mission_monitor.py", args.extra)
+    return _run("gcs/mission_monitor.py", args.extra)
 
 
 def cmd_gcs_listen(args: argparse.Namespace) -> int:
-    return _run("mavproxy_listen.py", args.extra)
+    return _run("gcs/mavproxy_listen.py", args.extra)
 
 
 def cmd_sitl_map_download(args: argparse.Namespace) -> int:
-    return _run("download_sitl_map.py", args.extra)
+    return _run("sitl/download_sitl_map.py", args.extra)
 
 
 def cmd_bench_cv(args: argparse.Namespace) -> int:
     argv = list(args.extra or [])
     if args.regression:
         argv = ["--regression", *argv]
-    return _run("cv_bench_test.py", argv)
+    return _run("bench/cv_bench_test.py", argv)
 
 
 def cmd_bench_metric(args: argparse.Namespace) -> int:
-    return _run("metric_bench_test.py", args.extra)
+    return _run("bench/metric_bench_test.py", args.extra)
 
 
 def cmd_bench_safety(_: argparse.Namespace) -> int:
-    return _run("safety_bench_test.py")
+    return _run("bench/safety_bench_test.py")
 
 
 def cmd_calibrate_tune(args: argparse.Namespace) -> int:
-    return _run("calibrate_depth_rgb.py", args.extra)
+    return _run("calibrate/calibrate_depth_rgb.py", args.extra)
 
 
 def cmd_calibrate_validate(args: argparse.Namespace) -> int:
-    return _run("validate_calibration.py", args.extra)
+    return _run("calibrate/validate_calibration.py", args.extra)
 
 
 def cmd_calibrate_replay(args: argparse.Namespace) -> int:
-    return _run("replay_rpi_recording.py", args.extra)
+    return _run("calibrate/replay_rpi_recording.py", args.extra)
 
 
 def cmd_upload_test(_: argparse.Namespace) -> int:
-    return _run("test_upload_drive.py")
+    return _run("deploy/test_upload_drive.py")
 
 
 def cmd_bringup_phase1(args: argparse.Namespace) -> int:
-    ps1 = TOOLS / "phase1_bringup.ps1"
+    ps1 = TOOLS / "bringup" / "phase1_bringup.ps1"
     extra: list[str] = []
     if getattr(args, "skip_mavlink", False):
         extra.append("-SkipMavlink")
@@ -162,7 +164,7 @@ def cmd_sitl_setup_wsl(_: argparse.Namespace) -> int:
 
 
 def cmd_sitl_test(_: argparse.Namespace) -> int:
-    ps1 = TOOLS / "run_sitl_tests.ps1"
+    ps1 = TOOLS / "sitl" / "run_sitl_tests.ps1"
     if ps1.exists():
         return subprocess.call(
             ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1)],
@@ -182,6 +184,22 @@ def cmd_sitl_mission(args: argparse.Namespace) -> int:
             ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1)],
             cwd=str(ROOT),
         )
+    return subprocess.call(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1), *extra],
+        cwd=str(ROOT),
+    )
+
+
+def cmd_sitl_run(args: argparse.Namespace) -> int:
+    ps1 = TOOLS / "run_sitl_mission_file.ps1"
+    mission = args.mission_file
+    extra: list[str] = ["-Mission", mission]
+    if args.headless:
+        extra.append("-Headless")
+    if args.skip_preflight:
+        extra.append("-SkipPreflight")
+    if args.no_monitor:
+        extra.append("-NoMonitor")
     return subprocess.call(
         ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1), *extra],
         cwd=str(ROOT),
@@ -247,6 +265,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp = s.add_parser("mission", help="Run Task 2 SITL mission")
     sp.add_argument("extra", nargs=argparse.REMAINDER)
     sp.set_defaults(func=cmd_sitl_mission)
+    sp = s.add_parser("run", help="Run SITL mission from YAML config file")
+    sp.add_argument("mission_file", help="Path to config/sitl_missions/*.yaml")
+    sp.add_argument("--headless", action="store_true")
+    sp.add_argument("--skip-preflight", action="store_true")
+    sp.add_argument("--no-monitor", action="store_true")
+    sp.set_defaults(func=cmd_sitl_run)
     sp = s.add_parser("map", help="SITL map assets")
     sm = sp.add_subparsers(dest="map_cmd", required=True)
     sp2 = sm.add_parser("download", help="Download satellite tiles")

@@ -23,7 +23,7 @@ First-time setup: [vion-bringup.md](vion-bringup.md)
 For bench without Pi:
 
 ```powershell
-.\tools\webcam_bench.ps1
+.\tools\bench\webcam_bench.ps1
 python missions\task2_vion_auto_extinguish.py --sim --source webcam --camera 0 --max-targets 1
 ```
 

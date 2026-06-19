@@ -7,7 +7,9 @@ param(
     [string]$LocalFile = "config\vion_calibration.yaml"
 )
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "..\lib\script_paths.ps1")
+$ctx = Initialize-ValiantScript -ScriptRoot $PSScriptRoot
+$RepoRoot = $ctx.RepoRoot
 $cal = Join-Path $RepoRoot $LocalFile
 
 if (-not (Test-Path $cal)) {

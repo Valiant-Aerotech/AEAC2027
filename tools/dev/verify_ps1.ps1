@@ -1,10 +1,11 @@
 # Verify all PowerShell scripts parse and use ASCII-only text (Windows PowerShell 5.1 safe).
-# Usage: .\tools\verify_ps1.ps1
+# Usage: .\tools\dev\verify_ps1.ps1
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
+$ToolsDir = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$RepoRoot = (Resolve-Path (Join-Path $ToolsDir "..")).Path
 Set-Location $RepoRoot
 
-$files = Get-ChildItem -Path $RepoRoot -Filter "*.ps1" -Recurse |
+$files = Get-ChildItem -Path (Join-Path $RepoRoot "tools") -Filter "*.ps1" -Recurse |
     Where-Object { $_.FullName -notmatch '\\\.venv\\' }
 
 $failed = @()
@@ -33,15 +34,15 @@ if ($failed.Count -gt 0) {
     exit 1
 }
 
-. (Join-Path $RepoRoot "tools\wsl_distro.ps1")
+. (Join-Path $ToolsDir "lib\wsl_distro.ps1")
 $pathFailed = @()
 
-$repoFromTools = Get-ValiantRepoRoot -FromScriptRoot (Join-Path $RepoRoot "tools")
+$repoFromTools = Get-ValiantRepoRoot -FromScriptRoot $ToolsDir
 if ($repoFromTools -ne $RepoRoot) {
     $pathFailed += "Get-ValiantRepoRoot mismatch: $repoFromTools vs $RepoRoot"
 }
 
-$sitlSh = Get-ValiantRepoPath -RelativePath "sitl\wsl_run.sh" -FromScriptRoot (Join-Path $RepoRoot "tools")
+$sitlSh = Get-ValiantRepoPath -RelativePath "sitl\wsl_run.sh" -FromScriptRoot $ToolsDir
 if (-not (Test-Path -LiteralPath $sitlSh)) {
     $pathFailed += "Get-ValiantRepoPath missing: $sitlSh"
 }
@@ -54,7 +55,7 @@ if ($wslPath -notmatch '/tools/sitl/wsl_run\.sh$') {
     $pathFailed += "ConvertTo-ValiantWslPath bad suffix: $wslPath"
 }
 
-$grepHits = Select-String -Path (Join-Path $RepoRoot "tools\*.ps1"), (Join-Path $RepoRoot "tools\lib\*.ps1") -Pattern '\bwslpath\b' -ErrorAction SilentlyContinue |
+$grepHits = Select-String -Path (Join-Path $RepoRoot "tools\**\*.ps1") -Pattern '\bwslpath\b' -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -notlike '*\verify_ps1.ps1' }
 if ($grepHits) {
     $pathFailed += "Raw wslpath still used in: $(($grepHits | Select-Object -ExpandProperty Path -Unique) -join ', ')"

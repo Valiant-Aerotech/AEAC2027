@@ -4,9 +4,9 @@ param(
     [string]$RemoteDir = "~/AEAC2027"
 )
 $ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $PSScriptRoot
-Set-Location $Root
-. (Join-Path $PSScriptRoot "lib\diagnostics.ps1")
+. (Join-Path $PSScriptRoot "..\lib\script_paths.ps1")
+$ctx = Initialize-ValiantScript -ScriptRoot $PSScriptRoot
+$Root = $ctx.RepoRoot
 
 if (-not (Get-Command ssh -ErrorAction SilentlyContinue)) {
     Show-ValiantFailure "ssh not found on PATH" -Hints @(

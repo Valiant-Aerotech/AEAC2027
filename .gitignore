@@ -33,3 +33,4 @@ pytest-cache-files-*/
 
 # Generated test artifacts
 tests/output/
+config/sitl_missions/generated/

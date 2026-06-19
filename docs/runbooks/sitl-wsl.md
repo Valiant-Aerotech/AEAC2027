@@ -221,7 +221,7 @@ Harder scripted angles (timeline, no physics link):
 With SITL running:
 
 ```powershell
-.\tools\run_sitl_tests.ps1
+.\tools\sitl\run_sitl_tests.ps1
 ```
 
 Tests include timeline synthetic reaching `APPROACHING` and `COMPLETE` (spray disabled).

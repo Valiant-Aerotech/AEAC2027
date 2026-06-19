@@ -28,6 +28,6 @@ On Raspberry Pi:
 
 See [docs/runbooks/vion-bringup.md](../../../docs/runbooks/vion-bringup.md).
 
-GCS first connect: `.\tools\bringup_gcs.ps1`
+GCS first connect: `.\tools\gcs\bringup_gcs.ps1`
 
 Pi TELEM + H-Flow params: [002-pi-telem-params.md](002-pi-telem-params.md)
