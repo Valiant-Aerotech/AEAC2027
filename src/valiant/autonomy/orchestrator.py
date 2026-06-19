@@ -590,33 +590,9 @@ class AutoExtinguisher:
     def _ensure_sitl_guided(self, *, force: bool = False) -> None:
         if not self.sitl or self.hand_test:
             return
-        now = time.time()
-        interval = 0.4 if force else 2.0
-        if now - self._last_guided_check < interval:
-            return
-        self._last_guided_check = now
-        mapping = self.master.mode_mapping()
-        guided_id = mapping.get("GUIDED")
-        if guided_id is None:
-            return
+        from valiant.autonomy.sitl_preflight import ensure_sitl_guided
 
-        mode = self.master.flightmode
-        if mode == "GUIDED":
-            return
-
-        print(f"[SITL] FC mode is {mode!r} - re-commanding GUIDED")
-        self.master.set_mode(guided_id)
-        deadline = time.time() + (3.0 if force else 1.5)
-        while time.time() < deadline:
-            with mavlink_io(self.master):
-                hb = self.master.recv_match(type="HEARTBEAT", blocking=True, timeout=0.5)
-            if hb is not None and hb.get_srcSystem() == self.master.target_system:
-                from valiant.autonomy.sitl_preflight import _flight_mode_from_heartbeat
-
-                mode = _flight_mode_from_heartbeat(self.master, hb)
-                if mode == "GUIDED":
-                    return
-        print("[SITL] Warning: FC did not confirm GUIDED (velocity may be ignored)")
+        ensure_sitl_guided(self.master, force=force)
 
     def _actual_vel_body(self) -> tuple[float, float, float] | None:
         if not self.sitl or self._sitl_pose is None or not self._sitl_pose.ok:

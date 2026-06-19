@@ -11,8 +11,8 @@ from pymavlink import mavutil
 from valiant.autonomy.auto_nav.mavlink_stream import VelocityStream
 from valiant.autonomy.auto_nav.visual_servo import VisualServo
 from valiant.autonomy.gcs_hud import GcsHudReporter
+from valiant.autonomy.sitl_preflight import ensure_sitl_guided
 from valiant.common.mavlink import (
-    command_yaw_relative,
     connect,
     gcs_statustext_options_from_cfg,
     request_sitl_telemetry_streams,
@@ -97,13 +97,14 @@ class SitlPatternRunner:
             self._servo.set_yaw_rad(pose.yaw)
         return pose
 
-    def _stop(self) -> None:
+    def _stop_stream(self) -> None:
         self._stream.stop()
-        self._servo.stop()
+        self._servo.clear_stream_target()
 
     def _drive_forward(self, distance_m: float, *, label: str) -> None:
         self._say(label)
-        self._stream.start()
+        ensure_sitl_guided(self.master, force=True)
+        self._stop_stream()
         if self._last_pose is None or not self._last_pose.ok:
             self._last_pose = wait_vehicle_pose(
                 self.master,
@@ -113,37 +114,34 @@ class SitlPatternRunner:
         pose = self._last_pose
         self._servo.set_yaw_rad(pose.yaw)
         x0, y0 = pose.x, pose.y
+        self._servo.send_velocity_body(self._speed, 0.0, 0.0)
+        self._stream.start()
         deadline = time.time() + max(30.0, distance_m / self._speed * 3.0)
         while time.time() < deadline:
             pose = self._pose(pose)
             traveled = math.hypot(pose.x - x0, pose.y - y0)
             if traveled >= distance_m:
                 break
-            self._servo.send_velocity_body(self._speed, 0.0, 0.0)
             time.sleep(0.05)
-        self._stop()
+        self._stop_stream()
         time.sleep(0.3)
 
     def _turn_degrees(self, degrees: float, *, label: str) -> None:
         self._say(label)
-        self._stop()
+        ensure_sitl_guided(self.master, force=True)
+        self._stop_stream()
         pose = self._pose(need_attitude=True)
         target_yaw = _wrap_pi(pose.yaw + math.radians(degrees))
-        clockwise = degrees >= 0
-        rate_deg_s = max(10.0, math.degrees(self._yaw_rate))
-        command_yaw_relative(
-            self.master,
-            abs(degrees),
-            rate_deg_s=rate_deg_s,
-            clockwise=clockwise,
-        )
         print(
-            f"[Pattern] Yaw command: {'CW' if clockwise else 'CCW'} "
-            f"{abs(degrees):.0f} deg @ {rate_deg_s:.0f} deg/s"
+            f"[Pattern] Yaw hold -> {math.degrees(target_yaw):.0f} deg "
+            f"({abs(degrees):.0f} deg {'CW' if degrees >= 0 else 'CCW'})"
         )
-        self._servo.send_velocity_body(0.0, 0.0, 0.0)
+        self._servo.send_guided_yaw(target_yaw)
         self._stream.start()
-        deadline = time.time() + max(30.0, abs(degrees) / rate_deg_s * 3.0)
+        deadline = time.time() + max(
+            45.0,
+            abs(degrees) / max(math.degrees(self._yaw_rate), 10.0) * 4.0,
+        )
         while time.time() < deadline:
             pose = self._pose(pose)
             err = abs(_wrap_pi(pose.yaw - target_yaw))
@@ -154,10 +152,11 @@ class SitlPatternRunner:
         else:
             err = abs(_wrap_pi(pose.yaw - target_yaw))
             print(f"[Pattern] Warning: turn timed out (err {math.degrees(err):.1f} deg)")
-        self._stop()
+        self._stop_stream()
         time.sleep(0.3)
 
     def _set_loiter(self) -> None:
+        self._stop_stream()
         mapping = self.master.mode_mapping()
         if "LOITER" not in mapping:
             raise RuntimeError(f"LOITER not available: {mapping}")
@@ -177,6 +176,7 @@ class SitlPatternRunner:
         legs = legs or DEFAULT_PATTERN
         self._say("Pattern flight starting")
         request_sitl_telemetry_streams(self.master)
+        ensure_sitl_guided(self.master, force=True)
         print("[Pattern] Waiting for position telemetry...")
         self._last_pose = wait_vehicle_pose(
             self.master,
@@ -193,7 +193,6 @@ class SitlPatternRunner:
                 raise ValueError(f"Unknown leg kind: {leg.kind}")
         self._set_loiter()
         self._say("Pattern complete - hold in loiter")
-        # Hold altitude briefly in LOITER before exit (avoid drift into ground).
         time.sleep(2.0)
 
 

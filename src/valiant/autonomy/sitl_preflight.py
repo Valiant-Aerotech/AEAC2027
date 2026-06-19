@@ -235,6 +235,34 @@ def _flight_mode_from_heartbeat(master: mavutil.mavfile, hb) -> str:
     return master.flightmode or "UNKNOWN"
 
 
+def ensure_sitl_guided(master: mavutil.mavfile, *, force: bool = False) -> None:
+    """Re-command GUIDED if the FC left velocity/yaw offboard control."""
+    now = time.time()
+    if not force and getattr(master, "_valiant_guided_check_t", 0.0) + 2.0 > now:
+        if master.flightmode == "GUIDED":
+            return
+    master._valiant_guided_check_t = now  # type: ignore[attr-defined]
+
+    mapping = master.mode_mapping()
+    guided_id = mapping.get("GUIDED")
+    if guided_id is None:
+        return
+
+    if master.flightmode == "GUIDED":
+        return
+
+    print(f"[SITL] FC mode is {master.flightmode!r} - re-commanding GUIDED")
+    master.set_mode(guided_id)
+    deadline = time.time() + (3.0 if force else 1.5)
+    while time.time() < deadline:
+        with mavlink_io(master):
+            hb = master.recv_match(type="HEARTBEAT", blocking=True, timeout=0.5)
+        if hb is not None and hb.get_srcSystem() == master.target_system:
+            if _flight_mode_from_heartbeat(master, hb) == "GUIDED":
+                return
+    print("[SITL] Warning: FC did not confirm GUIDED (velocity may be ignored)")
+
+
 def verify_sitl_motion_ready(
     master: mavutil.mavfile,
     *,

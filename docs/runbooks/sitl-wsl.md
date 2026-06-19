@@ -151,6 +151,8 @@ Expect `T2: VERIFY statustext` in Messages. If missing, open MAVLink Inspector (
 | `debug_statustext` | `false` | Log each send to mission terminal |
 | `sitl_mp_mirror` | (unset) | Optional `udpout:...` duplicate if MP still misses lines |
 
+Pattern flight turns use **SET_POSITION_TARGET_LOCAL_NED** mask **2503** (yaw + zero velocity), streamed at 20 Hz — not CONDITION_YAW.
+
 **What Mission Planner will not show:**
 
 - Synthetic CV bbox - use the Valiant dashboard window from the mission script

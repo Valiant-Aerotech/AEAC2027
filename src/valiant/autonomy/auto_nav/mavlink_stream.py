@@ -7,7 +7,7 @@ import time
 
 
 class VelocityStream:
-    """Resend last velocity command at fixed rate (ArduPilot GUIDED needs ~10+ Hz)."""
+    """Resend last GUIDED target at fixed rate (ArduPilot needs ~10+ Hz)."""
 
     def __init__(self, servo, *, rate_hz: float = 20.0):
         self._servo = servo
@@ -27,5 +27,5 @@ class VelocityStream:
 
     def _loop(self) -> None:
         while self._active:
-            self._servo.resend_last_velocity()
+            self._servo.resend_last_guided()
             time.sleep(self._interval)

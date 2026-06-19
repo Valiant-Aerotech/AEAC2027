@@ -7,6 +7,11 @@ import time
 
 from pymavlink import mavutil
 
+# ArduPilot GUIDED SET_POSITION_TARGET_LOCAL_NED masks (see copter-commands-in-guided-mode)
+GUIDED_MASK_VELOCITY = 3527  # 0x0DC7
+GUIDED_MASK_YAW = 2503  # yaw target + zero velocity
+GUIDED_MASK_YAW_RATE = 1479  # yaw rate + zero velocity
+
 
 class VisualServo:
     """Proportional-derivative visual servoing controller."""
@@ -30,6 +35,9 @@ class VisualServo:
         self._smooth_right = 0.0
         self._smooth_vertical = 0.0
         self.last_vel_body = (0.0, 0.0, 0.0)
+        self._stream_mode: str | None = None
+        self._last_yaw_target: float | None = None
+        self._last_yaw_rate = 0.0
 
     def set_yaw_rad(self, yaw_rad: float) -> None:
         self._yaw_rad = yaw_rad
@@ -65,18 +73,45 @@ class VisualServo:
         vel_vertical = max(-self.max_vel, min(self.max_vel, vel_vertical))
         return vel_right, vel_vertical
 
+    def _send_position_target(
+        self,
+        *,
+        frame: int,
+        type_mask: int,
+        vx: float,
+        vy: float,
+        vz: float,
+        yaw: float,
+        yaw_rate: float,
+    ) -> None:
+        from valiant.common.mavlink_io import mavlink_io
+
+        with mavlink_io(self.mav):
+            self.mav.mav.set_position_target_local_ned_send(
+                0,
+                self.mav.target_system,
+                self.mav.target_component,
+                frame,
+                type_mask,
+                0,
+                0,
+                0,
+                vx,
+                vy,
+                vz,
+                0,
+                0,
+                0,
+                yaw,
+                yaw_rate,
+            )
+
     def send_velocity_body(self, vel_x: float, vel_y: float, vel_z: float = 0.0) -> None:
         self.last_vel_body = (vel_x, vel_y, vel_z)
-        type_mask = (
-            mavutil.mavlink.POSITION_TARGET_TYPEMASK_X_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_Y_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_Z_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_AX_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_AY_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_AZ_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_YAW_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE
-        )
+        self._stream_mode = "velocity"
+        self._last_yaw_target = None
+        self._last_yaw_rate = 0.0
+        type_mask = GUIDED_MASK_VELOCITY
         if self._use_local_ned:
             yaw = self._yaw_rad
             vn = math.cos(yaw) * vel_x - math.sin(yaw) * vel_y
@@ -87,73 +122,73 @@ class VisualServo:
             frame = mavutil.mavlink.MAV_FRAME_BODY_NED
             out_vx, out_vy, out_vz = vel_x, vel_y, vel_z
 
-        time_boot_ms = 0
-        from valiant.common.mavlink_io import mavlink_io
+        self._send_position_target(
+            frame=frame,
+            type_mask=type_mask,
+            vx=out_vx,
+            vy=out_vy,
+            vz=out_vz,
+            yaw=0.0,
+            yaw_rate=0.0,
+        )
 
-        with mavlink_io(self.mav):
-            self.mav.mav.set_position_target_local_ned_send(
-                time_boot_ms,
-                self.mav.target_system,
-                self.mav.target_component,
-                frame,
-                type_mask,
-                0,
-                0,
-                0,
-                out_vx,
-                out_vy,
-                out_vz,
-                0,
-                0,
-                0,
-                0,
-                0,
-            )
+    def send_guided_yaw(self, yaw_rad: float) -> None:
+        """Hold absolute heading in GUIDED (LOCAL_NED + zero velocity + yaw)."""
+        self._stream_mode = "yaw"
+        self._last_yaw_target = yaw_rad
+        self.last_vel_body = (0.0, 0.0, 0.0)
+        self._send_position_target(
+            frame=mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+            type_mask=GUIDED_MASK_YAW,
+            vx=0.0,
+            vy=0.0,
+            vz=0.0,
+            yaw=yaw_rad,
+            yaw_rate=0.0,
+        )
+
+    def send_yaw_rate(self, yaw_rate: float) -> None:
+        """Rotate in place in GUIDED (zero velocity + yaw rate)."""
+        self._stream_mode = "yaw_rate"
+        self._last_yaw_rate = yaw_rate
+        self._last_yaw_target = None
+        self.last_vel_body = (0.0, 0.0, 0.0)
+        self._send_position_target(
+            frame=mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+            type_mask=GUIDED_MASK_YAW_RATE,
+            vx=0.0,
+            vy=0.0,
+            vz=0.0,
+            yaw=0.0,
+            yaw_rate=yaw_rate,
+        )
+
+    def clear_stream_target(self) -> None:
+        """Stop streaming without sending a conflicting GUIDED target."""
+        self._stream_mode = None
+        self._last_yaw_target = None
+        self._last_yaw_rate = 0.0
 
     def stop(self) -> None:
         self.last_vel_body = (0.0, 0.0, 0.0)
         self._smooth_right = 0.0
         self._smooth_vertical = 0.0
+        self._stream_mode = "velocity"
+        self._last_yaw_target = None
         self.send_velocity_body(0.0, 0.0, 0.0)
 
-    def resend_last_velocity(self) -> None:
+    def resend_last_guided(self) -> None:
+        """Resend active velocity, yaw-hold, or yaw-rate command (for 20 Hz stream)."""
+        if self._stream_mode == "yaw" and self._last_yaw_target is not None:
+            self.send_guided_yaw(self._last_yaw_target)
+            return
+        if self._stream_mode == "yaw_rate" and abs(self._last_yaw_rate) > 1e-6:
+            self.send_yaw_rate(self._last_yaw_rate)
+            return
         vx, vy, vz = self.last_vel_body
         if abs(vx) + abs(vy) + abs(vz) < 1e-6:
             return
         self.send_velocity_body(vx, vy, vz)
 
-    def send_yaw_rate(self, yaw_rate: float) -> None:
-        """Command yaw rate only (SEARCH scan) while holding position."""
-        type_mask = (
-            mavutil.mavlink.POSITION_TARGET_TYPEMASK_X_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_Y_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_Z_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_VX_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_VY_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_VZ_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_AX_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_AY_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_AZ_IGNORE
-            | mavutil.mavlink.POSITION_TARGET_TYPEMASK_YAW_IGNORE
-        )
-        from valiant.common.mavlink_io import mavlink_io
-
-        with mavlink_io(self.mav):
-            self.mav.mav.set_position_target_local_ned_send(
-                0,
-                self.mav.target_system,
-                self.mav.target_component,
-                mavutil.mavlink.MAV_FRAME_BODY_NED,
-                type_mask,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                yaw_rate,
-            )
+    def resend_last_velocity(self) -> None:
+        self.resend_last_guided()
