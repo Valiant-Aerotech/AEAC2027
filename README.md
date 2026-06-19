@@ -24,7 +24,7 @@ notepad config\vion.yaml    # set telemetry COM port when you have a radio
 python tools\valiant.py guide
 ```
 
-## What to run today
+## What to test
 
 | Goal | Command |
 |------|---------|
