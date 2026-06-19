@@ -44,12 +44,16 @@ function Test-ValiantWslReady {
 function Invoke-ValiantWsl {
     param(
         [Parameter(Mandatory = $true)]
-        [string[]]$WslArgs
+        [string[]]$WslArgs,
+        [string]$Distro = ""
     )
-    $distro = Get-ValiantWslDistro
-    if (-not $distro) {
+    if (-not $Distro) {
+        $Distro = Get-ValiantWslDistro
+    }
+    if (-not $Distro) {
         throw "No Ubuntu WSL distro found. Run: wsl -l -v"
     }
-    & wsl -d $distro @WslArgs
+    $allArgs = @('-d', $Distro, '--') + $WslArgs
+    & wsl @allArgs
     return $LASTEXITCODE
 }

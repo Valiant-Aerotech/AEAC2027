@@ -92,13 +92,37 @@ function Invoke-ValiantWslBashLc {
         throw "No Ubuntu WSL distro found. Run: wsl -l -v"
     }
     $cmd = ConvertTo-ValiantUnixShell -Text $Command
-    wsl -d $Distro bash -lc $cmd
-    return $LASTEXITCODE
+    # Pass -lc script as a single argument; unquoted wsl bash -lc $cmd re-parses
+    # semicolons and expands nested $TMP / $ec in PowerShell.
+    return (Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', $cmd))
+}
+
+function Install-ValiantWslRunner {
+    param([Parameter(Mandatory = $true)][string]$Distro)
+    $runnerWin = Join-Path $script:ValiantToolsDir "sitl\wsl_run.sh"
+    Assert-ValiantFile -Path $runnerWin -Purpose "WSL runner script"
+    $runnerWsl = (wsl -d $Distro wslpath -a $runnerWin).Trim()
+    $installCmd = ConvertTo-ValiantUnixShell -Text @"
+mkdir -p ~/.valiant/bin && sed 's/\r$//' '$runnerWsl' > ~/.valiant/bin/wsl_run.sh && chmod +x ~/.valiant/bin/wsl_run.sh
+"@
+    $code = Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', $installCmd)
+    if ($code -ne 0) {
+        throw "Failed to install WSL runner (~/.valiant/bin/wsl_run.sh)"
+    }
+}
+
+function Get-ValiantWslRunnerPath {
+    param([Parameter(Mandatory = $true)][string]$Distro)
+    $code = Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', 'test -x ~/.valiant/bin/wsl_run.sh')
+    if ($code -ne 0) {
+        Install-ValiantWslRunner -Distro $Distro
+    }
+    return '~/.valiant/bin/wsl_run.sh'
 }
 
 function Test-ValiantSitlBuilt {
     param([Parameter(Mandatory = $true)][string]$DistroName)
-    wsl -d $DistroName bash -lc "test -x ~/ardupilot/build/sitl/bin/arducopter" 2>$null | Out-Null
+    Invoke-ValiantWsl -Distro $DistroName -WslArgs @('bash', '-lc', 'test -x ~/ardupilot/build/sitl/bin/arducopter') | Out-Null
     return ($LASTEXITCODE -eq 0)
 }
 
@@ -123,13 +147,13 @@ echo -n '  build marker:      '; test -f ~/.valiant_ardupilot_sitl_built && echo
 "@
     Write-Host ""
     Write-Host "Last WSL script log:" -ForegroundColor Yellow
-    wsl -d $Distro bash -lc "tail -25 $LastLog 2>/dev/null || echo '(none)'"
+    Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', "tail -25 $LastLog 2>/dev/null || echo '(none)'")
     Write-Host ""
     Write-Host "Last setup log:" -ForegroundColor Yellow
-    wsl -d $Distro bash -lc "tail -25 $SetupLog 2>/dev/null || echo '(none)'"
+    Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', "tail -25 $SetupLog 2>/dev/null || echo '(none)'")
     Write-Host ""
     Write-Host "Last build log:" -ForegroundColor Yellow
-    wsl -d $Distro bash -lc "tail -15 $BuildLog 2>/dev/null || echo '(none)'"
+    Invoke-ValiantWsl -Distro $Distro -WslArgs @('bash', '-lc', "tail -15 $BuildLog 2>/dev/null || echo '(none)'")
     Write-ValiantHint "Docs: docs\runbooks\sitl-wsl.md"
     Write-ValiantHint "Run: python tools\valiant.py diagnose"
 }
@@ -158,16 +182,12 @@ function Invoke-ValiantWslBashScript {
 
     $ShForward = $WinScriptPath -replace '\\', '/'
     $WslScript = (wsl -d $distro wslpath -a $ShForward).Trim()
-    $argSuffix = ""
+    $runner = Get-ValiantWslRunnerPath -Distro $distro
+    $wslArgs = @('bash', $runner, $WslScript, $LogFile)
     if ($ExtraBashArgs.Count -gt 0) {
-        $quoted = ($ExtraBashArgs | ForEach-Object {
-            if ($_ -match '\s') { "'$($_ -replace "'", "'\\''")'" } else { $_ }
-        }) -join ' '
-        $argSuffix = " $quoted"
+        $wslArgs += $ExtraBashArgs
     }
-    # Use a single-quoted PS string so bash vars ($TMP, ${PIPESTATUS[0]}) are not expanded by PowerShell.
-    $bashCmd = 'set -o pipefail; TMP=$(mktemp); sed ''s/\r$//'' ''' + $WslScript + ''' > "$TMP"; bash "$TMP"' + $argSuffix + ' 2>&1 | tee -a ' + $LogFile + '; ec=${PIPESTATUS[0]}; rm -f "$TMP"; exit $ec'
-    $code = Invoke-ValiantWslBashLc -Distro $distro -Command $bashCmd
+    $code = Invoke-ValiantWsl -Distro $distro -WslArgs $wslArgs
 
     if ($code -ne 0 -and $TreatSitlBuiltAsSuccess -and (Test-ValiantSitlBuilt -DistroName $distro)) {
         Write-ValiantWarn "Exit code $code but arducopter is built; continuing."
