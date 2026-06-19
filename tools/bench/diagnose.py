@@ -143,6 +143,15 @@ def main() -> int:
     ):
         _line(ROOT.joinpath(doc).is_file(), doc)
 
+    print("\nSITL GCS STATUSTEXT")
+    _line(
+        ROOT.joinpath("tools/gcs/verify_sitl_statustext.py").is_file(),
+        "verify_sitl_statustext.py",
+    )
+    print("  With SITL running + MP on tcp:127.0.0.1:5762:")
+    print("    python tools\\valiant.py gcs verify-statustext")
+    print("  Expect T2: VERIFY in Mission Planner Messages (sysid 1 when mp_use_autopilot_sysid)")
+
     print()
     if all_ok:
         print("All critical checks passed.")

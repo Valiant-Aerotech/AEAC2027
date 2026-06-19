@@ -6,7 +6,7 @@ import time
 
 from pymavlink import mavutil
 
-from valiant.common.mavlink import send_statustext
+from valiant.common.mavlink import GcsStatustextOptions, send_statustext_for_gcs
 
 HUD_PREFIX = "T2: "
 MAX_STATUSTEXT_LEN = 50
@@ -21,12 +21,29 @@ class GcsHudReporter:
         *,
         prefix: str = HUD_PREFIX,
         interval_s: float = 3.0,
+        options: GcsStatustextOptions | None = None,
     ):
         self._master = master
         self._prefix = prefix
         self._interval_s = max(0.5, interval_s)
+        self._options = options or GcsStatustextOptions()
         self._last_sent = 0.0
         self._last_body = ""
+        self._mirror: mavutil.mavfile | None = None
+        mirror_url = self._options.sitl_mp_mirror
+        if mirror_url:
+            try:
+                self._mirror = mavutil.mavlink_connection(mirror_url)
+            except Exception as exc:
+                print(f"[GCS] WARN: sitl_mp_mirror connect failed ({mirror_url}): {exc}")
+
+    def close(self) -> None:
+        if self._mirror is not None:
+            try:
+                self._mirror.close()
+            except Exception:
+                pass
+            self._mirror = None
 
     def send(self, message: str, *, force: bool = False) -> None:
         body = message.strip()
@@ -40,7 +57,13 @@ class GcsHudReporter:
                 return
             if now - self._last_sent < self._interval_s:
                 return
-        send_statustext(self._master, body, prefix=self._prefix)
+        send_statustext_for_gcs(
+            self._master,
+            body,
+            prefix=self._prefix,
+            options=self._options,
+            mirror=self._mirror,
+        )
         self._last_body = body
         self._last_sent = now
 

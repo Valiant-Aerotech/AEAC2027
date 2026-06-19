@@ -41,9 +41,10 @@ from valiant.common.camera_factory import (
 from valiant.common.config import load_config
 from valiant.common.mavlink import (
     connect,
+    gcs_statustext_options_from_cfg,
     request_sitl_telemetry_streams,
     request_sys_status_stream,
-    send_gcs_heartbeat,
+    send_companion_heartbeat,
     send_rtl,
 )
 from valiant.common.mavlink_io import mavlink_io
@@ -149,9 +150,11 @@ class AutoExtinguisher:
 
         self.nav = MavlinkDriver(self.master, cfg)
         gcs_cfg = cfg.get("gcs_monitor", {})
+        self._gcs_statustext_opts = gcs_statustext_options_from_cfg(cfg, sitl=sitl_mode)
         self._gcs_hud = GcsHudReporter(
             self.master,
             interval_s=float(gcs_cfg.get("statustext_interval_s", 3.0)),
+            options=self._gcs_statustext_opts,
         )
         self._gcs_motion_events = bool(gcs_cfg.get("motion_events", True))
         self.gimbal = GimbalController(self.master, cfg)
@@ -686,7 +689,7 @@ class AutoExtinguisher:
                 takeoff_alt = float(self.cfg.get("sitl", {}).get("takeoff_alt_m", 5.0))
                 preflight_timeout = float(self.cfg.get("sitl", {}).get("preflight_timeout_s", 75.0))
                 request_sitl_telemetry_streams(self.master)
-                send_gcs_heartbeat(self.master)
+                send_companion_heartbeat(self.master)
                 ready, reason = verify_sitl_motion_ready(
                     self.master,
                     min_alt_m=takeoff_alt * 0.85,
@@ -715,7 +718,7 @@ class AutoExtinguisher:
                     ekf_wait_s=ekf_wait,
                 )
                 request_sitl_telemetry_streams(self.master)
-                send_gcs_heartbeat(self.master)
+                send_companion_heartbeat(self.master)
                 print(f"[SITL] T+preflight {time.time() - self._sitl_boot_t:.1f}s")
             else:
                 print("[SITL] Skipping preflight (assume already armed/airborne)")
@@ -725,7 +728,7 @@ class AutoExtinguisher:
                 preflight_timeout = float(self.cfg.get("sitl", {}).get("preflight_timeout_s", 75.0))
                 ekf_wait = float(self.cfg.get("sitl", {}).get("ekf_wait_s", 60.0))
                 request_sitl_telemetry_streams(self.master)
-                send_gcs_heartbeat(self.master)
+                send_companion_heartbeat(self.master)
                 ready, reason = verify_sitl_motion_ready(
                     self.master, min_alt_m=takeoff_alt * 0.85, sample_s=5.0
                 )
@@ -745,7 +748,7 @@ class AutoExtinguisher:
                 else:
                     print(f"[SITL] Skip-preflight OK ({reason})")
                 request_sitl_telemetry_streams(self.master)
-                send_gcs_heartbeat(self.master)
+                send_companion_heartbeat(self.master)
             self._sitl_preflight_done = True
             self._sitl_recover_startup_pose()
             if (
@@ -781,7 +784,7 @@ class AutoExtinguisher:
                     break
 
                 if self.sitl and time.time() - self._last_gcs_heartbeat > 1.0:
-                    send_gcs_heartbeat(self.master)
+                    send_companion_heartbeat(self.master)
                     self._last_gcs_heartbeat = time.time()
 
                 if self.state in (STATE_APPROACHING, STATE_AIMING, STATE_SEARCHING, STATE_REPOSITION):

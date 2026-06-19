@@ -98,6 +98,10 @@ def cmd_gcs_monitor(args: argparse.Namespace) -> int:
     return _run("gcs/mission_monitor.py", args.extra)
 
 
+def cmd_gcs_verify_statustext(args: argparse.Namespace) -> int:
+    return _run("gcs/verify_sitl_statustext.py", args.extra)
+
+
 def cmd_gcs_listen(args: argparse.Namespace) -> int:
     return _run("gcs/mavproxy_listen.py", args.extra)
 
@@ -251,6 +255,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("spray", cmd_gcs_spray),
         ("monitor", cmd_gcs_monitor),
         ("listen", cmd_gcs_listen),
+        ("verify-statustext", cmd_gcs_verify_statustext),
     ):
         sp = s.add_parser(name)
         sp.add_argument("extra", nargs=argparse.REMAINDER)

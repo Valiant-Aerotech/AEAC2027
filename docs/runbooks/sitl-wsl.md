@@ -134,7 +134,23 @@ If 5762 fails, try **5763**, or check the ArduCopter console for `Serial port N 
   - Every ~3 s: compact status, e.g. `APPROACH N3E0 z5m tgt rng1.2m follow`
   - In AIMING: `blk:not_aimed,too_far_wall` when fire prerequisites are not met
 
-Tune rate in `config/vion.yaml` → `gcs_monitor.statustext_interval_s` (inherited by `rpas.yaml`).
+SITL sends STATUSTEXT on the **5760** companion link **and** duplicates with the autopilot sysid (comp 191) so Mission Planner on **5762** shows the same lines. Companion heartbeats use `MAV_TYPE_ONBOARD_CONTROLLER` (not GCS).
+
+**Verify without a full mission** (SITL running, MP on 5762):
+
+```powershell
+python tools\valiant.py gcs verify-statustext
+```
+
+Expect `T2: VERIFY statustext` in Messages. If missing, open MAVLink Inspector (Ctrl+F), filter `STATUSTEXT`, and confirm sysid 1 / comp 191. Tune `config/vion.yaml` → `gcs_monitor`:
+
+| Key | Default (SITL) | Purpose |
+|-----|----------------|---------|
+| `statustext_interval_s` | 3.0 | Periodic status rate |
+| `statustext_severity` | `notice` | MP visibility (`info` is quieter) |
+| `mp_use_autopilot_sysid` | `true` | Duplicate as FC sysid for MP Messages |
+| `debug_statustext` | `false` | Log each send to mission terminal |
+| `sitl_mp_mirror` | (unset) | Optional `udpout:...` duplicate if MP still misses lines |
 
 **What Mission Planner will not show:**
 
