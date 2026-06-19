@@ -16,7 +16,7 @@ bash hardware/vion/rpi/preflight_indoor.sh
 - [ ] Emergency RC switch tested
 - [ ] Water tank filled; SERVO15 verified
 - [ ] Spotter assigned; RC pilot ready to override
-- [ ] GCS `.\tools\run_monitor.ps1` (optional)
+- [ ] GCS `python tools\valiant.py gcs monitor` (optional)
 
 ## Run flight
 
@@ -28,7 +28,7 @@ python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1 \
 
 ```powershell
 # GCS
-.\tools\run_monitor.ps1
+python tools\valiant.py gcs monitor
 ```
 
 ## Pass criteria (Phase E)

@@ -7,21 +7,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-
-@dataclass
-class VehiclePose:
-    """Latest vehicle state in LOCAL NED (metres, radians)."""
-
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
-    roll: float = 0.0
-    pitch: float = 0.0
-    yaw: float = 0.0
-    vx: float = 0.0
-    vy: float = 0.0
-    vz: float = 0.0
-    ok: bool = False
+from valiant.common.ned_kinematics import VehiclePose, rot_body_from_ned
 
 
 def pwm_to_gimbal_pitch_deg(
@@ -76,7 +62,7 @@ def relative_target_body(pose: VehiclePose, target_ned: tuple[float, float, floa
         ],
         dtype=float,
     )
-    r_bn = _rot_body_from_ned(pose.roll, pose.pitch, pose.yaw)
+    r_bn = rot_body_from_ned(pose.roll, pose.pitch, pose.yaw)
     return r_bn.T @ rel_ned
 
 
@@ -117,16 +103,6 @@ def target_display_color(spec: dict) -> tuple[int, int, int]:
     return tuple(spec.get("color", [180, 50, 180]))
 
 
-def _rot_body_from_ned(roll: float, pitch: float, yaw: float) -> np.ndarray:
-    cr, sr = math.cos(roll), math.sin(roll)
-    cp, sp = math.cos(pitch), math.sin(pitch)
-    cy, sy = math.cos(yaw), math.sin(yaw)
-    rx = np.array([[1, 0, 0], [0, cr, -sr], [0, sr, cr]])
-    ry = np.array([[cp, 0, sp], [0, 1, 0], [-sp, 0, cp]])
-    rz = np.array([[cy, -sy, 0], [sy, cy, 0], [0, 0, 1]])
-    return rz @ ry @ rx
-
-
 def _rot_camera_from_body(gimbal_pitch_deg: float) -> np.ndarray:
     """Pitch camera about body Y (right); positive = look down."""
     a = math.radians(gimbal_pitch_deg)
@@ -165,7 +141,7 @@ def project_target_ned(
         ],
         dtype=float,
     )
-    r_bn = _rot_body_from_ned(pose.roll, pose.pitch, pose.yaw)
+    r_bn = rot_body_from_ned(pose.roll, pose.pitch, pose.yaw)
     rel_body = r_bn.T @ rel_ned
     rel_cam = _rot_camera_from_body(gimbal_pitch_deg) @ rel_body
 

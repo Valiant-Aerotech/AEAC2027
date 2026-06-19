@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from valiant.autonomy.packets import MetricPacket
+
 
 def scale_approach_speed_metric(
     approach_speed: float,
@@ -23,16 +25,25 @@ def scale_approach_speed_metric(
     return max(creep_speed, tapered)
 
 
-def effective_approach_speed(cfg: dict, distance_m: float | None, *, creep: bool = False) -> float:
+def metric_planner_range(metric: MetricPacket | None) -> float | None:
+    if metric is None:
+        return None
+    return metric.planner_range_m()
+
+
+def effective_approach_speed(
+    cfg: dict, metric: MetricPacket | None, *, creep: bool = False
+) -> float:
     nav = cfg.get("auto_nav", {})
-    metric = cfg.get("metric_recon", {})
+    metric_cfg = cfg.get("metric_recon", {})
     base = float(nav.get("approach_speed", 0.25))
     if creep:
         base = min(base, float(nav.get("creep_speed", 0.10)))
+    dist = metric_planner_range(metric)
     return scale_approach_speed_metric(
         base,
-        distance_m,
-        fire_distance_m=float(metric.get("fire_distance_m", 0.8)),
+        dist,
+        fire_distance_m=float(metric_cfg.get("fire_distance_m", 0.8)),
         slow_zone_m=float(nav.get("approach_slow_zone_m", 2.5)),
         creep_speed=float(nav.get("creep_speed", 0.10)),
     )

@@ -199,8 +199,8 @@ class SitlMotionStack:
             and wall_range < self._cfg.backoff_m
         ):
             backoff_reason = "wall backoff zone"
-        elif metric is not None and metric.distance_m is not None:
-            if metric.distance_m < self._cfg.fire_distance_m:
+        elif metric is not None and metric.planner_range_m() is not None:
+            if metric.planner_range_m() < self._cfg.fire_distance_m:
                 backoff_reason = "inside fire distance"
         elif (
             wall_range is not None
@@ -232,12 +232,21 @@ class SitlMotionStack:
                 vz = compute_altitude_vz(
                     pose, scene, **self._altitude_kwargs(state=state, has_target=True)
                 )
+            if metric is not None and metric.altitude_error_m is not None:
+                from valiant.autonomy.metric_recon.geometry_3d import metric_vz_from_altitude_error
+
+                vz_metric = metric_vz_from_altitude_error(
+                    metric.altitude_error_m,
+                    kp=self._cfg.altitude_kp,
+                    max_vz=self._cfg.max_vz,
+                )
+                vz = 0.5 * vz + 0.5 * vz_metric
             if state == "AIMING":
                 needs_creep = False
                 if wall_range is not None and wall_range > self._cfg.fire_distance_m + 0.2:
                     needs_creep = True
-                elif metric is not None and metric.distance_m is not None:
-                    if metric.distance_m > self._cfg.fire_distance_m + 0.12:
+                elif metric is not None and metric.planner_range_m() is not None:
+                    if metric.planner_range_m() > self._cfg.fire_distance_m + 0.12:
                         needs_creep = True
                 if needs_creep:
                     spd = min(approach_speed, self._cfg.creep_speed)
@@ -252,7 +261,7 @@ class SitlMotionStack:
                 )
             spd = approach_speed
             if scene is not None:
-                dist = metric.distance_m
+                dist = metric.planner_range_m()
                 spd = scale_approach_speed(
                     pose,
                     scene,
@@ -290,6 +299,12 @@ class SitlMotionStack:
                     wall_standoff_m=self._cfg.wall_standoff_m,
                     creep_speed=self._cfg.creep_speed,
                     home_south_limit_m=self._cfg.home_south_limit_m,
+                    max_vz=self._cfg.max_vz,
+                    kp_z=self._cfg.altitude_kp,
+                    cruise_alt_m=self._cfg.cruise_alt_m,
+                    descent_wall_range_m=self._cfg.descent_wall_range_m,
+                    min_ground_clearance_m=self._cfg.min_ground_clearance_m,
+                    alt_offset_m=self._cfg.alt_offset_m,
                 )
                 if motion is not None:
                     vn, ve = motion.vn, motion.ve

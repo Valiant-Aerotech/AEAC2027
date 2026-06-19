@@ -130,7 +130,7 @@ Harder scripted angles (timeline, no physics link):
 ## Visual feedback
 
 - **OpenCV window:** omit `--headless` on orchestrator (draw_overlay shows state + bbox)
-- **Text monitor:** `run_sitl_mission.ps1` opens one automatically, or run `.\tools\run_monitor.ps1` (UDP port 14560 on localhost)
+- **Text monitor:** `run_sitl_mission.ps1` opens one automatically, or run `python tools\valiant.py gcs monitor` (UDP port 14560 on localhost)
 
 ## Integration tests
 

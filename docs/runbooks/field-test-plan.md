@@ -15,9 +15,9 @@ Phased validation from bench to competition. Each phase has pass criteria before
 | 0.1 | Environment | `python tools\verify_env.py` | All required packages OK |
 | 0.2 | CONOPS config | `python tools\conops_check.py` | PASSED |
 | 0.3 | Safety logic | `python tools\safety_bench_test.py` | Battery, geofence, timeout aborts |
-| 0.4 | CV dry detection | `python tools\cv_bench_test.py --camera 0` | Purple dry targets boxed on synthetic or printed circles |
-| 0.5 | CV shot detection | Wet a blue test circle, run cv_bench_test | Shot list populates after wetting |
-| 0.6 | Metric pipeline | `python tools\metric_bench_test.py --camera 0` | distance_m and side_clearance_m print steadily |
+| 0.4 | CV dry detection | `python tools\valiant.py bench cv --camera 0` | Purple dry targets boxed on synthetic or printed circles |
+| 0.5 | CV shot detection | Wet a blue test circle, run bench cv | Shot list populates after wetting |
+| 0.6 | Metric pipeline (3D) | `python tools\valiant.py bench metric --camera 0` | distance_m, horizontal_range_m, altitude_error_m print steadily |
 | 0.7 | Sim orchestrator | `python missions\task2_vion_auto_extinguish.py --sim --max-targets 1` | State machine reaches VERIFYING or COMPLETE without crash |
 | 0.8 | SITL closed loop | WSL: `.\tools\launch_sitl.ps1`; then `.\tools\run_sitl_mission.ps1 -Profile sitl` | Monitor shows APPROACHING; SITL armed GUIDED; velocity non-zero when target off-centre |
 

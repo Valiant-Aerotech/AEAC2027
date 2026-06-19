@@ -6,7 +6,31 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from valiant.common.sitl_physics import VehiclePose, nearest_active_target_ned
+import numpy as np
+
+from valiant.common.ned_kinematics import (
+    ApproachGoal,
+    ApproachPhase,
+    VehiclePose,
+    apply_wall_constraint,
+    compute_approach_goal,
+    compute_altitude_vz,
+    ned_to_body_velocity,
+    scale_speed_by_range,
+    velocity_toward_goal,
+    wall_north_m,
+)
+from valiant.common.sitl_physics import nearest_active_target_ned
+
+__all__ = [
+    "SearchMotion",
+    "wall_north_m",
+    "ned_to_body_velocity",
+    "compute_search_motion",
+    "scale_approach_speed",
+    "compute_altitude_vz",
+    "compute_reposition_motion",
+]
 
 
 @dataclass(frozen=True)
@@ -21,20 +45,6 @@ class SearchMotion:
     reason: str = ""
 
 
-def wall_north_m(scene: dict[str, Any]) -> float | None:
-    wall = scene.get("wall")
-    if not wall:
-        return None
-    return float(wall.get("x_m", 5.0))
-
-
-def ned_to_body_velocity(pose: VehiclePose, vn: float, ve: float, vz: float = 0.0) -> tuple[float, float, float]:
-    cy, sy = math.cos(pose.yaw), math.sin(pose.yaw)
-    vx = vn * cy + ve * sy
-    vy = -vn * sy + ve * cy
-    return vx, vy, vz
-
-
 def compute_search_motion(
     pose: VehiclePose,
     scene: dict[str, Any],
@@ -43,8 +53,14 @@ def compute_search_motion(
     wall_standoff_m: float = 0.6,
     creep_speed: float = 0.12,
     home_south_limit_m: float = -1.0,
+    max_vz: float = 0.12,
+    kp_z: float = 0.22,
+    cruise_alt_m: float | None = None,
+    descent_wall_range_m: float = 4.5,
+    min_ground_clearance_m: float = 1.5,
+    alt_offset_m: float = 0.0,
 ) -> SearchMotion | None:
-    """Reposition in LOCAL NED toward target; back up only when north of wall standoff."""
+    """3D reposition in LOCAL NED toward target."""
     if not pose.ok:
         return None
     targets = scene.get("targets", [])
@@ -53,25 +69,45 @@ def compute_search_motion(
         return None
 
     wall_x = wall_north_m(scene)
-    dn = target[0] - pose.x
-    de = target[1] - pose.y
-    dist_h = math.hypot(dn, de)
-    if dist_h < 0.12:
+    dist_3d = math.sqrt(
+        (target[0] - pose.x) ** 2 + (target[1] - pose.y) ** 2 + (target[2] - pose.z) ** 2
+    )
+    if dist_3d < 0.12:
         return None
 
     if wall_x is not None and pose.x > wall_x - wall_standoff_m:
         vn = -abs(search_speed)
         ve = 0.0
+        vz_ned = compute_altitude_vz(
+            pose, scene,
+            min_ground_clearance_m=min_ground_clearance_m,
+            kp_z=kp_z, max_vz=max_vz,
+            alt_offset_m=alt_offset_m,
+            cruise_alt_m=cruise_alt_m,
+            descent_wall_range_m=descent_wall_range_m,
+        )
         reason = "backup past wall"
     else:
         speed = creep_speed if (wall_x is None or pose.x < wall_x - 3.0) else min(creep_speed, search_speed)
-        vn = speed * dn / dist_h
-        ve = speed * de / dist_h
+        goal = compute_approach_goal(
+            pose, target, scene,
+            cruise_alt_m=cruise_alt_m,
+            descent_wall_range_m=descent_wall_range_m,
+            align_to_target=False,
+            alt_offset_m=alt_offset_m,
+            min_clearance_m=min_ground_clearance_m,
+        )
+        v_ned = velocity_toward_goal(
+            pose, goal, speed_m_s=speed, max_vz=max_vz, kp_z=kp_z,
+            min_clearance_m=min_ground_clearance_m,
+        )
+        v_ned = apply_wall_constraint(v_ned, pose, wall_x, wall_standoff_m)
+        vn, ve, vz_ned = float(v_ned[0]), float(v_ned[1]), float(v_ned[2])
         if pose.x < home_south_limit_m:
             vn = max(vn, speed * 0.5)
         reason = "creep toward target"
 
-    vx, vy, vz = ned_to_body_velocity(pose, vn, ve)
+    vx, vy, vz = ned_to_body_velocity(pose, vn, ve, vz_ned)
     return SearchMotion(vx, vy, vz, vn=vn, ve=ve, reason=reason)
 
 
@@ -86,91 +122,22 @@ def scale_approach_speed(
     fire_distance_m: float | None = None,
 ) -> float:
     """Reduce forward speed near the wall to prevent overshoot."""
-    wall_x = wall_north_m(scene)
-    if wall_x is None or not pose.ok:
-        spd = approach_speed
-    else:
-        wall_range = wall_x - pose.x
-        if fire_distance_m is not None:
-            room = wall_range - fire_distance_m
-            stop_range = fire_distance_m + 0.1
-        else:
-            room = wall_range - wall_standoff_m
-            stop_range = wall_standoff_m
-        if room <= 0:
-            return 0.0
-        if pose.vx > 0.03 and wall_range - pose.vx * 1.2 < stop_range:
-            return 0.0
-        if room >= slow_zone_m:
-            spd = approach_speed
-        else:
-            ratio = max(room / slow_zone_m, 0.0)
-            spd = approach_speed * ratio * ratio
-
-    if metric_distance_m is not None and fire_distance_m is not None:
-        if metric_distance_m <= fire_distance_m:
-            return 0.0
-        standoff_band = fire_distance_m * 1.8
-        if metric_distance_m < standoff_band:
-            ratio = (metric_distance_m - fire_distance_m) / max(standoff_band - fire_distance_m, 0.1)
-            spd = min(spd, approach_speed * ratio * ratio)
-    return spd
-
-
-def compute_altitude_vz(
-    pose: VehiclePose,
-    scene: dict[str, Any],
-    *,
-    min_ground_clearance_m: float = 1.5,
-    kp_z: float = 0.22,
-    max_vz: float = 0.12,
-    alt_offset_m: float = 0.0,
-    cruise_alt_m: float | None = None,
-    descent_wall_range_m: float = 4.5,
-    align_to_target: bool = False,
-) -> float:
-    """NED vz (down positive): cruise high far from wall, descend to target altitude in close."""
-    if not pose.ok:
-        return 0.0
-    target = nearest_active_target_ned(pose, scene.get("targets", []))
-    if target is None:
-        return 0.0
-
-    target_alt_m = -float(target[2])
-    wall_x = wall_north_m(scene)
-    wall_range = (wall_x - pose.x) if wall_x is not None else None
-
-    descend_for_range = (
-        wall_range is not None and wall_range <= descent_wall_range_m
+    target = nearest_active_target_ned(pose, scene.get("targets", [])) if scene else None
+    return scale_speed_by_range(
+        pose,
+        scene,
+        approach_speed,
+        wall_standoff_m=wall_standoff_m,
+        slow_zone_m=slow_zone_m,
+        fire_distance_m=fire_distance_m,
+        metric_distance_m=metric_distance_m,
+        target_ned=target,
     )
-    if align_to_target or descend_for_range:
-        desired_alt_m = target_alt_m + alt_offset_m
-    elif cruise_alt_m is not None:
-        desired_alt_m = cruise_alt_m
-    else:
-        desired_alt_m = target_alt_m + alt_offset_m
-
-    desired_alt_m = max(desired_alt_m, min_ground_clearance_m)
-    desired_z = -desired_alt_m
-    clearance_z = -min_ground_clearance_m
-    current_alt_m = -pose.z
-
-    if current_alt_m < min_ground_clearance_m - 0.05:
-        err = clearance_z - pose.z
-        vz = kp_z * err
-        return max(-max_vz, min(0.0, vz))
-
-    err = desired_z - pose.z
-    if abs(err) < 0.12:
-        return 0.0
-    vz = kp_z * err
-    if vz > 0 and pose.z >= desired_z - 0.05:
-        vz = 0.0
-    return max(-max_vz, min(max_vz, vz))
 
 
 def compute_reposition_motion(
     pose: VehiclePose,
+    scene: dict[str, Any] | None = None,
     *,
     retreat_alt_m: float = 2.5,
     retreat_home_north_m: float = 1.0,
@@ -184,12 +151,14 @@ def compute_reposition_motion(
         return 0.0, 0.0, 0.0, False
     alt_m = -pose.z
     east_err = pose.y - lane_center_east_m
-    vn = ve = 0.0
-    vz = 0.0
+    goal_pos = np.array([retreat_home_north_m, lane_center_east_m, -retreat_alt_m], dtype=float)
+    goal = ApproachGoal(goal_pos, ApproachPhase.RETREAT)
+    v_ned = velocity_toward_goal(pose, goal, speed_m_s=speed, max_vz=max_vz, kp_z=0.22)
+    vn, ve, vz = float(v_ned[0]), float(v_ned[1]), float(v_ned[2])
     if pose.x > retreat_home_north_m:
-        vn = -abs(speed)
+        vn = min(vn, -abs(speed))
     if alt_m < retreat_alt_m - 0.15:
-        vz = -min(max_vz, abs(speed))
+        vz = min(vz, -min(max_vz, abs(speed)))
     if abs(east_err) > lane_tolerance_m:
         ve = -math.copysign(speed * 0.6, east_err)
     vx, vy, vz_b = ned_to_body_velocity(pose, vn, ve, vz)

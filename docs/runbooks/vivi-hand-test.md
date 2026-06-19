@@ -17,7 +17,7 @@ python hardware/vion/rpi/test_gimbal_sweep.py --profile vivi
 
 ```powershell
 cd A:\Code\Valiant-Aerotech\AEAC2027
-.\tools\run_monitor.ps1
+python tools\valiant.py gcs monitor
 ```
 
 Mission Planner @ 57600 (telemetry radio) — heartbeat OK.

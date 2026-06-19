@@ -34,7 +34,7 @@ Write-Host "[4/4] Automated checks done." -ForegroundColor Green
 Write-Host ""
 Write-Host "Interactive steps (hold purple target in center 224x224 box):" -ForegroundColor Cyan
 Write-Host "  python tools\yolo_webcam_test.py --camera 0"
-Write-Host "  python tools\cv_bench_test.py --camera 0"
-Write-Host "  python tools\metric_bench_test.py --camera 0"
+Write-Host "  python tools\valiant.py bench cv --camera 0"
+Write-Host "  python tools\valiant.py bench metric --camera 0"
 Write-Host "  python missions\task2_vion_manual_photo.py --camera 0"
 Write-Host "  python missions\task2_vion_auto_extinguish.py --sim --source webcam --camera 0 --max-targets 1"

@@ -59,6 +59,24 @@ def test_fire_blockers_trigger_approach_remediation():
     assert planner.needs_approach_remediation(blockers)
 
 
+def test_altitude_not_aligned_blocks_fire():
+    planner = _planner()
+    planner.update_approach_tracking(_metric(distance_m=3.0, distance_max_m=3.0))
+    metric = _metric(
+        distance_m=0.85,
+        distance_min_m=0.85,
+        distance_max_m=0.85,
+        altitude_error_m=0.5,
+    )
+    blockers = planner.fire_blockers(
+        metric, lock_duration_met=True, wall_range_m=0.9, wall_standoff_m=1.2
+    )
+    assert "altitude_not_aligned" in blockers
+    assert not planner.can_fire(
+        metric, lock_duration_met=True, wall_range_m=0.9, wall_standoff_m=1.2
+    )
+
+
 def test_scale_approach_speed_tapers_near_target():
     from valiant.autonomy.auto_nav.approach_motion import scale_approach_speed_metric
 

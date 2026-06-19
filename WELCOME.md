@@ -9,8 +9,8 @@ git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
 git checkout main
 .\tools\setup.ps1
-python tools\verify_env.py
-python tools\conops_check.py
+python tools\valiant.py env check
+python tools\valiant.py conops check
 ```
 
 Read [ONBOARDING.md](ONBOARDING.md) then [docs/architecture.md](docs/architecture.md). All development is on **`main`**; see [docs/branches.md](docs/branches.md).
@@ -29,9 +29,9 @@ Open [GitHub Issues](https://github.com/Valiant-Aerotech/AEAC2027/issues) and fi
 
 **Recommended first issues for new members:**
 
-1. [#60 C10](https://github.com/Valiant-Aerotech/AEAC2027/issues/60) - Outdoor HSV tuning (print purple circles, run `cv_bench_test.py`)
-2. [#61 C11](https://github.com/Valiant-Aerotech/AEAC2027/issues/61) - Record footage, run `cv_regression_test.py`
-3. [#47 A8](https://github.com/Valiant-Aerotech/AEAC2027/issues/47) - Help maintain GitHub Projects board
+1. [#21 C10](https://github.com/Valiant-Aerotech/AEAC2027/issues/21) - Outdoor HSV tuning (`python tools/valiant.py bench cv`)
+2. [#22 C11](https://github.com/Valiant-Aerotech/AEAC2027/issues/22) - Record footage, `valiant bench cv --regression`
+3. [#8 A8](https://github.com/Valiant-Aerotech/AEAC2027/issues/8) - Help maintain GitHub Projects board
 
 ## Module map (whiteboard)
 
@@ -39,7 +39,7 @@ Open [GitHub Issues](https://github.com/Valiant-Aerotech/AEAC2027/issues) and fi
 CV -> Metric Recon -> Auto-Nav -> Spray -> Upload
 ```
 
-Code lives in `src/valiant/autonomy/`. You only run scripts in `missions/` and `tools/`.
+Code lives in `src/valiant/autonomy/`. Run missions from `missions/` or `hardware/vion/rpi/`. Dev tools: `python tools/valiant.py --help` ([tools/README.md](tools/README.md)).
 
 ## Rules
 

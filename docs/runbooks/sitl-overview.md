@@ -82,7 +82,7 @@ Dashboard label: **`SIM`** = timeline synthetic, **`PHYSICS`** = pose-linked cam
 | `tests/fixtures/sitl_synthetic_multi.json` | Default world (2 targets in fixture; launcher uses `--max-targets 1`) |
 | `tests/fixtures/sitl_physics_wall.json` | Single wall + targets for physics camera |
 | `tests/fixtures/sitl_home.json` | SITL GPS home (map anchor) |
-| `tests/fixtures/sitl_map/manifest.json` | Optional satellite top-down (run `tools/download_sitl_map.py`) |
+| `tests/fixtures/sitl_map/manifest.json` | Optional satellite top-down (`python tools/valiant.py sitl map download`) |
 
 Override only when needed: `-Scenario tests\fixtures\sitl_approach_hard.json`
 
@@ -91,24 +91,24 @@ Override only when needed: `-Scenario tests\fixtures\sitl_approach_hard.json`
 ```
 src/valiant/autonomy/
   orchestrator.py          # --sitl, preflight, dashboard, state machine
-  sitl_motion.py           # Backoff → Follow → Search → Hold → Reposition
+  sitl_motion.py           # Backoff → Follow → Search → Hold → Reposition (3D NED)
   sitl_preflight.py        # EKF wait, GUIDED, arm, takeoff
-  sitl_search.py           # Search pattern, altitude PID, wall standoff
-  cv/sitl_map_view.py      # Combined OpenCV dashboard
-  cv/sitl_hud.py           # HUD primitives
+  sitl_search.py           # 3D search creep, approach speed, altitude
 
 src/valiant/common/
-  sitl_physics.py          # NED pose drain, target projection
+  ned_kinematics.py        # Rotation matrices, 3D velocity planning, VehiclePose
+  sitl_physics.py          # Pose drain, target projection
   synthetic_target_camera.py   # Timeline + pose-linked keyframes
   physics_synthetic_camera.py  # Full pose-linked renderer
   sitl_map_asset.py        # Satellite crop for top-down
 
 tools/
+  valiant.py               # Unified CLI (bench, gcs, sitl, calibrate, conops)
+  README.md                # Task → command index
   launch_sitl.ps1          # WSL ArduPilot launcher
-  run_sitl_mission.ps1     # One-command mission + monitor
-  run_sitl_tests.ps1       # pytest SITL integration + motion/search unit tests
+  run_sitl_mission.ps1     # Thin wrapper → valiant sitl mission
+  run_sitl_tests.ps1       # pytest SITL + motion unit tests
   sitl/launch_sitl.sh      # Called from WSL
-  mission_monitor.py       # UDP telemetry HUD
 
 tests/sitl/                # Integration tests (need SITL running)
 tests/fixtures/sitl_*      # Worlds and timelines
@@ -131,17 +131,15 @@ Standalone CV training scripts live in `src/valiant/cv/` (merged from `feature/C
 ## Tests
 
 ```powershell
-# Unit (no SITL)
-.\tools\run_sitl_tests.ps1   # skips integration if SITL not running; or:
-$env:PYTHONPATH="src"
-python -m pytest tests/test_sitl_motion.py tests/test_sitl_search.py tests/test_sitl_dashboard.py -q
+python tools\valiant.py sitl test
+# or: .\tools\run_sitl_tests.ps1
 
-# Integration (SITL must be running on tcp:5760)
-python -m pytest tests/sitl -m sitl -q
+# 3D kinematics + metric geometry (no SITL)
+python -m pytest tests/test_ned_kinematics.py tests/test_metric_geometry_3d.py -q
 ```
 
 ## Next improvements (optional)
 
 - Hybrid profile: `--sitl` + scrcpy/YOLO for real CV against sim FC
 - Ring-target HSV tuning from field photos in scenario colours
-- Field validation on Vivi bench and competition hardware
+- Field validation on Vivi bench: confirm 3D metric recon vs tape measure on hardware

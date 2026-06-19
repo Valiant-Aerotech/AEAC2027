@@ -45,6 +45,6 @@ Write-Host ""
 Write-Host "5. Pi deploy (when Pi is online):" -ForegroundColor Yellow
 Write-Host "   .\tools\deploy_to_pi.ps1 -PiHost <user>@<pi-ip>"
 Write-Host "   .\tools\run_calibration_pipeline.ps1 -PiHost <user>@<pi-ip>"
-Write-Host "   .\tools\run_monitor.ps1"
+Write-Host "   python tools/valiant.py gcs monitor"
 Write-Host ""
 Write-Host "See docs\runbooks\vion-bringup.md"

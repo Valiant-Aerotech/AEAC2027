@@ -37,6 +37,7 @@ sitl:
   altitude_kp: 0.22                      # NED vz gain to level with target height
   max_vz: 0.14                           # cap vertical speed (m/s) — safe descent
   alt_offset_m: -0.15                    # slight bias downward so AIMING settles closer to target center
+  alt_align_tolerance_m: 0.25              # SITL fire gate on metric altitude alignment
   retreat_alt_m: 5.0                     # climb after each kill before next search
   retreat_home_north_m: 4.0               # back south to this N before next search
   complete_hold_s: 5.0                   # keep streaming zero velocity briefly before mission exit
@@ -82,6 +83,9 @@ metric_recon:
   target_diameter_m: 0.30               # legacy single-value fallback
   min_approach_distance_m: 2.0
   fire_distance_m: 0.8
+  alt_align_tolerance_m: 0.25           # fire/aim gate on altitude_error_m
+  altitude_kp: 0.22                     # onboard vz from altitude_error_m
+  alt_offset_m: -0.15
   wall_offset_m: 0.0
   camera_down: true
   rangefinder_stale_s: 1.0
@@ -234,6 +238,7 @@ auto_nav:
   approach_slow_zone_m: 2.5              # taper approach inside this range (m)
   closing_rate_m_s: 0.05                 # brake if closing faster than this
   side_clearance_m: 1.0
+  lateral_pixel_blend: 0.3               # pixel PD weight for lateral fine-tune (world-primary motion)
   target_lock_area_px: 15000
   approach_timeout_s: 90
   lock_duration_s: 1.5

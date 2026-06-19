@@ -8,7 +8,9 @@ from valiant.autonomy.packets import MetricPacket
 from valiant.autonomy.spray.aim import is_aimed
 
 # Blockers that mean "move closer / prove approach" rather than hold in place.
-APPROACH_REMEDIATION_BLOCKERS = frozenset({"approach_not_proven", "too_far_wall", "too_far_metric"})
+APPROACH_REMEDIATION_BLOCKERS = frozenset({
+    "approach_not_proven", "too_far_wall", "too_far_metric", "altitude_not_aligned",
+})
 CENTER_REMEDIATION_BLOCKERS = frozenset({"not_aimed"})
 
 
@@ -31,6 +33,12 @@ class MotionPlanner:
         self.side_clearance_m = nav.get("side_clearance_m", 1.0)
         self.target_lock_area_px = nav.get("target_lock_area_px", 15000)
         self.deadband_px = nav.get("deadband_px", 50)
+        self.alt_align_tolerance_m = float(
+            metric.get(
+                "alt_align_tolerance_m",
+                cfg.get("sitl", {}).get("alt_align_tolerance_m", 0.25),
+            )
+        )
 
         self._max_distance_seen_m: float | None = None
         self._approach_valid = False
@@ -40,8 +48,7 @@ class MotionPlanner:
         self._approach_valid = False
 
     def update_approach_tracking(self, metric: MetricPacket) -> None:
-        # Conservative: farthest bound must reach 2 m for CONOPS approach proof
-        observed = metric.distance_max_m if metric.distance_max_m is not None else metric.distance_m
+        observed = metric.distance_max_m if metric.distance_max_m is not None else metric.planner_range_m()
         if observed is None:
             return
         if self._max_distance_seen_m is None or observed > self._max_distance_seen_m:
@@ -52,7 +59,7 @@ class MotionPlanner:
     def is_safe_to_move(self, metric: MetricPacket, *, bbox_area: int = 0) -> bool:
         if bbox_area >= self.target_lock_area_px:
             return True
-        close = metric.distance_min_m if metric.distance_min_m is not None else metric.distance_m
+        close = metric.distance_min_m if metric.distance_min_m is not None else metric.planner_range_m()
         if close is not None and close <= self.fire_distance_m:
             return True
         if metric.side_clearance_m is None:
@@ -75,10 +82,20 @@ class MotionPlanner:
                 return False
         if bbox_area >= self.target_lock_area_px:
             return True
-        close = metric.distance_min_m if metric.distance_min_m is not None else metric.distance_m
+        close = metric.distance_min_m if metric.distance_min_m is not None else metric.planner_range_m()
         if close is not None and close <= self.fire_distance_m:
             return True
+        if (
+            metric.altitude_error_m is not None
+            and abs(metric.altitude_error_m) > self.alt_align_tolerance_m * 2.0
+        ):
+            return False
         return False
+
+    def _altitude_aligned(self, metric: MetricPacket) -> bool:
+        if metric.altitude_error_m is None:
+            return True
+        return abs(metric.altitude_error_m) <= self.alt_align_tolerance_m
 
     def intent_for_approaching(self, metric: MetricPacket, *, bbox_area: int = 0) -> MotionIntent:
         self.update_approach_tracking(metric)
@@ -104,14 +121,16 @@ class MotionPlanner:
         if not is_aimed(metric, self._cfg):
             return False
         # CONOPS: must prove approach from beyond 2 m; never fire without distance evidence
-        if metric.distance_m is None and metric.distance_max_m is None:
+        if metric.planner_range_m() is None and metric.distance_max_m is None:
             return False
         if not self._approach_valid:
             return False
         if wall_range_m is not None and wall_range_m > self.fire_distance_m + 0.15:
             return False
-        close = metric.distance_min_m if metric.distance_min_m is not None else metric.distance_m
+        close = metric.distance_min_m if metric.distance_min_m is not None else metric.planner_range_m()
         if close is not None and close > self.fire_distance_m + 0.12:
+            return False
+        if not self._altitude_aligned(metric):
             return False
         return True
 
@@ -129,15 +148,17 @@ class MotionPlanner:
             blockers.append("lock_duration")
         if not is_aimed(metric, self._cfg):
             blockers.append("not_aimed")
-        if metric.distance_m is None and metric.distance_max_m is None:
+        if metric.planner_range_m() is None and metric.distance_max_m is None:
             blockers.append("no_distance")
         if not self._approach_valid:
             blockers.append("approach_not_proven")
         if wall_range_m is not None and wall_range_m > self.fire_distance_m + 0.15:
             blockers.append("too_far_wall")
-        close = metric.distance_min_m if metric.distance_min_m is not None else metric.distance_m
+        close = metric.distance_min_m if metric.distance_min_m is not None else metric.planner_range_m()
         if close is not None and close > self.fire_distance_m + 0.12:
             blockers.append("too_far_metric")
+        if not self._altitude_aligned(metric):
+            blockers.append("altitude_not_aligned")
         return tuple(blockers)
 
     @staticmethod

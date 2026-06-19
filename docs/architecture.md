@@ -9,12 +9,13 @@ AI camera + ArduCam ToF (Pi)
         |
    CV module          -> CVPacket { dry: [(px,py)...], shot: [(px,py)...] }
         |
-   Metric Recon       -> MetricPacket { pixel_offset, distance_m, distance_source }
-        |                  depth_at_target: ToF sample at target pixel
+   Metric Recon       -> MetricPacket { slant/horizontal range, altitude_error_m, clearance }
+        |                  geometry_3d.py: camera rays, gimbal pitch, depth bbox sampling
         |
-   Auto-Nav           -> MAVLink velocity (GUIDED or GUIDED_NOGPS)
+   Auto-Nav           -> MAVLink velocity (GUIDED) — 3D vz from altitude_error on Pi;
+        |                  SITL: ned_kinematics 3D vector + pixel lateral fine-tune
         |
-   Spray Water        -> aim check -> SERVO15 actuation
+   Spray Water        -> aim check (pixel + altitude alignment) -> SERVO15
         |
    Upload             -> Google Drive photo proof (or local copy)
 ```
@@ -23,8 +24,9 @@ Pixhawk 6C + Holybro H-Flow (DroneCAN) handle indoor hover stability. H-Flow is 
 
 ## GCS role
 
-- Calibration and replay (`tools/calibrate_depth_rgb.py`, `tools/validate_calibration.py`)
-- Mission monitor over UDP (`tools/mission_monitor.py`) - read-only, link loss does not abort mission
+- Unified tooling: `python tools/valiant.py` ([tools/README.md](../tools/README.md))
+- Calibration: `valiant calibrate tune|validate|replay` (wraps `calibrate_depth_rgb.py`, etc.)
+- Mission monitor: `valiant gcs monitor` (UDP, read-only)
 - Legacy dev path: scrcpy + `missions/task2_vion_auto_extinguish.py`
 
 ## Repo mapping
@@ -33,7 +35,8 @@ Pixhawk 6C + Holybro H-Flow (DroneCAN) handle indoor hover stability. H-Flow is 
 |--------|-----------|
 | CV (runtime) | `src/valiant/autonomy/cv/` |
 | CV (training scripts) | `src/valiant/cv/` (`task2_cv_script.py`, `convolute_infer.py`) |
-| Metric Recon | `src/valiant/autonomy/metric_recon/` |
+| Metric Recon | `src/valiant/autonomy/metric_recon/` (+ `geometry_3d.py`) |
+| NED kinematics (SITL + shared) | `src/valiant/common/ned_kinematics.py` |
 | Auto-Nav | `src/valiant/autonomy/auto_nav/` |
 | Flight modes | `src/valiant/autonomy/flight/` |
 | Telemetry mirror | `src/valiant/autonomy/telemetry_bridge.py` |
@@ -67,12 +70,14 @@ ArduPilot SITL (WSL)  ←── tcp:5760 ──→  orchestrator.py
                                               ↑
                          synthetic / physics / video camera
                          + JSON world (wall, targets, map)
+                         + 3D NED motion (search/approach/altitude coupled)
 ```
 
 | Component | Code |
 |-----------|------|
 | Mission loop + `--sitl` | `autonomy/orchestrator.py` |
-| Motion / preflight | `sitl_motion.py`, `sitl_preflight.py` |
+| 3D motion | `common/ned_kinematics.py`, `sitl_motion.py`, `sitl_search.py` |
+| Preflight | `sitl_preflight.py` |
 | Cameras | `common/synthetic_target_camera.py`, `physics_synthetic_camera.py` |
 | Dashboard | `cv/sitl_map_view.py` |
 | Standalone CV scripts | `src/valiant/cv/task2_cv_script.py` |

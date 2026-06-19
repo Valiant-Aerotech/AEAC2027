@@ -35,4 +35,4 @@ python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
 |--------|---------|
 | `tools/deploy_to_pi.ps1` | Copy model + calibration to Pi |
 | `tools/run_calibration_pipeline.ps1` | Pull captures, validate, push yaml |
-| `tools/run_monitor.ps1` | Start mission monitor |
+| `python tools/valiant.py gcs monitor` | Start mission monitor (see [tools/README.md](../../../tools/README.md)) |

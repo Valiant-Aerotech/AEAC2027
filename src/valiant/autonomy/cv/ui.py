@@ -114,12 +114,24 @@ def draw_overlay(
 
     if metric:
         dist_txt = f"{metric.distance_m:.2f} m" if metric.distance_m is not None else "?"
+        horiz = metric.horizontal_range_m
+        alt_err = metric.altitude_error_m
         side_txt = f"{metric.side_clearance_m:.2f} m" if metric.side_clearance_m is not None else "?"
-        draw_panel(overlay, 8, h - 36, min(320, w - 16), 28, alpha=0.75)
+        extra = horiz is not None or alt_err is not None
+        panel_h = 44 if extra else 28
+        base_y = h - panel_h - 8
+        draw_panel(overlay, 8, base_y, min(420, w - 16), panel_h, alpha=0.75)
         cv2.putText(
-            overlay, f"range {dist_txt}   clearance {side_txt}", (16, h - 16),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.45, C_GREEN, 1, cv2.LINE_AA,
+            overlay, f"range {dist_txt}   clearance {side_txt}", (16, base_y + 18),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.42, C_GREEN, 1, cv2.LINE_AA,
         )
+        if extra:
+            h_txt = f"{horiz:.2f}" if horiz is not None else "?"
+            a_txt = f"{alt_err:+.2f}" if alt_err is not None else "?"
+            cv2.putText(
+                overlay, f"horiz {h_txt} m   alt err {a_txt} m", (16, base_y + 36),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.42, C_GREEN, 1, cv2.LINE_AA,
+            )
 
     arrow_origin = (w // 2, h - 56)
     if vel_cmd_body is not None:

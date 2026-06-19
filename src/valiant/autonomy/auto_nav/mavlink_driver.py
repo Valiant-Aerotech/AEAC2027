@@ -17,6 +17,7 @@ class MavlinkDriver:
         self.servo = VisualServo(master, cfg)
         self.cfg = cfg
         self._gimbal_pitch = bool(cfg.get("gimbal", {}).get("enabled", False))
+        self._lateral_blend = float(cfg.get("auto_nav", {}).get("lateral_pixel_blend", 0.3))
         self._vel_stream = VelocityStream(self.servo)
 
     def start_velocity_stream(self) -> None:
@@ -38,6 +39,8 @@ class MavlinkDriver:
         self._vel_stream.start()
         px, py = packet.target_px
         vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
+        alpha = self._lateral_blend
+        vel_right = alpha * vel_right
         if self._gimbal_pitch:
             self.servo.send_velocity_body(approach_speed, vel_right, vz_ned)
             return
@@ -57,6 +60,7 @@ class MavlinkDriver:
     ) -> None:
         px, py = packet.target_px
         vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
+        vel_right *= self._lateral_blend
         if self._gimbal_pitch:
             self.servo.send_velocity_body(0.0, vel_right, vz_ned)
             return

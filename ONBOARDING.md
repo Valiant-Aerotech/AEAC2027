@@ -34,7 +34,7 @@ Install these **before** running setup:
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
 .\tools\setup.ps1
-python tools\verify_env.py
+python tools\valiant.py env check
 ```
 
 ## Configure for this machine
@@ -63,7 +63,7 @@ Add `--help` to any mission for options.
 - **Change tuning?** → `config/vion.yaml`
 - **Understand the pipeline?** → `docs/architecture.md`
 - **FC parameters / Lua?** → `hardware/<drone>/`
-- **Debug MAVLink?** → `python tools\mavproxy_listen.py`
+- **Debug MAVLink?** → `python tools\valiant.py gcs listen`
 - **SITL (no hardware)?** → [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
 
 ## Common issues
@@ -79,13 +79,15 @@ Add `--help` to any mission for options.
 ## Bench-test (no drone required)
 
 ```powershell
-python tools\cv_bench_test.py --camera 0
-python tools\metric_bench_test.py --camera 0
-python tools\safety_bench_test.py
-python tools\conops_check.py
-python tools\cv_regression_test.py --video footage.mp4
+python tools\valiant.py bench cv --camera 0
+python tools\valiant.py bench metric --camera 0
+python tools\valiant.py bench safety
+python tools\valiant.py conops check
+python tools\valiant.py bench cv --regression --video footage.mp4
 python -m valiant.autonomy.cv.training.generate_targets --count 20
 ```
+
+See [tools/README.md](tools/README.md) for all subcommands.
 
 ### Full virtual mission (SITL)
 

@@ -19,9 +19,9 @@ Script map by phase:
 | C - First SSH | `.\tools\deploy_to_pi.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/first_connect.sh` |
 | C - Sensors | - | `bash hardware/vion/rpi/session_start.sh` |
 | C - Calibration | `.\tools\run_calibration_pipeline.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/capture_all_calibration.sh` |
-| C/D - Sim/tether/monitor | `.\tools\run_monitor.ps1` | `GCS_IP=<ip> bash hardware/vion/rpi/run_bringup_tests.sh` |
+| C/D - Sim/tether/monitor | `python tools\valiant.py gcs monitor` | `GCS_IP=<ip> bash hardware/vion/rpi/run_bringup_tests.sh` |
 | E - Preflight | - | `bash hardware/vion/rpi/preflight_indoor.sh` |
-| E - Flight | `.\tools\run_monitor.ps1` | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
+| E - Flight | `python tools\valiant.py gcs monitor` | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
 
 **Before hardware day:** [whats-left-before-hardware.md](whats-left-before-hardware.md)
 
@@ -98,7 +98,7 @@ GCS_IP=<laptop-ip> bash hardware/vion/rpi/run_bringup_tests.sh
 ```
 
 ```powershell
-.\tools\run_monitor.ps1
+python tools\valiant.py gcs monitor
 ```
 
 ### Props-on preflight

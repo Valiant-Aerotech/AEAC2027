@@ -256,14 +256,44 @@ class AutoExtinguisher:
     def _run_metric(self, cv_packet: CVPacket | None, frame_w: int, frame_h: int) -> MetricPacket | None:
         if cv_packet is None or not cv_packet.has_dry_target:
             return None
+        from valiant.common.sitl_physics import nearest_active_target_ned, pwm_to_gimbal_pitch_deg
+
+        gimbal_pitch_deg = 0.0
+        if self.gimbal.enabled:
+            gimbal_pitch_deg = pwm_to_gimbal_pitch_deg(self.gimbal.current_pwm)
+
+        vehicle_pose = None
+        target_ned = None
+        if self.sitl and self._sitl_pose is not None and self._sitl_pose.ok:
+            vehicle_pose = self._sitl_pose
+            scene = getattr(self.camera, "world_scene", None)
+            if scene:
+                target_ned = nearest_active_target_ned(self._sitl_pose, scene.get("targets", []))
+
         metric = self.metric_recon.reconstruct(
             cv_packet,
             frame_w,
             frame_h,
             depth_mm=camera_depth_mm(self.camera),
+            gimbal_pitch_deg=gimbal_pitch_deg,
+            vehicle_pose=vehicle_pose,
+            target_ned=target_ned,
         )
         self._last_metric = metric
         return metric
+
+    def _metric_vz_ned(self, metric: MetricPacket | None) -> float:
+        if metric is None or metric.altitude_error_m is None:
+            return 0.0
+        from valiant.autonomy.metric_recon.geometry_3d import metric_vz_from_altitude_error
+
+        kp = float(
+            self.cfg.get("metric_recon", {}).get(
+                "altitude_kp", self.cfg.get("sitl", {}).get("altitude_kp", 0.22)
+            )
+        )
+        max_vz = float(self.cfg.get("sitl", {}).get("max_vz", 0.14))
+        return metric_vz_from_altitude_error(metric.altitude_error_m, kp=kp, max_vz=max_vz)
 
     def _publish_telemetry(self, cv_packet: CVPacket | None, metric: MetricPacket | None) -> None:
         if self._telemetry is None:
@@ -295,8 +325,7 @@ class AutoExtinguisher:
     def _scaled_approach_speed(self, metric: MetricPacket | None, *, creep: bool = False) -> float:
         from valiant.autonomy.auto_nav.approach_motion import effective_approach_speed
 
-        dist = metric.distance_m if metric else None
-        return effective_approach_speed(self.cfg, dist, creep=creep)
+        return effective_approach_speed(self.cfg, metric, creep=creep)
 
     def _log_remediation(self, blockers: tuple[str, ...]) -> None:
         if time.time() - self._last_remediate_log < 3.0:
@@ -320,8 +349,9 @@ class AutoExtinguisher:
         if not self._allow_motion():
             return
         spd = self._scaled_approach_speed(metric, creep=creep)
+        vz = self._metric_vz_ned(metric)
         if spd <= 0.01:
-            self.nav.hold_center(metric, frame_w, frame_h, camera_down=self.camera_down)
+            self.nav.hold_center(metric, frame_w, frame_h, camera_down=self.camera_down, vz_ned=vz)
         else:
             self.nav.move_toward_target(
                 metric,
@@ -329,6 +359,7 @@ class AutoExtinguisher:
                 frame_h,
                 approach_speed=spd,
                 camera_down=self.camera_down,
+                vz_ned=vz,
             )
 
     def _resume_approach_if_blocked(

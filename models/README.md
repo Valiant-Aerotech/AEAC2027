@@ -44,9 +44,8 @@ Shot confirmation (blue/wetted target after spray) still uses **HSV** when `cv.m
 ## Test locally
 
 ```powershell
-python tools\yolo_webcam_test.py --camera 0
-python tools\cv_bench_test.py --camera 0
-python tools\metric_bench_test.py --camera 0
+python tools\valiant.py bench cv --camera 0
+python tools\valiant.py bench metric --camera 0
 ```
 
 Inference uses **onnxruntime** (no PyTorch required at runtime). Hold a purple target in the **center blue box**. Detections appear as magenta `dry` boxes.

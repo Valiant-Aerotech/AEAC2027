@@ -42,17 +42,20 @@ python hardware/vion/rpi/run_mission.py --profile vivi
 **GCS / dev:**
 
 ```powershell
-python tools\mission_monitor.py
+python tools\valiant.py gcs monitor
 python missions\task2_vion_auto_extinguish.py      # Task 2 autonomous (field)
 python missions\task2_vion_manual_photo.py         # Task 2 manual fallback
 python missions\task1_vivi_survey.py               # Task 1 surveying
 ```
 
+Tooling index: [tools/README.md](tools/README.md) (`python tools\valiant.py --help`).
+
 ### Virtual drone (no hardware)
 
 ```powershell
 .\tools\launch_sitl.ps1          # terminal 1: ArduPilot in WSL
-.\tools\run_sitl_mission.ps1     # terminal 2: full mission + dashboard
+python tools\valiant.py sitl mission   # terminal 2: full mission + dashboard
+# or: .\tools\run_sitl_mission.ps1
 ```
 
 [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
@@ -64,7 +67,7 @@ missions/          <- GCS entry points (dev / manual)
 hardware/vion/rpi/ <- Pi primary flight entry
 src/valiant/       <- library code
 config/            <- per-drone YAML + vion_calibration.yaml
-tools/             <- setup, bringup, monitor scripts
+tools/             <- unified CLI (valiant.py), setup, SITL launchers — see tools/README.md
 docs/runbooks/     <- vion-bringup.md, field-test-plan.md
 models/            <- ONNX models (best.onnx)
 ```

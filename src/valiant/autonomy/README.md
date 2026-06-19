@@ -1,36 +1,41 @@
 # Autonomy module (Task 2)
 
-Pipeline: **CV → Metric Recon → Auto-Nav → Spray → Upload**
+Pipeline: **CV → Metric Recon (3D) → Auto-Nav (3D motion) → Spray → Upload**
 
-Entry point: `missions/task2_vion_auto_extinguish.py` → `orchestrator.py`
+Entry point: `hardware/vion/rpi/run_mission.py` (Pi) or `missions/task2_vion_auto_extinguish.py` (GCS) → `orchestrator.py`
 
 ## Layout
 
 ```
 autonomy/
   orchestrator.py       # State machine, SITL/field modes, main loop
-  packets.py            # CVPacket, MetricPacket
+  packets.py            # CVPacket, MetricPacket (3D fields)
   auto_nav/             # Planner, visual servo, MAVLink driver
   cv/                   # HSV, YOLO, detector, overlay UI, SITL dashboard
-  metric_recon/         # Distance / clearance from bbox + rangefinder
-  spray/                # Aim check, water trigger
+  metric_recon/         # geometry_3d.py, depth, FOV, clearance, altitude_error
+  spray/                # Aim check (pixel + altitude), water trigger
   upload/               # Task 2 photo naming + Drive
   safety/               # Battery, geofence, timeout
   flight/               # Profile merge (sitl, vivi, …)
-  sitl_motion.py        # SITL-only: Stanley-style motion stack
-  sitl_preflight.py     # SITL-only: arm / takeoff
-  sitl_search.py        # SITL-only: search + altitude helpers
-  cv/sitl_map_view.py   # SITL-only: 3-panel dashboard
+  sitl_motion.py        # SITL: 3D NED motion stack (Backoff → Follow → Search → Hold)
+  sitl_preflight.py     # SITL: arm / takeoff
+  sitl_search.py        # SITL: 3D search creep + approach speed
+  cv/sitl_map_view.py   # SITL: 3-panel dashboard
+
+common/
+  ned_kinematics.py     # Rotation matrices, 3D velocity toward goal, VehiclePose
+  sitl_physics.py       # Pose drain, target projection
 ```
 
 ## Run modes
 
 | Mode | Flag / profile | Doc |
 |------|----------------|-----|
-| Field (Vion GCS) | default `vion` | `docs/runbooks/task2-vion-auto.md` |
+| Field (Vion Pi) | `run_mission.py --profile vivi` | `hardware/vion/rpi/README.md` |
 | SITL simulation | `--sitl` + `flight_profiles.sitl` | `docs/runbooks/sitl-overview.md` |
 | Vivi onboard | `flight_profiles.vivi` | `docs/runbooks/vivi-hand-test.md` |
-| Bench CV only | `tools/cv_bench_test.py` | `ONBOARDING.md` |
+| Bench CV | `python tools/valiant.py bench cv` | `ONBOARDING.md` |
+| Bench metric (3D) | `python tools/valiant.py bench metric` | `docs/interfaces.md` |
 | Standalone CV scripts | `src/valiant/cv/task2_cv_script.py` | training / convolute inference |
 
-Docs: [docs/branches.md](../../../docs/branches.md) (develop on **`main`**).
+Docs: [docs/branches.md](../../../docs/branches.md) (develop on **`main`**). Tools: [tools/README.md](../../../tools/README.md).

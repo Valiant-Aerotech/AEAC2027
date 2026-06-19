@@ -34,27 +34,25 @@ class CVPacket:
 
 ## MetricPacket (Metric Recon -> Auto-Nav)
 
-Built by `MetricReconstructor` from `CVPacket` + frame geometry + depth at target pixel or optional VL53L1X MAVLink.
+Built by `MetricReconstructor` from `CVPacket` + frame geometry + gimbal pitch + optional depth at target pixel, vehicle pose (SITL), and VL53L1X MAVLink.
 
-| Field | Source |
-|-------|--------|
+| Field | Meaning |
+|-------|---------|
 | `pixel_offset` | Target centre vs frame centre |
-| `distance_m` | `depth_at_target` (ArduCam ToF), FOV estimate, and/or `DISTANCE_SENSOR` MAVLink |
-| `distance_source` | `depth_at_target`, `fov`, `fov_fallback`, `vl53l1x`, or null |
-| `wall_distance_m` | Target distance + wall offset |
+| `distance_m` | **Planner-facing horizontal range** (falls back to slant when decomposition unavailable) |
+| `slant_range_m` | Raw measured range along camera ray |
+| `horizontal_range_m` | Ground-plane range from slant + ray elevation |
+| `elevation_deg` / `azimuth_deg` | Target bearing from camera boresight |
+| `altitude_error_m` | Signed vertical miss (+ = climb needed); used for onboard vz and fire gate |
+| `vertical_clearance_m` | Vertical margin in image (mirror of side clearance) |
+| `distance_min_m` / `distance_max_m` | FOV band when target size unknown |
+| `distance_source` | `depth_at_target`, `fov_band`, `vl53l1x`, or empty |
+| `wall_distance_m` | Horizontal range + wall offset |
 | `side_clearance_m` | Lateral margin from frame edge + range |
 
-```python
-@dataclass
-class MetricPacket:
-    target_px: tuple[int, int]
-    pixel_offset: tuple[float, float]
-    distance_m: float | None
-    wall_distance_m: float | None
-    side_clearance_m: float | None
-    distance_source: str | None
-    timestamp: float
-```
+Use `metric.planner_range_m()` for fire/approach gating (prefers `horizontal_range_m`).
+
+3D geometry: `src/valiant/autonomy/metric_recon/geometry_3d.py`. SITL motion uses `src/valiant/common/ned_kinematics.py` (rotation matrices, 3D velocity toward goal).
 
 ## CV detection methods (`config/vion.yaml`)
 
@@ -70,18 +68,30 @@ Tune `hsv_dry` / `hsv_shot` / `hsv_min_area_px` for outdoor lighting.
 
 ## Bench test
 
+Use the unified CLI ([tools/README.md](../tools/README.md)):
+
 ```powershell
-python tools\cv_bench_test.py --camera 0
-python tools\metric_bench_test.py --camera 0
-python tools\metric_bench_test.py --video footage.mp4
+python tools\valiant.py bench cv --camera 0
+python tools\valiant.py bench metric --camera 0
+python tools\valiant.py bench cv --regression --video footage.mp4
+python tools\valiant.py conops check
 ```
+
+Legacy direct scripts (`tools/cv_bench_test.py`, etc.) still work.
 
 ## Auto-Nav and Spray (`config/vion.yaml`)
 
-- `metric_recon.rangefinder`: `depth_at_target` (Pi), `fov_estimate` (default GCS dev), `vl53l1x`, or `none`
-- `metric_recon.min_approach_distance_m`: CONOPS 2m approach validation
+- `metric_recon.mode`: `depth_at_target` (Pi) or `rangefinder` (GCS dev)
+- `metric_recon.rangefinder`: `fov_estimate`, `vl53l1x`, or `none`
+- `metric_recon.alt_align_tolerance_m`: block fire until altitude aligned (~0.25 m)
+- `metric_recon.altitude_kp`: onboard vz from `altitude_error_m`
+- `metric_recon.min_approach_distance_m`: CONOPS 2 m approach validation
 - `metric_recon.fire_distance_m`: switch from APPROACHING to AIMING
+- `auto_nav.lateral_pixel_blend`: pixel PD weight for lateral fine-tune (world-primary 3D motion)
 - `auto_nav.side_clearance_m`: abort if target too close to frame edge
+- `sitl.alt_align_tolerance_m`: same gate in SITL (uses scene + metric)
+
+SITL motion: 3D NED velocity toward target (`ned_kinematics.velocity_toward_goal`); pixel servo fine-tunes lateral only.
 
 ## Safety (`config/vion.yaml`)
 
@@ -104,7 +114,7 @@ Competition rules are data, not hardcoded. `load_config()` merges `conops.yaml` 
 - Multi-target loop after each upload
 - `VERIFYING` state waits for shot (blue) detection before capture
 
-Run `python tools/conops_check.py` after editing rules. See [docs/conops.md](conops.md).
+Run `python tools\valiant.py conops check` after editing rules. See [docs/conops.md](conops.md).
 
 ## Upload (`config/defaults.yaml`)
 

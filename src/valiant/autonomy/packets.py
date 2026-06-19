@@ -54,5 +54,14 @@ class MetricPacket:
     distance_source: str = ""
     wall_distance_m: float | None = None
     side_clearance_m: float | None = None
-    distance_source: str | None = None
+    slant_range_m: float | None = None
+    horizontal_range_m: float | None = None
+    elevation_deg: float | None = None
+    azimuth_deg: float | None = None
+    altitude_error_m: float | None = None
+    vertical_clearance_m: float | None = None
     timestamp: float = field(default_factory=time.time)
+
+    def planner_range_m(self) -> float | None:
+        """Range for fire/approach gating (horizontal preferred)."""
+        return self.horizontal_range_m if self.horizontal_range_m is not None else self.distance_m
