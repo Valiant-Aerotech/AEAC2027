@@ -5,6 +5,7 @@ from __future__ import annotations
 from pymavlink import mavutil
 
 from valiant.autonomy.auto_nav.visual_servo import (
+    GUIDED_MASK_VELOCITY_YAW,
     GUIDED_MASK_YAW,
     GUIDED_MASK_YAW_RATE,
     VisualServo,
@@ -17,6 +18,54 @@ def test_guided_yaw_mask_matches_ardupilot_doc():
 
 def test_guided_yaw_rate_mask_matches_ardupilot_doc():
     assert GUIDED_MASK_YAW_RATE == 1479
+
+
+def test_guided_velocity_yaw_mask_matches_ardupilot_doc():
+    assert GUIDED_MASK_VELOCITY_YAW == 2503
+
+
+def test_send_velocity_ned_with_yaw_uses_velocity_yaw_mask():
+    sent: list[tuple] = []
+
+    class FakeMav:
+        target_system = 1
+        target_component = 1
+
+        class mav:
+            @staticmethod
+            def set_position_target_local_ned_send(*args):
+                sent.append(args)
+
+    servo = VisualServo(FakeMav(), {})
+    servo.send_velocity_ned_with_yaw(0.2, 0.1, 0.0, 1.2)
+    assert len(sent) == 1
+    args = sent[0]
+    assert args[3] == mavutil.mavlink.MAV_FRAME_LOCAL_NED
+    assert args[4] == GUIDED_MASK_VELOCITY_YAW
+    assert args[8] == 0.2 and args[9] == 0.1 and args[10] == 0.0
+    assert abs(args[14] - 1.2) < 1e-6
+    assert args[15] == 0.0
+
+
+def test_resend_last_guided_repeats_ned_velocity_with_yaw():
+    sent: list[tuple] = []
+
+    class FakeMav:
+        target_system = 1
+        target_component = 1
+
+        class mav:
+            @staticmethod
+            def set_position_target_local_ned_send(*args):
+                sent.append(args)
+
+    servo = VisualServo(FakeMav(), {})
+    servo.send_velocity_ned_with_yaw(0.3, 0.1, 0.0, 0.75)
+    servo.resend_last_guided()
+    assert len(sent) == 2
+    assert sent[0][4] == GUIDED_MASK_VELOCITY_YAW
+    assert sent[1][4] == GUIDED_MASK_VELOCITY_YAW
+    assert abs(sent[1][14] - 0.75) < 1e-6
 
 
 def test_send_guided_yaw_uses_local_ned_zero_vel():

@@ -11,7 +11,10 @@ from valiant.autonomy.orbit_math import (
     advance_arc_progress_m,
     circle_center,
     combined_laps,
+    course_yaw_from_velocity,
     forward_entry_ned,
+    limit_yaw_step,
+    orbit_tangent_yaw,
     orbit_velocity_ned,
     simulate_orbit_path,
     update_lap_progress,
@@ -55,6 +58,34 @@ def test_progress_along_heading():
 
     assert abs(progress_along_heading(2.0, 0.0, 0.0, 0.0, 0.0) - 2.0) < 1e-6
     assert abs(progress_along_heading(0.0, 2.0, 0.0, 0.0, math.pi / 2) - 2.0) < 1e-6
+
+
+def test_course_yaw_from_velocity_cardinals():
+    assert abs(course_yaw_from_velocity(0.4, 0.0)) < 1e-6
+    assert abs(course_yaw_from_velocity(0.0, 0.4) - math.pi / 2) < 1e-6
+    assert abs(course_yaw_from_velocity(-0.4, 0.0) - math.pi) < 1e-6
+
+
+def test_orbit_tangent_yaw_cw_at_south_and_east():
+    cx, cy = 0.0, 5.0
+    yaw_south = orbit_tangent_yaw(0.0, 0.0, cx, cy, clockwise=True)
+    assert abs(yaw_south) < 0.15
+    yaw_east = orbit_tangent_yaw(5.0, 5.0, cx, cy, clockwise=True)
+    assert abs(yaw_east - math.pi / 2) < 0.15
+
+
+def test_limit_yaw_step_clamps_rate():
+    last = 0.0
+    target = math.radians(90.0)
+    stepped = limit_yaw_step(target, last, max_rate_rad_s=math.radians(25.0), dt_s=0.05)
+    assert abs(stepped - math.radians(1.25)) < 1e-6
+
+
+def test_course_yaw_matches_orbit_tangent_on_circle():
+    cx, cy = 0.0, 5.0
+    x, y = 0.0, 0.0
+    vn, ve, _ = orbit_velocity_ned(x, y, cx, cy, 5.0, 0.4, 0.0, clockwise=True)
+    assert abs(course_yaw_from_velocity(vn, ve) - orbit_tangent_yaw(x, y, cx, cy, clockwise=True)) < 0.05
 
 
 def test_lap_progress_skipped_when_far_from_radius():

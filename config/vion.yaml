@@ -144,6 +144,8 @@ flight_profiles:
       radial_kp: 0.25
       orbit_entry_radial_kp: 0.65
       orbit_entry_blend_s: 4.0
+      yaw_follow_velocity: true
+      yaw_rate_max_deg_s: 25.0
       altitude_kp: 0.22
       max_vz: 0.15
       geofence_radius_m: 12.0
@@ -189,6 +191,8 @@ flight_profiles:
       radial_kp: 0.45
       orbit_entry_radial_kp: 0.75
       orbit_entry_blend_s: 5.0
+      yaw_follow_velocity: true
+      yaw_rate_max_deg_s: 25.0
       altitude_kp: 0.22
       max_vz: 0.15
       geofence_radius_m: 20.0

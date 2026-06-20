@@ -45,6 +45,8 @@ Field orbit and `run_mission.py` **block automatically** if `SCR_ENABLE` is off 
 
 **Terminal altitude lines:** every ~2 s during alt hold and orbit you should see `[Orbit] alt=10.2m target=10.0m phase=ORBIT pos=(2.10,4.85) vn=0.35 ve=0.12 t=42s lap=0.8/1 ...`. **`pos=(x,y)` must change** during ORBIT; if it stays fixed, pose polling is broken. Do not proceed to forward until alt is within ~0.35 m of target.
 
+**Heading during orbit:** With `yaw_follow_velocity: true` (default in `vivi_orbit` and `sitl_orbit`), the companion sends course-aligned yaw with each velocity command (MAVLink mask 2503). Mission Planner **heading** should rotate ~360° per lap during ORBIT and point toward the return leg during `RETURN_CENTER`. The forward leg still holds the anchor heading (`psi0`) until orbit starts. Set `yaw_follow_velocity: false` to keep the last fixed yaw (legacy behavior). Optional `yaw_rate_max_deg_s` (default 25) smooths heading steps.
+
 **Help:** `python tools\valiant.py sitl orbit --help` (via underlying script) or read [sitl-wsl.md](sitl-wsl.md).
 
 ## Pass criteria
@@ -78,6 +80,7 @@ All new autonomous navigation scripts (orbit, pattern, mission legs) must pass i
 | ~30 s gap before `Starting orbit` / forward runs too far | Stale pose + 30 s `drive_forward` timeout | Pull latest; anchor waypoint `drive_to_ned_point` from mission start |
 | Straight line after `Starting orbit` | Forward overshoot or off-radius radial chase | Check `intent_entry` vs `actual`; wait for `On radius - lap counting active` |
 | Instant Lap 1/2/3 in under 1 s | Lap angle counted while off circle / crossing center | Pull latest; lap count gated until `err_r` within `radius_latch_tol_m` |
+| Heading stuck at 0° (north) during ORBIT | Velocity-only GUIDED mask ignores yaw | Pull latest; `yaw_follow_velocity: true` sends mask 2503 with course yaw |
 | `Safety Lua preflight failed` at startup | SCR_ENABLE off or safety.lua missing | See **Confirm safety.lua is loaded** above; `gcs verify-safety` |
 | Overshoot to 16 m after takeoff | SITL takeoff tuning | Script shows `Descending to 10 m` and holds before forward leg |
 

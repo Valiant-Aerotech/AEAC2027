@@ -14,7 +14,9 @@ from valiant.autonomy.orbit_math import (
     advance_arc_progress_m,
     circle_center,
     combined_laps,
+    course_yaw_from_velocity,
     forward_entry_ned,
+    limit_yaw_step,
     orbit_velocity_ned,
     update_lap_progress,
     velocity_toward_ned,
@@ -82,6 +84,9 @@ class FieldOrbitRunner:
         self._anchor: tuple[float, float, float] | None = None
         self._center: tuple[float, float] | None = None
         self._clockwise = _direction_clockwise(str(self._ocfg.get("direction", "clockwise")))
+        self._yaw_follow_velocity = bool(self._ocfg.get("yaw_follow_velocity", True))
+        self._yaw_rate_max_deg_s = float(self._ocfg.get("yaw_rate_max_deg_s", 25.0))
+        self._orbit_yaw_cmd: float | None = None
         self._orbit_aborted = False
         self._last_status_log = 0.0
         self._pilot_monitor = PilotOverrideMonitor(master, cfg)
@@ -216,6 +221,33 @@ class FieldOrbitRunner:
             f"r_err={self._radius_err:.2f}m"
         )
         print(f"[Orbit] {msg}")
+
+    def _send_orbit_velocity(
+        self,
+        vn: float,
+        ve: float,
+        vz: float,
+        *,
+        dt_s: float = 0.05,
+    ) -> float | None:
+        """Send NED velocity; optionally align yaw with course."""
+        if not self._yaw_follow_velocity:
+            self._orbit_yaw_cmd = None
+            self._motion.servo.send_velocity_ned(vn, ve, vz)
+            return None
+        yaw_target = course_yaw_from_velocity(vn, ve)
+        if self._orbit_yaw_cmd is None:
+            self._orbit_yaw_cmd = yaw_target
+        else:
+            max_rate = math.radians(self._yaw_rate_max_deg_s)
+            self._orbit_yaw_cmd = limit_yaw_step(
+                yaw_target,
+                self._orbit_yaw_cmd,
+                max_rate_rad_s=max_rate,
+                dt_s=dt_s,
+            )
+        self._motion.servo.send_velocity_ned_with_yaw(vn, ve, vz, self._orbit_yaw_cmd)
+        return self._orbit_yaw_cmd
 
     def _ensure_at_altitude(self, target_alt: float, tol: float) -> bool:
         """Block until altitude is within tolerance; return False on timeout."""
@@ -358,6 +390,7 @@ class FieldOrbitRunner:
 
         self._set_phase(OrbitPhase.ORBIT, message="Starting orbit")
         request_guided_telemetry_streams(self.master)
+        self._orbit_yaw_cmd = entry_yaw
         lap_progress = 0.0
         arc_progress_m = 0.0
         phi_prev: float | None = None
@@ -412,7 +445,7 @@ class FieldOrbitRunner:
             )
             self._radius_err = err_r
             vz = self._motion.altitude_vz(trigger_alt, tolerance_m=tol)
-            self._motion.servo.send_velocity_ned(vn, ve, vz)
+            yaw_cmd = self._send_orbit_velocity(vn, ve, vz, dt_s=orbit_tick_dt)
             self._motion.start_stream()
             orbit_elapsed = time.time() - orbit_start
             self._log_status(
@@ -491,7 +524,7 @@ class FieldOrbitRunner:
                 break
             vn, ve = velocity_toward_ned(pose.x, pose.y, cx, cy, return_speed)
             vz = self._motion.altitude_vz(trigger_alt, tolerance_m=tol)
-            self._motion.servo.send_velocity_ned(vn, ve, vz)
+            self._send_orbit_velocity(vn, ve, vz, dt_s=0.05)
             self._motion.start_stream()
             self._log_status(pose, "RETURN", trigger_alt, vn=vn, ve=ve)
             self._telemetry_send(pose, vn=vn, ve=ve)

@@ -37,6 +37,49 @@ def progress_along_heading(
     return math.cos(yaw_rad) * (x - anchor_x) + math.sin(yaw_rad) * (y - anchor_y)
 
 
+def course_yaw_from_velocity(vn: float, ve: float) -> float:
+    """Heading from north (ArduPilot LOCAL NED) for horizontal velocity."""
+    return math.atan2(ve, vn)
+
+
+def orbit_tangent_yaw(
+    x: float,
+    y: float,
+    center_x: float,
+    center_y: float,
+    *,
+    clockwise: bool,
+) -> float:
+    """Course yaw along CW/CCW orbit tangent at (x, y)."""
+    dx = x - center_x
+    dy = y - center_y
+    dist = math.hypot(dx, dy)
+    if dist < 1e-6:
+        return 0.0
+    if clockwise:
+        tn, te = -dy / dist, dx / dist
+    else:
+        tn, te = dy / dist, -dx / dist
+    return math.atan2(te, tn)
+
+
+def limit_yaw_step(
+    target_yaw: float,
+    last_yaw: float,
+    *,
+    max_rate_rad_s: float,
+    dt_s: float,
+) -> float:
+    """Rate-limit yaw command toward target."""
+    delta = wrap_pi(target_yaw - last_yaw)
+    max_delta = max_rate_rad_s * dt_s
+    if delta > max_delta:
+        delta = max_delta
+    elif delta < -max_delta:
+        delta = -max_delta
+    return wrap_pi(last_yaw + delta)
+
+
 def circle_center(
     x: float,
     y: float,

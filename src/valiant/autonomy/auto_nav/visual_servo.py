@@ -8,8 +8,9 @@ import time
 from pymavlink import mavutil
 
 # ArduPilot GUIDED SET_POSITION_TARGET_LOCAL_NED masks (see copter-commands-in-guided-mode)
-GUIDED_MASK_VELOCITY = 3527  # 0x0DC7
+GUIDED_MASK_VELOCITY = 3527  # 0x0DC7 — velocity only, yaw ignored
 GUIDED_MASK_YAW = 2503  # yaw target + zero velocity
+GUIDED_MASK_VELOCITY_YAW = 2503  # velocity + yaw (populate vx,vy,vz and yaw)
 GUIDED_MASK_YAW_RATE = 1479  # yaw rate + zero velocity
 
 
@@ -124,6 +125,30 @@ class VisualServo:
             yaw_rate=0.0,
         )
 
+    def send_velocity_ned_with_yaw(
+        self,
+        vn: float,
+        ve: float,
+        vz: float,
+        yaw_rad: float,
+    ) -> None:
+        """LOCAL NED velocity with course-aligned yaw (mask 2503)."""
+        self.last_vel_ned = (vn, ve, vz)
+        self.last_vel_body = (0.0, 0.0, 0.0)
+        self._stream_mode = "velocity_ned_yaw"
+        self._last_yaw_target = yaw_rad
+        self._last_yaw_rate = 0.0
+        self._yaw_rad = yaw_rad
+        self._send_position_target(
+            frame=mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+            type_mask=GUIDED_MASK_VELOCITY_YAW,
+            vx=vn,
+            vy=ve,
+            vz=vz,
+            yaw=yaw_rad,
+            yaw_rate=0.0,
+        )
+
     def send_velocity_body(self, vel_x: float, vel_y: float, vel_z: float = 0.0) -> None:
         self.last_vel_body = (vel_x, vel_y, vel_z)
         self.last_vel_ned = (0.0, 0.0, 0.0)
@@ -203,6 +228,14 @@ class VisualServo:
             return
         if self._stream_mode == "yaw_rate" and abs(self._last_yaw_rate) > 1e-6:
             self.send_yaw_rate(self._last_yaw_rate)
+            return
+        if self._stream_mode == "velocity_ned_yaw":
+            vn, ve, vz = self.last_vel_ned
+            if self._last_yaw_target is None:
+                return
+            if abs(vn) + abs(ve) + abs(vz) < 1e-6:
+                return
+            self.send_velocity_ned_with_yaw(vn, ve, vz, self._last_yaw_target)
             return
         if self._stream_mode == "velocity_ned":
             vn, ve, vz = self.last_vel_ned
