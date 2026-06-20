@@ -69,12 +69,15 @@ All new autonomous navigation scripts (orbit, pattern, mission legs) must pass i
 | Steady descent ~0.15 m/s, no circle | Wrong tangent + center collapse | Same; verify MP vertical speed near 0 during orbit |
 | Climbs to 17 m instead of 10 m | Takeoff overshoot before alt hold | Watch terminal `alt=Xm target=10m`; script waits to settle before forward |
 | Straight line then sharp right turn | Orbit entry tangent matches forward leg | Normal at entry; path should curve within ~5 s (boosted radial hold) |
-| `lap=0.0/1` forever, frozen `pos=(x,y)` | Stale LOCAL NED in orbit loop | Pull latest; terminal should show **changing** `pos=(x,y)` every ~2 s during ORBIT |
+| `pos=(x,y)` frozen during ORBIT | Pose polled while velocity stream holds MAVLink lock | Pull latest; `stop_stream` before each `refresh_pose`; blocking telemetry read |
 | `Returning to center` with lap=0 | Orbit timed out before lap complete | Script loiters instead (`return_on_timeout: false`); fix pose polling first |
 | Duplicate `Flying forward` / `Loiter` in terminal | Double `say()` on phase change | One line per phase after dedupe fix; MP may still duplicate if `mp_use_autopilot_sysid` |
 | `Geofence - switching to loiter` early in SITL | Radius too tight vs orbit path | `sitl_orbit` profile uses 20 m geofence; field uses 12 m |
 | No `T2:` in Mission Planner | STATUSTEXT / sysid config | `python tools\valiant.py gcs verify-statustext` |
 | Exits at 10 m with `Disarmed - companion stopped` | Pilot-override poll false disarm (empty MAVLink buffer) | Pull latest; `sync_from_vehicle` seeds armed state after takeoff |
+| ~30 s gap before `Starting orbit` / forward runs too far | Stale pose + 30 s `drive_forward` timeout | Pull latest; anchor waypoint `drive_to_ned_point` from mission start |
+| Straight line after `Starting orbit` | Forward overshoot or off-radius radial chase | Check `intent_entry` vs `actual`; wait for `On radius - lap counting active` |
+| Instant Lap 1/2/3 in under 1 s | Lap angle counted while off circle / crossing center | Pull latest; lap count gated until `err_r` within `radius_latch_tol_m` |
 | `Safety Lua preflight failed` at startup | SCR_ENABLE off or safety.lua missing | See **Confirm safety.lua is loaded** above; `gcs verify-safety` |
 | Overshoot to 16 m after takeoff | SITL takeoff tuning | Script shows `Descending to 10 m` and holds before forward leg |
 

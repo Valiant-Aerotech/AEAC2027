@@ -11,7 +11,7 @@ from pymavlink import mavutil
 from valiant.autonomy.auto_nav.mavlink_stream import VelocityStream
 from valiant.autonomy.auto_nav.visual_servo import VisualServo
 from valiant.autonomy.gcs_hud import GcsHudReporter
-from valiant.autonomy.orbit_math import wrap_pi
+from valiant.autonomy.orbit_math import velocity_toward_ned, wrap_pi
 from valiant.autonomy.pilot_override import OverrideKind, PilotOverrideMonitor
 from valiant.common.mavlink import send_companion_heartbeat
 from valiant.common.sitl_physics import drain_vehicle_pose, refresh_vehicle_pose, wait_vehicle_pose
@@ -131,8 +131,23 @@ class GuidedMotionRunner:
     def ensure_guided_mode(self) -> None:
         self._ensure_guided()
 
-    def drive_forward(self, distance_m: float, *, label: str) -> tuple[float, float]:
-        """Return (x, y) at end of leg."""
+    def drive_to_ned_point(
+        self,
+        target_x: float,
+        target_y: float,
+        *,
+        label: str,
+        speed: float | None = None,
+        arrival_m: float | None = None,
+        timeout_s: float | None = None,
+        anchor_xy: tuple[float, float] | None = None,
+    ) -> tuple[float, float]:
+        """Drive toward a LOCAL NED waypoint; return (x, y) at end."""
+        orbit_cfg = self.cfg.get("field_orbit", {})
+        spd = max(0.1, speed if speed is not None else self._speed)
+        arrive = float(
+            arrival_m if arrival_m is not None else orbit_cfg.get("forward_arrival_m", 0.25)
+        )
         self.say(label)
         self.ensure_guided_mode()
         self.stop_stream()
@@ -143,22 +158,150 @@ class GuidedMotionRunner:
                 need_attitude=True,
             )
         pose = self._last_pose
-        self._servo.set_yaw_rad(pose.yaw)
-        x0, y0 = pose.x, pose.y
-        self._servo.send_velocity_body(self._speed, 0.0, 0.0)
-        self.start_stream()
-        deadline = time.time() + max(30.0, distance_m / self._speed * 3.0)
+        start_x, start_y = pose.x, pose.y
+        if anchor_xy is None:
+            anchor_xy = (start_x, start_y)
+        ax, ay = anchor_xy
+        dist_plan = math.hypot(target_x - start_x, target_y - start_y)
+        if timeout_s is not None:
+            max_s = timeout_s
+        elif orbit_cfg.get("forward_timeout_s") is not None:
+            max_s = float(orbit_cfg["forward_timeout_s"])
+        else:
+            max_s = dist_plan / spd * 1.5 + 3.0
+        deadline = time.time() + max_s
+        last_log = 0.0
+        log_interval_s = 2.0
         while time.time() < deadline:
             if self.check_pilot_override() != OverrideKind.NONE:
                 return pose.x, pose.y
-            pose = self.pose(pose)
-            traveled = math.hypot(pose.x - x0, pose.y - y0)
-            if traveled >= distance_m:
+            self.stop_stream()
+            pose = self.refresh_pose(pose)
+            if not pose.ok:
+                time.sleep(0.05)
+                continue
+            remaining = math.hypot(target_x - pose.x, target_y - pose.y)
+            traveled = math.hypot(pose.x - ax, pose.y - ay)
+            now = time.time()
+            if now - last_log >= log_interval_s:
+                print(
+                    f"[{self._log_tag}] forward remaining={remaining:.2f}m "
+                    f"traveled={traveled:.2f}m from anchor"
+                )
+                last_log = now
+            if remaining <= arrive:
+                print(
+                    f"[{self._log_tag}] forward arrival at "
+                    f"({pose.x:.2f},{pose.y:.2f}) err={remaining:.2f}m"
+                )
                 break
+            vn, ve = velocity_toward_ned(pose.x, pose.y, target_x, target_y, spd)
+            self._servo.send_velocity_ned(vn, ve, 0.0)
+            self.start_stream()
             time.sleep(0.05)
+        else:
+            remaining = math.hypot(target_x - pose.x, target_y - pose.y)
+            print(
+                f"[{self._log_tag}] forward timed out at ({pose.x:.2f},{pose.y:.2f}) "
+                f"remaining={remaining:.2f}m"
+            )
         self.stop_stream()
         time.sleep(0.3)
         return pose.x, pose.y
+
+    def drive_forward_anchored(
+        self,
+        anchor_x: float,
+        anchor_y: float,
+        yaw_rad: float,
+        distance_m: float,
+        *,
+        label: str,
+        arrival_m: float | None = None,
+        timeout_s: float | None = None,
+    ) -> tuple[float, float]:
+        """Drive forward_m along anchor heading (body frame), measuring from anchor."""
+        orbit_cfg = self.cfg.get("field_orbit", {})
+        arrive = float(
+            arrival_m if arrival_m is not None else orbit_cfg.get("forward_arrival_m", 0.25)
+        )
+        self.say(label)
+        self.ensure_guided_mode()
+        self.stop_stream()
+        if self._last_pose is None or not self._last_pose.ok:
+            self._last_pose = wait_vehicle_pose(
+                self.master,
+                need_position=True,
+                need_attitude=True,
+            )
+        pose = self._last_pose
+        self._servo.set_yaw_rad(yaw_rad)
+        self._servo.send_guided_yaw(yaw_rad)
+        if timeout_s is not None:
+            max_s = timeout_s
+        elif orbit_cfg.get("forward_timeout_s") is not None:
+            max_s = float(orbit_cfg["forward_timeout_s"])
+        else:
+            max_s = distance_m / self._speed * 1.5 + 3.0
+        deadline = time.time() + max_s
+        last_log = 0.0
+        log_interval_s = 2.0
+        self._servo.send_velocity_body(self._speed, 0.0, 0.0)
+        self.start_stream()
+        while time.time() < deadline:
+            if self.check_pilot_override() != OverrideKind.NONE:
+                return pose.x, pose.y
+            self.stop_stream()
+            pose = self.refresh_pose(pose)
+            along = math.cos(yaw_rad) * (pose.x - anchor_x) + math.sin(yaw_rad) * (
+                pose.y - anchor_y
+            )
+            remaining = max(0.0, distance_m - along)
+            now = time.time()
+            if now - last_log >= log_interval_s:
+                print(
+                    f"[{self._log_tag}] forward along={along:.2f}m "
+                    f"remaining={remaining:.2f}m from anchor"
+                )
+                last_log = now
+            if along >= distance_m - arrive:
+                print(
+                    f"[{self._log_tag}] forward arrival along={along:.2f}m "
+                    f"pos=({pose.x:.2f},{pose.y:.2f})"
+                )
+                break
+            self._servo.send_velocity_body(self._speed, 0.0, 0.0)
+            self.start_stream()
+            time.sleep(0.05)
+        else:
+            along = math.cos(yaw_rad) * (pose.x - anchor_x) + math.sin(yaw_rad) * (
+                pose.y - anchor_y
+            )
+            print(
+                f"[{self._log_tag}] forward timed out along={along:.2f}m "
+                f"target={distance_m:.2f}m"
+            )
+        self.stop_stream()
+        time.sleep(0.3)
+        return pose.x, pose.y
+
+    def drive_forward(self, distance_m: float, *, label: str) -> tuple[float, float]:
+        """Return (x, y) at end of leg along current heading."""
+        if self._last_pose is None or not self._last_pose.ok:
+            self._last_pose = wait_vehicle_pose(
+                self.master,
+                need_position=True,
+                need_attitude=True,
+            )
+        pose = self._last_pose
+        target_x = pose.x + distance_m * math.cos(pose.yaw)
+        target_y = pose.y + distance_m * math.sin(pose.yaw)
+        return self.drive_to_ned_point(
+            target_x,
+            target_y,
+            label=label,
+            anchor_xy=(pose.x, pose.y),
+        )
 
     def turn_degrees(self, degrees: float, *, label: str) -> None:
         self.say(label)
@@ -215,6 +358,7 @@ class GuidedMotionRunner:
         while time.time() < deadline:
             if self.check_pilot_override() != OverrideKind.NONE:
                 break
+            self.stop_stream()
             pose = self.refresh_pose(self._last_pose)
             if not pose.ok:
                 time.sleep(0.05)
@@ -294,6 +438,7 @@ class GuidedMotionRunner:
         while time.time() < deadline:
             if self.check_pilot_override() != OverrideKind.NONE:
                 return False
+            self.stop_stream()
             pose = self.refresh_pose(self._last_pose)
             if not pose.ok:
                 time.sleep(0.05)

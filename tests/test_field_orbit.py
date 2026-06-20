@@ -11,6 +11,7 @@ from valiant.autonomy.orbit_math import (
     advance_arc_progress_m,
     circle_center,
     combined_laps,
+    forward_entry_ned,
     orbit_velocity_ned,
     simulate_orbit_path,
     update_lap_progress,
@@ -33,6 +34,45 @@ def test_circle_center_counter_clockwise():
     cx, cy = circle_center(0.0, 0.0, 0.0, 5.0, clockwise=False)
     assert abs(cx - 0.0) < 1e-6
     assert abs(cy + 5.0) < 1e-6
+
+
+def test_intent_entry_and_center_from_anchor():
+    """Center is placed from actual entry pose + yaw (working geometry)."""
+    ax, ay, yaw = 0.0, 0.0, 0.0
+    forward_m = 2.0
+    radius_m = 5.0
+    ix, iy = forward_entry_ned(ax, ay, yaw, forward_m)
+    assert abs(ix - 2.0) < 1e-6
+    cx, cy = circle_center(ix, iy, yaw, radius_m, clockwise=True)
+    assert abs(cy - 5.0) < 1e-6
+    # Intent entry vs fixed center at overshoot: actual pose drives center
+    cx2, cy2 = circle_center(15.0, 0.0, yaw, radius_m, clockwise=True)
+    assert (cx2, cy2) != (cx, cy)
+
+
+def test_progress_along_heading():
+    from valiant.autonomy.orbit_math import progress_along_heading
+
+    assert abs(progress_along_heading(2.0, 0.0, 0.0, 0.0, 0.0) - 2.0) < 1e-6
+    assert abs(progress_along_heading(0.0, 2.0, 0.0, 0.0, math.pi / 2) - 2.0) < 1e-6
+
+
+def test_lap_progress_skipped_when_far_from_radius():
+    """Large err_r approach must not instantly complete laps (phi near center)."""
+    cx, cy = 2.0, 5.0
+    radius_m = 5.0
+    # Drone far southwest of circle — not on radius
+    x, y = -30.0, -30.0
+    err_r = radius_m - math.hypot(x - cx, y - cy)
+    assert abs(err_r) > 1.0
+    progress = 0.0
+    phi_prev = None
+    for _ in range(20):
+        progress, laps, phi_prev = update_lap_progress(
+            x, y, cx, cy, phi_prev, progress, clockwise=True
+        )
+        x += 0.5
+    assert laps < 0.5
 
 
 def test_orbit_velocity_cw_at_west_of_center():

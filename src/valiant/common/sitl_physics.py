@@ -224,9 +224,36 @@ def drain_vehicle_pose(master, previous: VehiclePose | None = None) -> VehiclePo
     return pose
 
 
-def refresh_vehicle_pose(master, previous: VehiclePose | None = None) -> VehiclePose:
-    """Latest pose for closed-loop control (always drains inbox)."""
-    return drain_vehicle_pose(master, previous)
+def refresh_vehicle_pose(
+    master,
+    previous: VehiclePose | None = None,
+    *,
+    block_timeout_s: float = 0.12,
+) -> VehiclePose:
+    """Latest pose for closed-loop control; waits briefly for a fresh sample."""
+    import time
+
+    from valiant.common.mavlink_io import mavlink_io
+
+    pose = drain_vehicle_pose(master, previous)
+    if block_timeout_s <= 0:
+        return pose
+
+    target_sys = getattr(master, "target_system", 0)
+    deadline = time.time() + block_timeout_s
+    while time.time() < deadline:
+        with mavlink_io(master):
+            msg = master.recv_match(
+                type=["LOCAL_POSITION_NED", "ATTITUDE"],
+                blocking=True,
+                timeout=min(0.05, deadline - time.time()),
+            )
+        if msg is None or msg.get_srcSystem() != target_sys:
+            continue
+        got_pos, _ = _apply_pose_message(pose, msg)
+        if got_pos:
+            break
+    return pose
 
 
 def wait_vehicle_pose(

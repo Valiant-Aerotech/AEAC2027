@@ -134,6 +134,9 @@ flight_profiles:
       trigger_alt_m: 10.0
       alt_tolerance_m: 0.35
       forward_m: 2.0
+      forward_arrival_m: 0.25
+      forward_timeout_s: 12.0
+      radius_latch_tol_m: 1.0
       radius_m: 5.0
       laps: 5
       direction: clockwise
@@ -176,6 +179,9 @@ flight_profiles:
       trigger_alt_m: 10.0
       alt_tolerance_m: 0.35
       forward_m: 2.0
+      forward_arrival_m: 0.25
+      forward_timeout_s: 12.0
+      radius_latch_tol_m: 1.0
       radius_m: 5.0
       laps: 5
       direction: clockwise

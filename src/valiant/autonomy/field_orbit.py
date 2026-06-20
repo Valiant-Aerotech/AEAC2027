@@ -14,6 +14,7 @@ from valiant.autonomy.orbit_math import (
     advance_arc_progress_m,
     circle_center,
     combined_laps,
+    forward_entry_ned,
     orbit_velocity_ned,
     update_lap_progress,
     velocity_toward_ned,
@@ -78,6 +79,7 @@ class FieldOrbitRunner:
         self._radius_err = 0.0
         self._start_time: float | None = None
         self._origin: tuple[float, float] | None = None
+        self._anchor: tuple[float, float, float] | None = None
         self._center: tuple[float, float] | None = None
         self._clockwise = _direction_clockwise(str(self._ocfg.get("direction", "clockwise")))
         self._orbit_aborted = False
@@ -278,11 +280,13 @@ class FieldOrbitRunner:
         """Run one orbit cycle from GUIDED trigger through LOITER handoff."""
         x0, y0, z0, psi0 = self._wait_trigger()
         self._pilot_monitor.sync_from_vehicle()
+        self._anchor = (x0, y0, psi0)
         self._origin = (x0, y0)
         self._start_time = time.time()
         trigger_alt = float(self._ocfg.get("trigger_alt_m", 10.0))
         tol = float(self._ocfg.get("alt_tolerance_m", 0.35))
         forward_m = float(self._ocfg.get("forward_m", 2.0))
+        forward_arrival_m = float(self._ocfg.get("forward_arrival_m", 0.25))
         radius_m = float(self._ocfg.get("radius_m", 5.0))
         orbit_speed = float(self._ocfg.get("orbit_speed_m_s", 0.40))
         radial_kp = float(self._ocfg.get("radial_kp", 0.25))
@@ -300,8 +304,25 @@ class FieldOrbitRunner:
         if override:
             return override
 
+        intent_x, intent_y = forward_entry_ned(x0, y0, psi0, forward_m)
+
         self._set_phase(OrbitPhase.FORWARD, silent=True)
-        self._motion.drive_forward(forward_m, label=f"Flying forward {forward_m:.0f} m")
+        pose = self._motion.refresh_pose(self._motion.last_pose)
+        along_forward = math.cos(psi0) * (pose.x - x0) + math.sin(psi0) * (pose.y - y0)
+        if along_forward >= forward_m - forward_arrival_m:
+            print(
+                f"[Orbit] Already at forward entry "
+                f"(along={along_forward:.2f}m target={forward_m:.2f}m)"
+            )
+        else:
+            self._motion.drive_forward_anchored(
+                x0,
+                y0,
+                psi0,
+                forward_m,
+                label=f"Flying forward {forward_m:.0f} m",
+                arrival_m=forward_arrival_m,
+            )
         override = self._handle_pilot_override()
         if override:
             return override
@@ -325,19 +346,25 @@ class FieldOrbitRunner:
         entry_radial_kp = float(self._ocfg.get("orbit_entry_radial_kp", radial_kp * 2.5))
         entry_blend_s = float(self._ocfg.get("orbit_entry_blend_s", 4.0))
         orbit_start = time.time()
+        radius_latch_tol = float(self._ocfg.get("radius_latch_tol_m", 1.0))
+        orbit_latched = False
         print(
-            f"[Orbit] Center ({cx:.1f}, {cy:.1f}) R={radius_m:.1f} m "
-            f"entry_dist={dist_entry:.2f}m err_r={err_r0:.2f} "
+            f"[Orbit] intent_entry=({intent_x:.1f},{intent_y:.1f}) "
+            f"actual=({p1x:.1f},{p1y:.1f}) center=({cx:.1f},{cy:.1f}) "
+            f"R={radius_m:.1f} m entry_dist={dist_entry:.2f}m err_r={err_r0:.2f} "
             f"vn={vn0:.2f} ve={ve0:.2f} yaw={math.degrees(entry_yaw):.0f}deg "
             f"alt={self._altitude_m(pose):.1f}m"
         )
 
         self._set_phase(OrbitPhase.ORBIT, message="Starting orbit")
+        request_guided_telemetry_streams(self.master)
         lap_progress = 0.0
         arc_progress_m = 0.0
         phi_prev: float | None = None
         last_lap_int = 0
         orbit_tick_dt = 0.05
+        last_px, last_py = pose.x, pose.y
+        stale_pose_ticks = 0
         return_on_timeout = bool(self._ocfg.get("return_on_timeout", False))
         deadline = time.time() + max(
             120.0,
@@ -352,10 +379,21 @@ class FieldOrbitRunner:
             if not self._duration_ok():
                 self._abort_to_loiter("Max duration - switching to loiter")
                 return "complete"
+            self._motion.stop_stream()
             pose = self._motion.refresh_pose(pose)
             if not pose.ok:
                 time.sleep(orbit_tick_dt)
                 continue
+            moved = math.hypot(pose.x - last_px, pose.y - last_py)
+            if moved < 0.02:
+                stale_pose_ticks += 1
+                if stale_pose_ticks >= 40:
+                    print("[Orbit] WARN: pose stale >2s - re-requesting telemetry")
+                    request_guided_telemetry_streams(self.master)
+                    stale_pose_ticks = 0
+            else:
+                stale_pose_ticks = 0
+                last_px, last_py = pose.x, pose.y
             if not self._geofence_ok(pose.x, pose.y):
                 orbit_exit = "geofence"
                 self._abort_to_loiter("Geofence - switching to loiter")
@@ -385,17 +423,29 @@ class FieldOrbitRunner:
                 ve=ve,
                 orbit_elapsed_s=orbit_elapsed,
             )
-            lap_progress, _, phi_prev = update_lap_progress(
-                pose.x,
-                pose.y,
-                cx,
-                cy,
-                phi_prev,
-                lap_progress,
-                clockwise=self._clockwise,
-            )
-            arc_progress_m = advance_arc_progress_m(arc_progress_m, vn, ve, orbit_tick_dt)
-            self._laps = combined_laps(lap_progress, arc_progress_m, radius_m)
+            if abs(err_r) <= radius_latch_tol:
+                if not orbit_latched:
+                    orbit_latched = True
+                    phi_prev = None
+                    lap_progress = 0.0
+                    arc_progress_m = 0.0
+                    print(f"[Orbit] On radius (err_r={err_r:.2f}m) - lap counting active")
+                lap_progress, _, phi_prev = update_lap_progress(
+                    pose.x,
+                    pose.y,
+                    cx,
+                    cy,
+                    phi_prev,
+                    lap_progress,
+                    clockwise=self._clockwise,
+                )
+                if moved >= 0.02:
+                    arc_progress_m = advance_arc_progress_m(
+                        arc_progress_m, vn, ve, orbit_tick_dt
+                    )
+                self._laps = combined_laps(lap_progress, arc_progress_m, radius_m)
+            else:
+                self._laps = 0.0
             lap_int = int(self._laps)
             if lap_int > last_lap_int:
                 last_lap_int = lap_int

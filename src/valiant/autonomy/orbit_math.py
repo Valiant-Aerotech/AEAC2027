@@ -13,6 +13,30 @@ def wrap_pi(angle: float) -> float:
     return angle
 
 
+def forward_entry_ned(
+    anchor_x: float,
+    anchor_y: float,
+    yaw_rad: float,
+    forward_m: float,
+) -> tuple[float, float]:
+    """LOCAL NED point forward_m along heading from mission anchor."""
+    return (
+        anchor_x + forward_m * math.cos(yaw_rad),
+        anchor_y + forward_m * math.sin(yaw_rad),
+    )
+
+
+def progress_along_heading(
+    x: float,
+    y: float,
+    anchor_x: float,
+    anchor_y: float,
+    yaw_rad: float,
+) -> float:
+    """Signed distance traveled from anchor along heading (NED)."""
+    return math.cos(yaw_rad) * (x - anchor_x) + math.sin(yaw_rad) * (y - anchor_y)
+
+
 def circle_center(
     x: float,
     y: float,

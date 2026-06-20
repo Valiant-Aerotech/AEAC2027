@@ -29,7 +29,9 @@ class _FakeMaster:
         self.target_system = 1
 
     def recv_match(self, *, type, blocking=False, timeout=0.5):
-        del type, blocking, timeout
+        del type, timeout
+        if not blocking and not self._messages:
+            return None
         if not self._messages:
             return None
         return self._messages.pop(0)
@@ -67,10 +69,20 @@ def test_refresh_vehicle_pose_drains_inbox():
     previous = VehiclePose(x=0.0, y=0.0, z=-10.0, ok=True)
     master = _FakeMaster([_ned_msg(3.0, 4.0), _ned_msg(5.0, 6.0)])
 
-    pose = refresh_vehicle_pose(master, previous)
+    pose = refresh_vehicle_pose(master, previous, block_timeout_s=0.0)
 
     assert abs(pose.x - 5.0) < 1e-6
     assert abs(pose.y - 6.0) < 1e-6
+
+
+def test_refresh_vehicle_pose_blocks_for_fresh_sample():
+    previous = VehiclePose(x=0.0, y=0.0, z=-10.0, ok=True)
+    master = _FakeMaster([_ned_msg(2.0, 1.0)])
+
+    pose = refresh_vehicle_pose(master, previous, block_timeout_s=0.2)
+
+    assert abs(pose.x - 2.0) < 1e-6
+    assert abs(pose.y - 1.0) < 1e-6
 
 
 def test_drain_vehicle_pose_keeps_previous_when_inbox_empty():
