@@ -10,11 +10,10 @@ import time
 import cv2
 from pymavlink import mavutil
 
-from valiant.autonomy.auto_nav.mavlink_driver import MavlinkDriver
-from valiant.autonomy.auto_nav.planner import MotionIntent, MotionPlanner
+from valiant.autonomy.auto_nav import MotionIntent, create_mavlink_driver, create_motion_planner, effective_approach_speed
 from valiant.autonomy.cv import create_target_detector, draw_mission_overlay
 from valiant.autonomy.cv.exceptions import BadFrameError, CVError, LowConfidenceError
-from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
+from valiant.autonomy.metric_recon import create_metric_reconstructor, metric_vz_from_altitude_error
 from valiant.autonomy.packets import CVPacket, MetricPacket
 from valiant.autonomy.conops import (
     has_shot_confirmation,
@@ -26,8 +25,7 @@ from valiant.autonomy.conops import (
     validate_conops_config,
 )
 from valiant.autonomy.safety.monitor import SafetyAbort, SafetyMonitor
-from valiant.autonomy.spray.actuation import WaterTrigger
-from valiant.autonomy.spray.aim import is_aimed
+from valiant.autonomy.spray import create_water_trigger, is_aimed
 from valiant.autonomy.gcs_hud import (
     GcsHudReporter,
     format_sitl_status_line,
@@ -166,7 +164,7 @@ class AutoExtinguisher:
             if sitl_mode:
                 request_sitl_telemetry_streams(self.master)
 
-        self.nav = MavlinkDriver(self.master, cfg)
+        self.nav = create_mavlink_driver(self.master, cfg)
         gcs_cfg = cfg.get("gcs_monitor", {})
         self._gcs_statustext_opts = gcs_statustext_options_from_cfg(cfg, sitl=sitl_mode)
         self._gcs_hud = GcsHudReporter(
@@ -177,9 +175,11 @@ class AutoExtinguisher:
         self._gcs_motion_events = bool(gcs_cfg.get("motion_events", True))
         self.gimbal = GimbalController(self.master, cfg)
         self.safety = SafetyMonitor(self.master, cfg, sim=sim_mode and not sitl_mode)
-        self.planner = MotionPlanner(cfg)
-        self.metric_recon = MetricReconstructor(self.master, cfg, sim=sim_mode and not sitl_mode)
-        self.trigger = WaterTrigger(self.master, cfg)
+        self.planner = create_motion_planner(cfg)
+        self.metric_recon = create_metric_reconstructor(
+            self.master, cfg, sim=sim_mode and not sitl_mode,
+        )
+        self.trigger = create_water_trigger(self.master, cfg)
         self.uploader = DriveUploader(cfg)
         self.detector = create_target_detector(cfg)
 
@@ -313,15 +313,14 @@ class AutoExtinguisher:
     def _metric_vz_ned(self, metric: MetricPacket | None) -> float:
         if metric is None or metric.altitude_error_m is None:
             return 0.0
-        from valiant.autonomy.metric_recon.geometry_3d import metric_vz_from_altitude_error
-
         kp = float(
             self.cfg.get("metric_recon", {}).get(
                 "altitude_kp", self.cfg.get("sitl", {}).get("altitude_kp", 0.22)
             )
         )
         max_vz = float(self.cfg.get("sitl", {}).get("max_vz", 0.14))
-        return metric_vz_from_altitude_error(metric.altitude_error_m, kp=kp, max_vz=max_vz)
+        alt_err = metric.altitude_error_m + metric.body_alt_bias_m
+        return metric_vz_from_altitude_error(alt_err, kp=kp, max_vz=max_vz)
 
     def _publish_telemetry(self, cv_packet: CVPacket | None, metric: MetricPacket | None) -> None:
         if self._telemetry is None:
@@ -356,8 +355,6 @@ class AutoExtinguisher:
         )
 
     def _scaled_approach_speed(self, metric: MetricPacket | None, *, creep: bool = False) -> float:
-        from valiant.autonomy.auto_nav.approach_motion import effective_approach_speed
-
         return effective_approach_speed(self.cfg, metric, creep=creep)
 
     def _log_remediation(self, blockers: tuple[str, ...]) -> None:

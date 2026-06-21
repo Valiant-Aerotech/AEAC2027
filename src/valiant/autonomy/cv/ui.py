@@ -11,6 +11,7 @@ import numpy as np
 from valiant.autonomy.cv.constants import CAPTURE_HEIGHT, CAPTURE_WIDTH, R_S, SUBFRAME_SIZE
 from valiant.autonomy.cv.subframe_grid import grid_crop_bounds
 from valiant.autonomy.cv.sitl_hud import (
+    C_CYAN,
     C_GREEN,
     C_MAGENTA,
     C_MUTED,
@@ -128,16 +129,27 @@ def draw_overlay(
     _draw_reticle(overlay, w // 2, h // 2)
 
     if metric:
+        if metric.aim_px is not None:
+            ax, ay = metric.aim_px
+            draw_target_marker(overlay, ax, ay, C_CYAN, label="aim")
+        edge_labels = metric.edge_proximity.labels()
+        if edge_labels:
+            draw_panel(overlay, w - 72, 8, 64, 24, alpha=0.72)
+            cv2.putText(
+                overlay, "/".join(edge_labels), (w - 64, 26),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, C_CYAN, 1, cv2.LINE_AA,
+            )
         dist_txt = f"{metric.distance_m:.2f} m" if metric.distance_m is not None else "?"
         horiz = metric.horizontal_range_m
         alt_err = metric.altitude_error_m
         side_txt = f"{metric.side_clearance_m:.2f} m" if metric.side_clearance_m is not None else "?"
+        vert_txt = f"{metric.vertical_clearance_m:.2f} m" if metric.vertical_clearance_m is not None else "?"
         extra = horiz is not None or alt_err is not None
         panel_h = 44 if extra else 28
         base_y = h - panel_h - 8
-        draw_panel(overlay, 8, base_y, min(420, w - 16), panel_h, alpha=0.75)
+        draw_panel(overlay, 8, base_y, min(460, w - 16), panel_h, alpha=0.75)
         cv2.putText(
-            overlay, f"range {dist_txt}   clearance {side_txt}", (16, base_y + 18),
+            overlay, f"range {dist_txt}   side {side_txt}   vert {vert_txt}", (16, base_y + 18),
             cv2.FONT_HERSHEY_SIMPLEX, 0.42, C_GREEN, 1, cv2.LINE_AA,
         )
         if extra:

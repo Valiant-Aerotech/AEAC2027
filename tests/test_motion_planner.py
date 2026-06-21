@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from valiant.autonomy.auto_nav.planner import MotionPlanner
-from valiant.autonomy.packets import MetricPacket
+from valiant.autonomy.packets import EdgeProximity, MetricPacket
 
 
 def _planner() -> MotionPlanner:
@@ -95,3 +95,71 @@ def test_scale_approach_speed_tapers_near_target():
     near = scale_approach_speed_metric(0.20, 1.0, slow_zone_m=2.5, fire_distance_m=0.8, creep_speed=0.05)
     assert far > near
     assert near >= 0.05
+
+
+def test_corner_body_clearance_bypasses_side_abort():
+    planner = _planner()
+    metric = _metric(
+        pixel_offset=(0.0, 0.0),
+        target_offset=(-400.0, 0.0),
+        edge_proximity=EdgeProximity(left=True),
+        lateral_clearance_ok=True,
+        vertical_clearance_ok=True,
+        side_clearance_m=0.2,
+        distance_m=2.5,
+        distance_min_m=2.5,
+        distance_max_m=2.5,
+    )
+    assert planner.is_safe_to_move(metric, bbox_area=1000)
+
+
+def test_corner_without_clearance_still_aborts_when_centered():
+    planner = _planner()
+    metric = _metric(
+        pixel_offset=(0.0, 0.0),
+        edge_proximity=EdgeProximity(left=True),
+        lateral_clearance_ok=False,
+        vertical_clearance_ok=True,
+        side_clearance_m=0.2,
+        distance_m=2.5,
+        distance_min_m=2.5,
+        distance_max_m=2.5,
+    )
+    assert not planner.is_safe_to_move(metric, bbox_area=1000)
+
+
+def test_vertical_edge_bypasses_vertical_abort():
+    planner = _planner()
+    metric = _metric(
+        pixel_offset=(0.0, 0.0),
+        edge_proximity=EdgeProximity(bottom=True),
+        lateral_clearance_ok=True,
+        vertical_clearance_ok=True,
+        vertical_clearance_m=0.2,
+        distance_m=2.5,
+        distance_min_m=2.5,
+        distance_max_m=2.5,
+    )
+    assert planner.is_safe_to_move(metric, bbox_area=1000)
+
+
+def test_body_clearance_blocks_fire():
+    planner = _planner()
+    planner.update_approach_tracking(_metric(distance_m=3.0, distance_max_m=3.0))
+    metric = _metric(
+        distance_m=0.85,
+        distance_min_m=0.85,
+        distance_max_m=0.85,
+        edge_proximity=EdgeProximity(left=True),
+        lateral_clearance_ok=False,
+        vertical_clearance_ok=True,
+        target_offset=(0.0, 0.0),
+    )
+    assert not planner.can_fire(
+        metric, lock_duration_met=True, wall_range_m=0.9, wall_standoff_m=1.2,
+    )
+    blockers = planner.fire_blockers(
+        metric, lock_duration_met=True, wall_range_m=0.9, wall_standoff_m=1.2,
+    )
+    assert "body_clearance" in blockers
+

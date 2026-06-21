@@ -12,8 +12,7 @@ import numpy as np
 import yaml
 
 from valiant.autonomy.cv import create_target_detector
-from valiant.autonomy.metric_recon.depth_source import InlineDepthSource
-from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
+from valiant.autonomy.metric_recon import InlineDepthSource, create_metric_reconstructor
 from valiant.common.config import load_config, repo_root
 
 
@@ -36,7 +35,7 @@ def main() -> int:
 
     cfg.setdefault("metric_recon", {})["rangefinder"] = "depth_at_target"
     depth_source = InlineDepthSource()
-    recon = MetricReconstructor(None, cfg, sim=True, depth_source=depth_source)
+    recon = create_metric_reconstructor(None, cfg, sim=True)
     detector = create_target_detector(cfg)
 
     errors: list[float] = []
@@ -62,7 +61,7 @@ def main() -> int:
 
             h, w = frame.shape[:2]
             cv_packet = detector.detect(frame)
-            metric = recon.reconstruct(cv_packet, w, h)
+            metric = recon.reconstruct(cv_packet, w, h, depth_mm=depth_source.get_depth_mm())
             if metric is None or metric.distance_m is None:
                 continue
             err_pct = abs(metric.distance_m - truth_m) / truth_m * 100.0

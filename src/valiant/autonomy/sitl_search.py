@@ -12,7 +12,9 @@ from valiant.common.ned_kinematics import (
     ApproachGoal,
     ApproachPhase,
     VehiclePose,
+    apply_ceiling_constraint,
     apply_wall_constraint,
+    ceiling_z_ned,
     compute_approach_goal,
     compute_altitude_vz,
     ned_to_body_velocity,
@@ -102,6 +104,9 @@ def compute_search_motion(
             min_clearance_m=min_ground_clearance_m,
         )
         v_ned = apply_wall_constraint(v_ned, pose, wall_x, wall_standoff_m)
+        v_ned = apply_ceiling_constraint(
+            v_ned, pose, ceiling_z_ned(scene), wall_standoff_m,
+        )
         vn, ve, vz_ned = float(v_ned[0]), float(v_ned[1]), float(v_ned[2])
         if pose.x < home_south_limit_m:
             vn = max(vn, speed * 0.5)

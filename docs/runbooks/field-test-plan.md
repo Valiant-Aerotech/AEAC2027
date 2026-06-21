@@ -60,10 +60,13 @@ Run on Pi: `python hardware/vion/rpi/run_mission.py --profile indoor`
 | 2.2 | Center hold | AIMING on a fixed printed target at 1-2 m | Drone holds target near frame centre without oscillation |
 | 2.3 | Approach from 2 m+ | Start beyond 2 m, `--max-targets 1` | Planner `approach_valid` true before fire gate |
 | 2.4 | Side clearance abort | Target near frame edge | ABORT, return to SEARCHING, no lateral creep into obstacle |
+| 2.4b | Wall-edge corner target | Mount dry target on left or right wall within ~20% of frame edge; approach to fire range | HUD shows L/R edge label, magenta detect + cyan aim; no false ABORT when clearance OK; tune `body_half_width_m`, `spray_deadband_px` |
+| 2.4c | Low / floor-edge target | Target mounted low on wall (bottom ~20% of frame) | HUD shows B label; `body_alt_bias_m` > 0; no false vertical ABORT; tune `body_half_height_m`, `spray_vertical_deadband_px` |
+| 2.4d | High / ceiling-edge target | Target high on wall or low ceiling venue | HUD shows T label; body holds lower; tune `vertical_clearance_margin_m`, `auto_nav.vertical_clearance_m` |
 | 2.5 | Target loss | Occlude target 1+ sec | Revert to SEARCHING, nav stop |
 | 2.6 | Safety battery | Simulate low battery in SITL or bench inject | Mission abort, optional RTL |
 
-**Tuning knobs:** `auto_nav.kp_x/y`, `deadband_px`, `approach_speed`, `side_clearance_m`
+**Tuning knobs:** `auto_nav.kp_x/y`, `deadband_px`, `spray_deadband_px`, `spray_vertical_deadband_px`, `approach_speed`, `side_clearance_m`, `vertical_clearance_m`, `metric_recon.body_half_width_m`, `metric_recon.body_half_height_m`, `metric_recon.clearance_margin_m`, `metric_recon.vertical_clearance_margin_m`
 
 ---
 

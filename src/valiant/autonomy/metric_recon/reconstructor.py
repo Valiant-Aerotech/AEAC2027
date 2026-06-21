@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from valiant.autonomy.metric_recon.aim_offset import compute_aim_point
+from valiant.autonomy.metric_recon.edge_proximity import classify_edges
 from valiant.autonomy.metric_recon.depth_map import sample_depth_at_bbox, sample_depth_m
 from valiant.autonomy.metric_recon.geometry_3d import (
     altitude_error_from_pose,
@@ -16,10 +18,12 @@ from valiant.autonomy.metric_recon.geometry_3d import (
     pixel_to_unit_ray,
     ray_angles_deg,
 )
+from valiant.autonomy.metric_recon.lateral_clearance import sample_lateral_clearance_m
+from valiant.autonomy.metric_recon.vertical_clearance import sample_vertical_clearance_m
 from valiant.autonomy.metric_recon.pixel_geometry import (
     estimate_distance_fov_band,
     estimate_side_clearance,
-    pixel_offset,
+    pixel_offset_from,
 )
 from valiant.autonomy.metric_recon.rangefinder import RangefinderReader
 from valiant.autonomy.metric_recon.wall_distance import enrich_wall_distance
@@ -93,7 +97,9 @@ class MetricReconstructor:
             return None
 
         calib = calibration if calibration is not None else self._calibration
-        offset = pixel_offset(hit, frame_w, frame_h)
+        target_px = (hit.cx, hit.cy)
+        target_offset = pixel_offset_from(hit.cx, hit.cy, frame_w, frame_h)
+        edges = classify_edges(hit, frame_w, frame_h, self.cfg)
         slant_m, dist_min, dist_max, source = self._resolve_distance(
             hit, frame_w, depth_mm=depth_mm, calib=calib
         )
@@ -122,16 +128,58 @@ class MetricReconstructor:
             alt_err = altitude_error_from_ray(
                 slant_m or 0.0,
                 ray_body,
-                pixel_offset_y=offset[1],
+                pixel_offset_y=target_offset[1],
                 frame_h=frame_h,
                 vfov_deg=self.vfov_deg,
             ) if slant_m is not None else None
 
         planner_dist = horizontal_m if horizontal_m is not None else slant_m
 
+        range_m = horizontal_m if horizontal_m is not None else slant_m
+        aim_px: tuple[int, int] | None = None
+        lateral_clearance_ok = True
+        vertical_clearance_ok = True
+        body_alt_bias_m = 0.0
+        lateral_clearance_m: float | None = None
+        vertical_open_clearance_m: float | None = None
+
+        if edges.any_edge and range_m is not None:
+            aim_result = compute_aim_point(
+                hit, frame_w, frame_h, self.cfg, edges,
+                range_m=range_m, hfov_deg=self.hfov_deg, vfov_deg=self.vfov_deg,
+            )
+            aim_px = (aim_result.aim_x, aim_result.aim_y)
+            lateral_clearance_ok = aim_result.lateral_ok
+            vertical_clearance_ok = aim_result.vertical_ok
+            body_alt_bias_m = aim_result.body_alt_bias_m
+            pixel_off = pixel_offset_from(aim_result.aim_x, aim_result.aim_y, frame_w, frame_h)
+        elif edges.any_edge:
+            lateral_clearance_ok = not edges.lateral
+            vertical_clearance_ok = not edges.vertical
+            pixel_off = target_offset
+        else:
+            pixel_off = target_offset
+
+        if depth_mm is not None and edges.lateral:
+            lateral_clearance_m = sample_lateral_clearance_m(
+                depth_mm, hit, frame_w, self.cfg, calib=calib,
+            )
+        if depth_mm is not None and edges.vertical:
+            vertical_open_clearance_m = sample_vertical_clearance_m(
+                depth_mm, hit, frame_h, edges, self.cfg, calib=calib,
+            )
+
         packet = MetricPacket(
-            target_px=(hit.cx, hit.cy),
-            pixel_offset=offset,
+            target_px=target_px,
+            pixel_offset=pixel_off,
+            aim_px=aim_px,
+            target_offset=target_offset,
+            edge_proximity=edges,
+            lateral_clearance_ok=lateral_clearance_ok,
+            vertical_clearance_ok=vertical_clearance_ok,
+            body_alt_bias_m=body_alt_bias_m,
+            lateral_clearance_m=lateral_clearance_m,
+            vertical_open_clearance_m=vertical_open_clearance_m,
             distance_m=planner_dist,
             distance_min_m=dist_min,
             distance_max_m=dist_max,

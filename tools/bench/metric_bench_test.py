@@ -10,7 +10,7 @@ import sys
 import cv2
 
 from valiant.autonomy.cv import create_target_detector, draw_mission_overlay
-from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
+from valiant.autonomy.metric_recon import create_metric_reconstructor
 from valiant.common.config import load_config
 
 
@@ -37,7 +37,7 @@ def main() -> int:
         if rec_dir:
             depth_reader = RecordingDepthSource(rec_dir)
 
-    metric_recon = MetricReconstructor(None, cfg, sim=True)
+    metric_recon = create_metric_reconstructor(None, cfg, sim=True)
     detector = create_target_detector(cfg)
 
     cap = cv2.VideoCapture(args.video) if args.video else cv2.VideoCapture(args.camera, cv2.CAP_DSHOW)
@@ -59,7 +59,15 @@ def main() -> int:
         if metric:
             record = {
                 "target_px": metric.target_px,
+                "aim_px": metric.aim_px,
                 "pixel_offset": metric.pixel_offset,
+                "target_offset": metric.target_offset,
+                "corner_target": metric.corner_target,
+                "edge_proximity": metric.edge_proximity.labels(),
+                "lateral_clearance_ok": metric.lateral_clearance_ok,
+                "vertical_clearance_ok": metric.vertical_clearance_ok,
+                "body_alt_bias_m": metric.body_alt_bias_m,
+                "body_clearance_ok": metric.body_clearance_ok,
                 "distance_m": metric.distance_m,
                 "slant_range_m": metric.slant_range_m,
                 "horizontal_range_m": metric.horizontal_range_m,

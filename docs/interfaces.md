@@ -39,7 +39,7 @@ Built by `MetricReconstructor` from `CVPacket` + frame geometry + gimbal pitch +
 
 | Field | Meaning |
 |-------|---------|
-| `pixel_offset` | Target centre vs frame centre |
+| `pixel_offset` | Servo aim centre vs frame centre (from `aim_px` when set, else `target_px`) |
 | `distance_m` | **Planner-facing horizontal range** (falls back to slant when decomposition unavailable) |
 | `slant_range_m` | Raw measured range along camera ray |
 | `horizontal_range_m` | Ground-plane range from slant + ray elevation |
@@ -50,6 +50,19 @@ Built by `MetricReconstructor` from `CVPacket` + frame geometry + gimbal pitch +
 | `distance_source` | `depth_at_target`, `fov_band`, `vl53l1x`, or empty |
 | `wall_distance_m` | Horizontal range + wall offset |
 | `side_clearance_m` | Lateral margin from frame edge + range |
+| `aim_px` | Virtual servo aim point for edge targets; `None` uses `target_px` |
+| `target_offset` | Detected target centre vs frame centre (spray gate) |
+| `edge_proximity` | `EdgeProximity(left, right, top, bottom)` — which frame edges are near |
+| `corner_target` | Property: `edge_proximity.lateral` (legacy) |
+| `lateral_clearance_ok` / `vertical_clearance_ok` | Per-axis geometric offset satisfied |
+| `body_clearance_ok` | Property: both axis OK flags |
+| `body_alt_bias_m` | Gimbal-mode vertical body shift (+ = hold higher; floor edge) |
+| `lateral_clearance_m` | Optional ToF depth-jump hint on open lateral side |
+| `vertical_open_clearance_m` | Optional ToF depth-jump on open vertical side |
+
+**Dual alignment (edge targets):** `pixel_offset` is computed from `aim_px` when set (body/servo). Spray gating uses `target_offset` via `is_target_aligned()`; body hold uses `is_body_aligned()`. Gimbal pitch tracks detected `hit.cy`; vertical body uses `body_alt_bias_m` in `_metric_vz_ned`. Camera-down mode uses full `servo_px` including vertical aim.
+
+**Edge config (`metric_recon`):** `corner_edge_frac` / `edge_edge_frac`, `corner_min_bbox_area_px`, `body_half_width_m`, `clearance_margin_m`, `body_half_height_m`, `vertical_clearance_margin_m`, `lateral_sample_offset_px`, `vertical_sample_offset_px`, `lateral_depth_jump_min_m`. **Auto-nav:** `spray_deadband_px`, `spray_vertical_deadband_px`, `vertical_clearance_m`, `side_clearance_m`.
 
 Use `metric.planner_range_m()` for fire/approach gating (prefers `horizontal_range_m`).
 
@@ -86,14 +99,47 @@ External code (orchestrator, bench tools, calibrate scripts) should import only:
 
 Do **not** import `subframe_grid`, `subframe_yolo`, `yolo_onnx`, or `dry_detector` from orchestrator, metric recon, or auto-nav.
 
+## Metric recon public API (`valiant.autonomy.metric_recon`)
+
+| Symbol | Purpose |
+|--------|---------|
+| `create_metric_reconstructor(master, cfg, *, sim=False)` | Factory for `MetricReconstructor` |
+| `MetricReconstructor.reconstruct(cv_packet, w, h, ...)` | Returns `MetricPacket` |
+| `InlineDepthSource` / `RecordingDepthSource` | Bench/replay depth providers (calibrate tools) |
+| `metric_vz_from_altitude_error(...)` | Onboard vz from `altitude_error_m` (orchestrator helper) |
+
+Do **not** import `corner_target`, `aim_offset`, `geometry_3d`, or `reconstructor` from orchestrator or auto-nav. Corner logic stays inside metric recon.
+
+## Auto-nav public API (`valiant.autonomy.auto_nav`)
+
+| Symbol | Purpose |
+|--------|---------|
+| `create_motion_planner(cfg)` | Approach/aim/fire gating from `MetricPacket` |
+| `create_mavlink_driver(master, cfg)` | Visual-servo velocity commands |
+| `MotionIntent` | `APPROACH`, `HOLD_AIM`, `ABORT` |
+| `effective_approach_speed(cfg, metric, ...)` | Tapered forward speed during approach |
+
+Orchestrator consumes `MetricPacket` only; use `metric.servo_px` for the lateral servo point (virtual aim when corner offset is active).
+
+Do **not** import `visual_servo`, `mavlink_driver`, or `planner` directly from orchestrator.
+
+## Spray public API (`valiant.autonomy.spray`)
+
+| Symbol | Purpose |
+|--------|---------|
+| `is_body_aligned(metric, cfg)` | Servo/aim offset within deadband |
+| `is_target_aligned(metric, cfg)` | Detected target within spray deadband |
+| `is_aimed(metric, cfg)` | Both alignments + altitude tolerance |
+| `create_water_trigger(mav, cfg)` | MAVLink servo or GPIO spray actuation |
+
 ### Allowed imports by subsystem
 
-| Module | May import from CV |
-|--------|-------------------|
-| `orchestrator` | `valiant.autonomy.cv`, `valiant.autonomy.cv.exceptions` |
-| `metric_recon` | `valiant.autonomy.packets` only |
-| `auto_nav` | `valiant.autonomy.packets` only |
-| Bench / calibrate tools | `valiant.autonomy.cv` |
+| Module | May import from CV | May import from metric_recon | May import from auto_nav | May import from spray |
+|--------|-------------------|------------------------------|--------------------------|----------------------|
+| `orchestrator` | `valiant.autonomy.cv`, `exceptions` | `valiant.autonomy.metric_recon` | `valiant.autonomy.auto_nav` | `valiant.autonomy.spray` |
+| `metric_recon` | — | internal only | — | — |
+| `auto_nav` | — | `valiant.autonomy.packets` only | internal; `spray` public API | `valiant.autonomy.spray` |
+| Bench / calibrate tools | `valiant.autonomy.cv` | `valiant.autonomy.metric_recon` | — | — |
 
 ## Bench test
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 
 from valiant.autonomy.packets import MetricPacket
-from valiant.autonomy.spray.aim import is_aimed
+from valiant.autonomy.spray import is_aimed
 
 # Blockers that mean "move closer / prove approach" rather than hold in place.
 APPROACH_REMEDIATION_BLOCKERS = frozenset({
@@ -31,6 +31,7 @@ class MotionPlanner:
         self.min_approach_distance_m = metric.get("min_approach_distance_m", 2.0)
         self.fire_distance_m = metric.get("fire_distance_m", 0.8)
         self.side_clearance_m = nav.get("side_clearance_m", 1.0)
+        self.vertical_clearance_m = nav.get("vertical_clearance_m", 0.8)
         self.target_lock_area_px = nav.get("target_lock_area_px", 15000)
         self.deadband_px = nav.get("deadband_px", 50)
         self.alt_align_tolerance_m = float(
@@ -62,12 +63,26 @@ class MotionPlanner:
         close = metric.distance_min_m if metric.distance_min_m is not None else metric.planner_range_m()
         if close is not None and close <= self.fire_distance_m:
             return True
-        if metric.side_clearance_m is None:
-            return True
         ox, oy = metric.pixel_offset
-        if abs(ox) > self.deadband_px or abs(oy) > self.deadband_px:
-            return True
-        return metric.side_clearance_m >= self.side_clearance_m
+        centered = abs(ox) <= self.deadband_px and abs(oy) <= self.deadband_px
+
+        if metric.side_clearance_m is not None:
+            if metric.edge_lateral and metric.lateral_clearance_ok:
+                pass
+            elif not centered or abs(ox) > self.deadband_px:
+                pass
+            elif metric.side_clearance_m < self.side_clearance_m:
+                return False
+
+        if metric.vertical_clearance_m is not None:
+            if metric.edge_vertical and metric.vertical_clearance_ok:
+                pass
+            elif not centered or abs(oy) > self.deadband_px:
+                pass
+            elif metric.vertical_clearance_m < self.vertical_clearance_m:
+                return False
+
+        return True
 
     def should_switch_to_aiming(
         self,
@@ -135,6 +150,8 @@ class MotionPlanner:
             return False
         if not is_aimed(metric, self._cfg):
             return False
+        if metric.edge_proximity.any_edge and not metric.body_clearance_ok:
+            return False
         # CONOPS: must prove approach from beyond 2 m; never fire without distance evidence
         if metric.planner_range_m() is None and metric.distance_max_m is None:
             return False
@@ -163,6 +180,10 @@ class MotionPlanner:
             blockers.append("lock_duration")
         if not is_aimed(metric, self._cfg):
             blockers.append("not_aimed")
+        if metric.edge_proximity.any_edge and not metric.lateral_clearance_ok:
+            blockers.append("body_clearance")
+        if metric.edge_proximity.any_edge and not metric.vertical_clearance_ok:
+            blockers.append("vertical_clearance")
         if metric.planner_range_m() is None and metric.distance_max_m is None:
             blockers.append("no_distance")
         if not self._approach_valid:
