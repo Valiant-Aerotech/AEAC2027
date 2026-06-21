@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-
-import pytest
+from unittest.mock import patch
 
 from valiant.common.mavlink import (
     MavlinkConnectError,
@@ -15,9 +13,17 @@ from valiant.common.mavlink import (
 
 def test_connection_hints_pi_path_on_windows():
     cause = OSError(2, "The system cannot find the path specified.")
-    hints = connection_error_hints("/dev/ttyAMA0", cause)
+    with patch("valiant.common.mavlink.sys.platform", "win32"):
+        hints = connection_error_hints("/dev/ttyAMA0", cause)
     assert any("GCS laptop" in h for h in hints)
     assert any("COM5" in h for h in hints)
+
+
+def test_connection_hints_pi_path_on_linux():
+    cause = OSError(2, "No such file or directory")
+    with patch("valiant.common.mavlink.sys.platform", "linux"):
+        hints = connection_error_hints("/dev/ttyAMA0", cause)
+    assert any("raspi-config" in h for h in hints)
 
 
 def test_connection_hints_com_port_failure():
