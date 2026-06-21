@@ -38,12 +38,18 @@ catch {
     )
 }
 
-if (Test-Path "models\best.onnx") {
-    ssh $PiHost "mkdir -p $RemoteDir/models"
-    scp models\best.onnx "${PiHost}:${RemoteDir}/models/"
-    Write-Host "Deployed models/best.onnx"
-} else {
-    Write-ValiantWarn "models\best.onnx not found locally (optional for Pi CV)"
+$modelDeployed = $false
+foreach ($modelName in @("best.onnx", "dry.onnx")) {
+    $localPath = Join-Path "models" $modelName
+    if (Test-Path $localPath) {
+        ssh $PiHost "mkdir -p $RemoteDir/models"
+        scp $localPath "${PiHost}:${RemoteDir}/models/"
+        Write-Host "Deployed models/$modelName"
+        $modelDeployed = $true
+    }
+}
+if (-not $modelDeployed) {
+    Write-ValiantWarn "models/best.onnx and models/dry.onnx not found locally (optional for Pi CV)"
 }
 
 if (Test-Path "config\rpas_calibration.yaml") {

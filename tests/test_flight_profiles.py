@@ -26,3 +26,15 @@ def test_outdoor_profile_tunes_cv_and_nav():
     nav = cfg.get("auto_nav", {})
     assert nav.get("side_clearance_m") == 1.2
     assert nav.get("kd_x") == 0.0018
+
+
+def test_vivi_outdoor_mission_profile_enables_spray_and_standby():
+    cfg = apply_flight_profile(load_config("vivi"), "vivi_outdoor_mission")
+    flight = cfg.get("flight", {})
+    assert flight.get("mode") == "GUIDED"
+    assert flight.get("require_gps") is True
+    assert cfg.get("camera", {}).get("source") == "rpi_local"
+    assert cfg.get("spray", {}).get("method") == "MAVLINK_SERVO"
+    mission = cfg.get("mission", {})
+    assert mission.get("pilot_standby") is True
+    assert mission.get("loiter_on_complete") is True

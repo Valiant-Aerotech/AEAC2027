@@ -2,6 +2,8 @@
 
 Outdoor validation for **Vivi + Pi companion**: pilot arms and climbs manually, selects **GUIDED** on RC, companion runs a scripted orbit, then **LOITER** for manual return.
 
+For the full two-run hardware day (orbit + CV mission), see [vivi-outdoor-field-day.md](vivi-outdoor-field-day.md).
+
 This is **not** the CV orchestrator (`run_mission.py`). No auto-arm, takeoff, spray, or target search.
 
 ## How to run

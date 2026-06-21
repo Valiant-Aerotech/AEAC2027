@@ -16,7 +16,7 @@ _CONFIG_DIR = _REPO_ROOT / "config"
 DEFAULT_DRONE = "rpas"
 
 # Platform config may inherit airframe tuning from another YAML file.
-_CONFIG_BASE: dict[str, str] = {"rpas": "vion"}
+_CONFIG_BASE: dict[str, str] = {"rpas": "vion", "vivi": "vion"}
 
 
 def repo_root() -> Path:
@@ -87,8 +87,8 @@ def load_config(drone: str | None = None) -> dict[str, Any]:
     Parameters
     ----------
     drone:
-        Platform or airframe id (default ``rpas``). Fleet ids: ``vion``, ``vivi``,
-        ``vulcan2``. ``rpas`` inherits ``vion.yaml`` then applies ``rpas.yaml``.
+        Platform or airframe id (default ``rpas``). ``rpas`` and ``vivi`` inherit
+        ``vion.yaml`` then apply their platform YAML. ``vion`` loads ``vion.yaml`` only.
     """
     drone = drone or DEFAULT_DRONE
     defaults_path = _CONFIG_DIR / "defaults.yaml"

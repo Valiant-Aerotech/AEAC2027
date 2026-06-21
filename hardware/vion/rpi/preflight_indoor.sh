@@ -22,7 +22,7 @@ echo ""
 
 echo "1. Software on Pi..."
 source .venv/bin/activate
-check test -f models/best.onnx
+check test -f models/dry.onnx -o -f models/best.onnx
 check test -f config/rpas_calibration.yaml -o -f config/vion_calibration.yaml
 
 echo ""

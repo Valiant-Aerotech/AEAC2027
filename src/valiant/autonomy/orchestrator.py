@@ -200,6 +200,7 @@ class AutoExtinguisher:
         self.confirm_frame = None
         self.upload_file_path: str | None = None
         self._complete_hold_announced = False
+        self._handed_off_loiter = False
         self._last_cv: CVPacket | None = None
         self._last_metric: MetricPacket | None = None
         self._stop_loop = False
@@ -434,9 +435,60 @@ class AutoExtinguisher:
         return True
 
     def _sitl_stop_motion(self) -> None:
-        if not self._allow_motion():
+        if not self._allow_motion() or self._handed_off_loiter:
             return
         self.nav.stop()
+
+    def _mission_pilot_standby_enabled(self) -> bool:
+        if self.sitl or self.sim or self.hand_test or not self._allow_motion():
+            return False
+        return bool(self.cfg.get("mission", {}).get("pilot_standby", False))
+
+    def _wait_for_mission_guided_trigger(self) -> None:
+        from valiant.autonomy.sitl_preflight import wait_for_guided_trigger
+
+        mcfg = self.cfg.get("mission", {})
+        orbit = self.cfg.get("field_orbit", {})
+        alt_m = float(mcfg.get("standby_alt_m", orbit.get("trigger_alt_m", 10.0)))
+        tol_m = float(mcfg.get("standby_alt_tolerance_m", orbit.get("alt_tolerance_m", 0.35)))
+        require_gps = bool(self.cfg.get("flight", {}).get("require_gps", True))
+        print(
+            f"[Mission] Standby: arm, climb to ~{alt_m:.0f} m, select GUIDED on RC "
+            f"(motion starts after trigger)"
+        )
+        wait_for_guided_trigger(
+            self.master,
+            min_alt_m=alt_m,
+            alt_tolerance_m=tol_m,
+            require_gps=require_gps,
+        )
+
+    def _complete_handoff_loiter(self) -> None:
+        """Stop companion velocity stream and command LOITER for manual takeover."""
+        if self.sim or self.sitl or self.hand_test or self._handed_off_loiter:
+            return
+        if not self.cfg.get("mission", {}).get("loiter_on_complete", True):
+            return
+        from valiant.autonomy.guided_motion import GuidedMotionRunner
+
+        self.nav.stop()
+        settle_s = float(self.cfg.get("mission", {}).get("loiter_settle_s", 2.0))
+        if settle_s > 0.0:
+            self.nav.hold_position()
+            time.sleep(settle_s)
+            self.nav.stop()
+        motion = GuidedMotionRunner(
+            self.master,
+            self.cfg,
+            hud=self._gcs_hud,
+            log_tag="Mission",
+        )
+        try:
+            motion.set_loiter(message="Loiter - manual control")
+            self._handed_off_loiter = True
+            print("[Mission] LOITER engaged - pilot may take RC control")
+        except RuntimeError as exc:
+            print(f"[Mission] LOITER handoff failed: {exc}")
 
     def _sitl_hold_position(self) -> None:
         if not self._allow_motion():
@@ -739,6 +791,9 @@ class AutoExtinguisher:
             print(f"Replay camera ({source}) active (Ctrl+C to abort)")
         else:
             print("Onboard Pi camera active (Ctrl+C to abort)")
+
+        if self._mission_pilot_standby_enabled():
+            self._wait_for_mission_guided_trigger()
 
         try:
             while True:
@@ -1049,6 +1104,7 @@ class AutoExtinguisher:
                         f"Task 2 sequence complete. "
                         f"Extinguished {self.targets_completed} target(s)."
                     )
+                    self._complete_handoff_loiter()
                     break
 
                 elif self.state == STATE_ABORTED:
