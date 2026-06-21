@@ -17,7 +17,37 @@ git checkout -b feature/your-topic
 1. Branch off latest `main` (examples: `feature/sitl-gcs-hud`, `fix/wsl-script-paths`, `docs/onboarding`).
 2. Push your branch: `git push -u origin feature/your-topic`
 3. Open a PR **into `main`** on GitHub.
-4. Do not force-push `main`.
+4. Wait for **CI** (GitHub Actions) to pass on the PR.
+5. Do not force-push `main`.
+
+## Continuous integration (GitHub Actions)
+
+Every push to `main` and every pull request into `main` runs [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
+
+| Job | Runner | Command |
+|-----|--------|---------|
+| **Unit tests** | `ubuntu-latest`, Python 3.12 | `pytest tests/ -m "not sitl"` |
+
+**Included:** orbit math, mavlink helpers, planner, guided motion, config, CV ONNX smoke (when `models/best.onnx` is present).
+
+**Excluded:** `@pytest.mark.sitl` tests under `tests/sitl/` (require ArduPilot SITL on `tcp:127.0.0.1:5760`). Run those locally after `.\tools\launch_sitl.ps1`.
+
+### Run the same checks locally
+
+```powershell
+pip install -e ".[dev,cv]"
+$env:PYTHONPATH = "src"
+python -m pytest tests/ -m "not sitl" -q
+```
+
+### Branch protection (repo admin, one-time)
+
+In GitHub **Settings → Branches → Branch protection rules** for `main`:
+
+1. Require a pull request before merging
+2. Require status checks to pass → select **Unit tests**
+
+SITL integration tests stay manual until a separate nightly or `workflow_dispatch` job is added.
 
 ## What is on `main` today
 

@@ -30,6 +30,7 @@ python tools\valiant.py guide
 |------|---------|
 | Check install works | `python tools\valiant.py quickstart` |
 | Test CV on webcam | `python tools\valiant.py bench cv --camera 0` |
+| Run unit tests (same as CI) | `pip install -e ".[dev,cv]"` then `python -m pytest tests/ -m "not sitl" -q` |
 | Virtual drone mission | `.\tools\setup_wsl.ps1` once, then `launch_sitl.ps1` + `valiant sitl mission` |
 | First connect to drone | `python tools\valiant.py bringup phase1` |
 | Fly on Pi (competition) | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
@@ -64,5 +65,7 @@ models/            <- best.onnx (gitignored; copy locally)
 - Architecture: [docs/architecture.md](docs/architecture.md)
 - SITL sim: [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
 - Before hardware: [docs/runbooks/whats-left-before-hardware.md](docs/runbooks/whats-left-before-hardware.md)
-- Branches: [docs/branches.md](docs/branches.md)
+- Branches and CI: [docs/branches.md](docs/branches.md)
 - Competition rules: [docs/conops.md](docs/conops.md)
+
+**CI:** Pull requests into `main` run GitHub Actions unit tests (`pytest -m "not sitl"`). See [docs/branches.md](docs/branches.md#continuous-integration-github-actions).
