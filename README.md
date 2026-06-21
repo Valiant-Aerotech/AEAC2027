@@ -30,7 +30,7 @@ python tools\valiant.py guide
 |------|---------|
 | Check install works | `python tools\valiant.py quickstart` |
 | Test CV on webcam | `python tools\valiant.py bench cv --camera 0` |
-| Run unit tests (same as CI) | See [docs/branches.md](docs/branches.md#continuous-integration-github-actions) — four jobs (mavlink, motion, CV, config) |
+| Run unit tests (same as CI) | See [docs/branches.md](docs/branches.md#continuous-integration-github-actions) — five jobs (lint, mavlink, motion, CV, config) |
 | Virtual drone mission | `.\tools\setup_wsl.ps1` once, then `launch_sitl.ps1` + `valiant sitl mission` |
 | First connect to drone | `python tools\valiant.py bringup phase1` |
 | Fly on Pi (competition) | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
@@ -68,4 +68,4 @@ models/            <- best.onnx (gitignored; copy locally)
 - Branches and CI: [docs/branches.md](docs/branches.md)
 - Competition rules: [docs/conops.md](docs/conops.md)
 
-**CI:** Pull requests into `main` run four GitHub Actions jobs (mavlink, motion, CV, config). Field-orbit tests are local-only. See [docs/branches.md](docs/branches.md#continuous-integration-github-actions).
+**CI:** Pull requests into `main` run five GitHub Actions jobs (lint, mavlink, motion, CV, config). Field-orbit tests are local-only. See [docs/branches.md](docs/branches.md#continuous-integration-github-actions).

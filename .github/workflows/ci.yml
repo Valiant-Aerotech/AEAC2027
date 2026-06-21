@@ -6,16 +6,20 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHONPATH: src
 
 jobs:
-  mavlink:
-    name: Mavlink and safety
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -23,6 +27,25 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,cv]"
+      - name: Ruff (syntax and undefined names)
+        run: python -m ruff check src tests
+
+  mavlink:
+    name: Mavlink and safety
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,cv]"
+      - name: Import smoke
+        run: |
+          python -c "from valiant.common.mavlink import connection_error_hints; from valiant.autonomy.flight.profile import mavlink_connection_for_gcs"
       - name: pytest
         run: |
           python -m pytest \
@@ -38,8 +61,8 @@ jobs:
     name: Motion and nav
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -47,6 +70,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,cv]"
+      - name: Import smoke
+        run: |
+          python -c "from valiant.autonomy.auto_nav.planner import MotionPlanner; from valiant.common.sitl_physics import refresh_vehicle_pose"
       - name: pytest
         run: |
           python -m pytest \
@@ -58,14 +84,15 @@ jobs:
             tests/test_sitl_motion.py \
             tests/test_sitl_search.py \
             tests/test_sitl_pattern.py \
+            tests/test_sitl_physics_pose.py \
             -q --tb=short
 
   cv-metric:
     name: CV and metric
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -73,20 +100,24 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,cv]"
+      - name: Import smoke
+        run: |
+          python -c "from valiant.autonomy.cv.detector import TargetDetector; from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor"
       - name: pytest
         run: |
           python -m pytest \
             tests/test_yolo_onnx.py \
             tests/test_metric_geometry_3d.py \
             tests/test_synthetic_camera.py \
+            tests/test_sitl_physics.py \
             -q --tb=short
 
   config:
     name: Config and platform
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -94,6 +125,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,cv]"
+      - name: Verify environment
+        run: python tools/bench/verify_env.py
+      - name: Import smoke
+        run: |
+          python -c "from valiant.autonomy.orchestrator import AutoExtinguisher; from valiant.common.config import load_config; load_config('rpas')"
       - name: pytest
         run: |
           python -m pytest \
@@ -101,4 +137,6 @@ jobs:
             tests/test_flight_profiles.py \
             tests/test_tools_layout.py \
             tests/test_upload_drive.py \
+            tests/test_sitl_mission_loader.py \
+            tests/test_config_smoke.py \
             -q --tb=short
