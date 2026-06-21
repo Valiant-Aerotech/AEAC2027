@@ -22,20 +22,23 @@ git checkout -b feature/your-topic
 
 ## Continuous integration (GitHub Actions)
 
-Every push to `main` and every pull request into `main` runs [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) as **four parallel jobs**:
+Every push to `main` and every pull request into `main` runs [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) as **five parallel jobs** (duplicate runs on the same branch cancel in-progress via `concurrency`):
 
 | Job | What it covers |
 |-----|----------------|
+| **Lint** | Ruff fatal checks (`E9`, `F63`, `F7`, `F82`) on `src/` and `tests/` |
 | **Mavlink and safety** | Connection hints, STATUSTEXT, land, flight profiles, `safety.lua` preflight, SITL preflight parsing |
-| **Motion and nav** | Planner fire gates, NED kinematics, GUIDED masks, pilot override, SITL motion/search/pattern, GCS HUD |
-| **CV and metric** | YOLO ONNX smoke, 3D metric geometry, synthetic camera |
-| **Config and platform** | `rpas.yaml` / flight profiles, repo layout, upload naming |
+| **Motion and nav** | Planner fire gates, NED kinematics, GUIDED masks, pilot override, SITL motion/search/pattern/physics pose, GCS HUD |
+| **CV and metric** | YOLO ONNX smoke, 3D metric geometry, synthetic camera, SITL physics |
+| **Config and platform** | `rpas.yaml` / flight profiles, repo layout, upload naming, SITL mission loader, YAML smoke, `verify_env.py` |
+
+[`.github/dependabot.yml`](../.github/dependabot.yml) opens monthly PRs for GitHub Actions and pip dependencies.
 
 **Not in CI (run locally):**
 
 - [`test_field_orbit.py`](../tests/test_field_orbit.py), [`test_guided_forward.py`](../tests/test_guided_forward.py) — field orbit experiments
 - [`tests/sitl/`](../tests/sitl/) — live ArduPilot (`@pytest.mark.sitl`); start SITL with `.\tools\launch_sitl.ps1` then `.\tools\sitl\run_sitl_tests.ps1`
-- `test_sitl_physics*.py`, `test_sitl_dashboard.py`, `test_sitl_mission_loader.py`, `test_synthetic_multi_camera.py` — optional sim/dashboard checks
+- `test_sitl_dashboard.py`, `test_synthetic_multi_camera.py` — optional sim/dashboard checks
 
 ### Run the same checks locally
 
@@ -43,13 +46,16 @@ Every push to `main` and every pull request into `main` runs [`.github/workflows
 pip install -e ".[dev,cv]"
 $env:PYTHONPATH = "src"
 
+python -m ruff check src tests
+python tools/bench/verify_env.py
+
 python -m pytest tests/test_mavlink_connect.py tests/test_mavlink_statustext.py tests/test_mavlink_land.py tests/test_profile_connection.py tests/test_fc_safety.py tests/test_sitl_preflight.py -q
 
-python -m pytest tests/test_motion_planner.py tests/test_ned_kinematics.py tests/test_visual_servo_guided.py tests/test_pilot_override.py tests/test_gcs_hud.py tests/test_sitl_motion.py tests/test_sitl_search.py tests/test_sitl_pattern.py -q
+python -m pytest tests/test_motion_planner.py tests/test_ned_kinematics.py tests/test_visual_servo_guided.py tests/test_pilot_override.py tests/test_gcs_hud.py tests/test_sitl_motion.py tests/test_sitl_search.py tests/test_sitl_pattern.py tests/test_sitl_physics_pose.py -q
 
-python -m pytest tests/test_yolo_onnx.py tests/test_metric_geometry_3d.py tests/test_synthetic_camera.py -q
+python -m pytest tests/test_yolo_onnx.py tests/test_metric_geometry_3d.py tests/test_synthetic_camera.py tests/test_sitl_physics.py -q
 
-python -m pytest tests/test_rpas_config.py tests/test_flight_profiles.py tests/test_tools_layout.py tests/test_upload_drive.py -q
+python -m pytest tests/test_rpas_config.py tests/test_flight_profiles.py tests/test_tools_layout.py tests/test_upload_drive.py tests/test_sitl_mission_loader.py tests/test_config_smoke.py -q
 ```
 
 Orbit-only (local):
@@ -63,9 +69,9 @@ python -m pytest tests/test_field_orbit.py tests/test_guided_forward.py -q
 In GitHub **Settings → Branches → Branch protection rules** for `main`:
 
 1. Require a pull request before merging
-2. Require status checks to pass → select all four: **Mavlink and safety**, **Motion and nav**, **CV and metric**, **Config and platform**
+2. Require status checks to pass → select all five: **Lint**, **Mavlink and safety**, **Motion and nav**, **CV and metric**, **Config and platform**
 
-Live SITL integration stays manual until a separate nightly or `workflow_dispatch` job is added.
+Live SITL integration stays manual until a separate nightly or `workflow_dispatch` job is added (Tier 3).
 
 ## What is on `main` today
 
