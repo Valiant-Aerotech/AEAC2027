@@ -6,25 +6,99 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  PYTHONPATH: src
+
 jobs:
-  test:
-    name: Unit tests
+  mavlink:
+    name: Mavlink and safety
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-
-      - name: Install package and test dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,cv]"
-
-      - name: Run pytest (exclude SITL integration)
-        env:
-          PYTHONPATH: src
+      - name: pytest
         run: |
-          python -m pytest tests/ -m "not sitl" -q --tb=short
+          python -m pytest \
+            tests/test_mavlink_connect.py \
+            tests/test_mavlink_statustext.py \
+            tests/test_mavlink_land.py \
+            tests/test_profile_connection.py \
+            tests/test_fc_safety.py \
+            tests/test_sitl_preflight.py \
+            -q --tb=short
+
+  motion:
+    name: Motion and nav
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,cv]"
+      - name: pytest
+        run: |
+          python -m pytest \
+            tests/test_motion_planner.py \
+            tests/test_ned_kinematics.py \
+            tests/test_visual_servo_guided.py \
+            tests/test_pilot_override.py \
+            tests/test_gcs_hud.py \
+            tests/test_sitl_motion.py \
+            tests/test_sitl_search.py \
+            tests/test_sitl_pattern.py \
+            -q --tb=short
+
+  cv-metric:
+    name: CV and metric
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,cv]"
+      - name: pytest
+        run: |
+          python -m pytest \
+            tests/test_yolo_onnx.py \
+            tests/test_metric_geometry_3d.py \
+            tests/test_synthetic_camera.py \
+            -q --tb=short
+
+  config:
+    name: Config and platform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,cv]"
+      - name: pytest
+        run: |
+          python -m pytest \
+            tests/test_rpas_config.py \
+            tests/test_flight_profiles.py \
+            tests/test_tools_layout.py \
+            tests/test_upload_drive.py \
+            -q --tb=short

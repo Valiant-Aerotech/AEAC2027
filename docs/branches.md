@@ -22,22 +22,40 @@ git checkout -b feature/your-topic
 
 ## Continuous integration (GitHub Actions)
 
-Every push to `main` and every pull request into `main` runs [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
+Every push to `main` and every pull request into `main` runs [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) as **four parallel jobs**:
 
-| Job | Runner | Command |
-|-----|--------|---------|
-| **Unit tests** | `ubuntu-latest`, Python 3.12 | `pytest tests/ -m "not sitl"` |
+| Job | What it covers |
+|-----|----------------|
+| **Mavlink and safety** | Connection hints, STATUSTEXT, land, flight profiles, `safety.lua` preflight, SITL preflight parsing |
+| **Motion and nav** | Planner fire gates, NED kinematics, GUIDED masks, pilot override, SITL motion/search/pattern, GCS HUD |
+| **CV and metric** | YOLO ONNX smoke, 3D metric geometry, synthetic camera |
+| **Config and platform** | `rpas.yaml` / flight profiles, repo layout, upload naming |
 
-**Included:** orbit math, mavlink helpers, planner, guided motion, config, CV ONNX smoke (when `models/best.onnx` is present).
+**Not in CI (run locally):**
 
-**Excluded:** `@pytest.mark.sitl` tests under `tests/sitl/` (require ArduPilot SITL on `tcp:127.0.0.1:5760`). Run those locally after `.\tools\launch_sitl.ps1`.
+- [`test_field_orbit.py`](../tests/test_field_orbit.py), [`test_guided_forward.py`](../tests/test_guided_forward.py) — field orbit experiments
+- [`tests/sitl/`](../tests/sitl/) — live ArduPilot (`@pytest.mark.sitl`); start SITL with `.\tools\launch_sitl.ps1` then `.\tools\sitl\run_sitl_tests.ps1`
+- `test_sitl_physics*.py`, `test_sitl_dashboard.py`, `test_sitl_mission_loader.py`, `test_synthetic_multi_camera.py` — optional sim/dashboard checks
 
 ### Run the same checks locally
 
 ```powershell
 pip install -e ".[dev,cv]"
 $env:PYTHONPATH = "src"
-python -m pytest tests/ -m "not sitl" -q
+
+python -m pytest tests/test_mavlink_connect.py tests/test_mavlink_statustext.py tests/test_mavlink_land.py tests/test_profile_connection.py tests/test_fc_safety.py tests/test_sitl_preflight.py -q
+
+python -m pytest tests/test_motion_planner.py tests/test_ned_kinematics.py tests/test_visual_servo_guided.py tests/test_pilot_override.py tests/test_gcs_hud.py tests/test_sitl_motion.py tests/test_sitl_search.py tests/test_sitl_pattern.py -q
+
+python -m pytest tests/test_yolo_onnx.py tests/test_metric_geometry_3d.py tests/test_synthetic_camera.py -q
+
+python -m pytest tests/test_rpas_config.py tests/test_flight_profiles.py tests/test_tools_layout.py tests/test_upload_drive.py -q
+```
+
+Orbit-only (local):
+
+```powershell
+python -m pytest tests/test_field_orbit.py tests/test_guided_forward.py -q
 ```
 
 ### Branch protection (repo admin, one-time)
@@ -45,9 +63,9 @@ python -m pytest tests/ -m "not sitl" -q
 In GitHub **Settings → Branches → Branch protection rules** for `main`:
 
 1. Require a pull request before merging
-2. Require status checks to pass → select **Unit tests**
+2. Require status checks to pass → select all four: **Mavlink and safety**, **Motion and nav**, **CV and metric**, **Config and platform**
 
-SITL integration tests stay manual until a separate nightly or `workflow_dispatch` job is added.
+Live SITL integration stays manual until a separate nightly or `workflow_dispatch` job is added.
 
 ## What is on `main` today
 

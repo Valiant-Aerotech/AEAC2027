@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-
-import pytest
+from unittest.mock import patch
 
 from valiant.common.mavlink import (
     MavlinkConnectError,
@@ -13,23 +11,51 @@ from valiant.common.mavlink import (
 )
 
 
-def test_connection_hints_pi_path_on_windows():
+def test_hints_windows_dev_tty_suggests_com():
     cause = OSError(2, "The system cannot find the path specified.")
-    hints = connection_error_hints("/dev/ttyAMA0", cause)
+    with patch("valiant.common.mavlink.sys.platform", "win32"):
+        hints = connection_error_hints("/dev/ttyAMA0", cause)
     assert any("GCS laptop" in h for h in hints)
     assert any("COM5" in h for h in hints)
+    assert any("rpas.yaml" in h for h in hints)
 
 
-def test_connection_hints_com_port_failure():
+def test_hints_linux_missing_uart():
+    cause = OSError(2, "No such file or directory")
+    with patch("valiant.common.mavlink.sys.platform", "linux"):
+        hints = connection_error_hints("/dev/ttyAMA0", cause)
+    assert any("raspi-config" in h for h in hints)
+    assert not any("GCS laptop" in h for h in hints)
+
+
+def test_hints_com_device_manager():
     cause = Exception("could not open port 'COM99'")
     hints = connection_error_hints("COM99", cause)
     assert any("Device Manager" in h for h in hints)
+    assert any("COM5" in h for h in hints)
 
 
-def test_connection_hints_sitl_tcp_refused():
+def test_hints_tcp_refused_sitl():
     cause = ConnectionRefusedError(10061, "connection refused")
     hints = connection_error_hints("tcp:127.0.0.1:5760", cause)
     assert any("launch_sitl" in h for h in hints)
+
+
+def test_hints_udp_timeout_heartbeat():
+    cause = TimeoutError("timed out waiting for heartbeat")
+    hints = connection_error_hints("udpin:127.0.0.1:14550", cause)
+    assert any("heartbeat" in h for h in hints)
+
+
+def test_hints_permission_denied():
+    cause = OSError("access is denied")
+    hints = connection_error_hints("COM5", cause)
+    assert any("Mission Planner" in h for h in hints)
+
+
+def test_hints_fallback_when_unknown():
+    hints = connection_error_hints("serial:///dev/unknown", Exception("weird failure"))
+    assert any("--connection" in h for h in hints)
 
 
 def test_mavlink_connect_error_includes_hints():
