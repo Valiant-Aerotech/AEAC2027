@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from valiant.autonomy.cv.detector import TargetDetector
+from valiant.autonomy.cv import create_target_detector
 from valiant.autonomy.metric_recon.depth_source import InlineDepthSource
 from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
 from valiant.common.config import load_config, repo_root
@@ -37,7 +37,7 @@ def main() -> int:
     cfg.setdefault("metric_recon", {})["rangefinder"] = "depth_at_target"
     depth_source = InlineDepthSource()
     recon = MetricReconstructor(None, cfg, sim=True, depth_source=depth_source)
-    detector = TargetDetector(cfg)
+    detector = create_target_detector(cfg)
 
     errors: list[float] = []
     for sub in sorted(cal_dir.glob("*m")):

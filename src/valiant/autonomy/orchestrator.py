@@ -12,9 +12,8 @@ from pymavlink import mavutil
 
 from valiant.autonomy.auto_nav.mavlink_driver import MavlinkDriver
 from valiant.autonomy.auto_nav.planner import MotionIntent, MotionPlanner
-from valiant.autonomy.cv.detector import TargetDetector
+from valiant.autonomy.cv import create_target_detector, draw_mission_overlay
 from valiant.autonomy.cv.exceptions import BadFrameError, CVError, LowConfidenceError
-from valiant.autonomy.cv.ui import draw_overlay
 from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
 from valiant.autonomy.packets import CVPacket, MetricPacket
 from valiant.autonomy.conops import (
@@ -182,7 +181,7 @@ class AutoExtinguisher:
         self.metric_recon = MetricReconstructor(self.master, cfg, sim=sim_mode and not sitl_mode)
         self.trigger = WaterTrigger(self.master, cfg)
         self.uploader = DriveUploader(cfg)
-        self.detector = TargetDetector(cfg)
+        self.detector = create_target_detector(cfg)
 
         self.camera = create_camera(cfg, phone_ip=phone_ip, video_path=video_path)
         self._telemetry = None
@@ -823,12 +822,12 @@ class AutoExtinguisher:
 
                 if not self.headless:
                     vel_cmd, vel_sim = self._overlay_velocities()
-                    overlay = draw_overlay(
+                    overlay = draw_mission_overlay(
                         frame,
                         cv_packet,
                         self.state,
+                        self.cfg,
                         metric=metric,
-                        show_yolo_crop=self.cv_method in ("yolo", "both"),
                         vel_cmd_body=vel_cmd,
                         vel_actual_body=vel_sim,
                         compact_hud=(

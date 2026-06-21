@@ -30,6 +30,7 @@ class CVPacket:
     timestamp: float = field(default_factory=time.time)
     frame_id: int = 0
     method: str = ""
+    debug: dict | None = None
 
     @property
     def has_dry_target(self) -> bool:

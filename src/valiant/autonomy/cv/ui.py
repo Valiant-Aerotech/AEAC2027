@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
-from valiant.autonomy.cv.detector import CAPTURE_HEIGHT, CAPTURE_WIDTH, R_S
+from valiant.autonomy.cv.constants import CAPTURE_HEIGHT, CAPTURE_WIDTH, R_S, SUBFRAME_SIZE
+from valiant.autonomy.cv.subframe_grid import grid_crop_bounds
 from valiant.autonomy.cv.sitl_hud import (
     C_GREEN,
     C_MAGENTA,
@@ -62,6 +63,8 @@ def draw_overlay(
     *,
     metric: MetricPacket | None = None,
     show_yolo_crop: bool = False,
+    inference_mode: str = "subframe",
+    subframe_size: int = SUBFRAME_SIZE,
     vel_cmd_body: tuple[float, float, float] | None = None,
     vel_actual_body: tuple[float, float, float] | None = None,
     compact_hud: bool = False,
@@ -102,13 +105,25 @@ def draw_overlay(
             cv2.rectangle(overlay, (x1, y1), (x2, y2), (80, 160, 255), 2, cv2.LINE_AA)
 
     if show_yolo_crop:
-        scale_x = w / CAPTURE_WIDTH
-        scale_y = h / CAPTURE_HEIGHT
-        crop_w = max(1, int(R_S * scale_x))
-        crop_h = max(1, int(R_S * scale_y))
-        start_x = max(0, (w - crop_w) // 2)
-        start_y = max(0, (h - crop_h) // 2)
-        cv2.rectangle(overlay, (start_x, start_y), (start_x + crop_w, start_y + crop_h), (80, 120, 255), 1)
+        if inference_mode == "center_crop":
+            scale_x = w / CAPTURE_WIDTH
+            scale_y = h / CAPTURE_HEIGHT
+            crop_w = max(1, int(R_S * scale_x))
+            crop_h = max(1, int(R_S * scale_y))
+            start_x = max(0, (w - crop_w) // 2)
+            start_y = max(0, (h - crop_h) // 2)
+            cv2.rectangle(overlay, (start_x, start_y), (start_x + crop_w, start_y + crop_h), (80, 120, 255), 1)
+        else:
+            left, top, right, bottom = grid_crop_bounds(w, h, subframe_size)
+            cv2.rectangle(overlay, (left, top), (right, bottom), (80, 120, 255), 1)
+            rows = (bottom - top) // subframe_size
+            cols = (right - left) // subframe_size
+            for r in range(1, rows):
+                y = top + r * subframe_size
+                cv2.line(overlay, (left, y), (right, y), (60, 90, 140), 1)
+            for c in range(1, cols):
+                x = left + c * subframe_size
+                cv2.line(overlay, (x, top), (x, bottom), (60, 90, 140), 1)
 
     _draw_reticle(overlay, w // 2, h // 2)
 

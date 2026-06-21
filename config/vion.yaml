@@ -72,6 +72,12 @@ camera:
 
 cv:
   method: yolo                          # yolo (trained dry) + HSV shot; or hsv | both
+  inference_mode: subframe              # subframe (294 spiral tiles) | center_crop (legacy 224)
+  subframe_size: 294
+  max_subframes: 10
+  max_target_cover_area: 100
+  edge_margin: 10
+  nms_threshold: 0.4
   models:
     dry: models/dry.onnx               # or models/dry.pt / models/best.pt
     shot: models/shot.onnx

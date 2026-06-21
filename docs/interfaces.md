@@ -26,6 +26,7 @@ class CVPacket:
     timestamp: float
     frame_id: int
     method: str             # hsv, yolo, both, hsv_fallback
+    debug: dict | None = None   # optional e.g. {"dry_backend": "subframe"}
 ```
 
 - `dry` - targets still needing extinguishing (orchestrator tracks `primary_dry`)
@@ -61,12 +62,38 @@ Airframe tuning lives in `config/vion.yaml`; default platform loads via `config/
 | method | Behaviour |
 |--------|-----------|
 | `hsv` | Purple/blue HSV only - no ONNX required |
-| `yolo` | `models/best.onnx` for dry (center 224x224 crop); HSV for shot confirm only |
+| `yolo` | `models/best.onnx` for dry via 294px spiral subframes; HSV for shot confirm only |
 | `both` | HSV for dry+shot first; YOLO supplements dry if HSV finds nothing |
 
-Model path: `cv.models.dry` (default `models/best.onnx`). Inference via onnxruntime. Input size: `cv.yolo_input_size` (default 320, read from ONNX when possible).
+Model path: `cv.models.dry` (default `models/best.onnx`). Inference via onnxruntime.
+
+Subframe settings (`config/vion.yaml`): `cv.inference_mode` (`subframe` | `center_crop`), `cv.subframe_size` (default 294), `cv.max_subframes`, `cv.edge_margin`, `cv.nms_threshold`. Legacy center crop uses 224px when `inference_mode: center_crop`.
 
 Tune `hsv_dry` / `hsv_shot` / `hsv_min_area_px` for outdoor lighting.
+
+## CV public API (`valiant.autonomy.cv`)
+
+External code (orchestrator, bench tools, calibrate scripts) should import only:
+
+| Symbol | Purpose |
+|--------|---------|
+| `create_target_detector(cfg)` | Factory for `TargetDetector` |
+| `TargetDetector.detect(frame)` | Returns `CVPacket` with full-frame pixel coords |
+| `draw_mission_overlay(frame, packet, state, cfg, ...)` | HUD; reads `cv.*` from cfg internally |
+| `hits_to_bench_dict(hits)` | Bench dict format for `getTargets()` |
+| `resolve_dry_model_path(cfg)` | Locate dry ONNX/PT weights |
+| `crop_preview_for_display(frame, cfg)` | Display-only grid crop (bench) |
+
+Do **not** import `subframe_grid`, `subframe_yolo`, `yolo_onnx`, or `dry_detector` from orchestrator, metric recon, or auto-nav.
+
+### Allowed imports by subsystem
+
+| Module | May import from CV |
+|--------|-------------------|
+| `orchestrator` | `valiant.autonomy.cv`, `valiant.autonomy.cv.exceptions` |
+| `metric_recon` | `valiant.autonomy.packets` only |
+| `auto_nav` | `valiant.autonomy.packets` only |
+| Bench / calibrate tools | `valiant.autonomy.cv` |
 
 ## Bench test
 

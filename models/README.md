@@ -29,7 +29,7 @@ cv:
    ```
    Or export ONNX:
    ```powershell
-   yolo export model=path\to\best.pt format=onnx imgsz=224
+   yolo export model=path\to\best.pt format=onnx imgsz=294
    copy best.onnx models\dry.onnx
    ```
 
@@ -48,6 +48,6 @@ python tools\valiant.py bench cv --camera 0
 python tools\valiant.py bench metric --camera 0
 ```
 
-Inference uses **onnxruntime** (no PyTorch required at runtime). Hold a purple target in the **center blue box**. Detections appear as magenta `dry` boxes.
+Inference uses **onnxruntime** (no PyTorch required at runtime). Dry detection runs a **294px spiral subframe grid** (center-cropped to tile multiples). Detections appear as magenta `dry` boxes. Legacy `cv.inference_mode: center_crop` uses a single 224x224 center tile.
 
 Training run artifacts go under `models/runs/` (gitignored).

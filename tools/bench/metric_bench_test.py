@@ -9,8 +9,7 @@ import sys
 
 import cv2
 
-from valiant.autonomy.cv.detector import TargetDetector
-from valiant.autonomy.cv.ui import draw_overlay
+from valiant.autonomy.cv import create_target_detector, draw_mission_overlay
 from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
 from valiant.common.config import load_config
 
@@ -39,7 +38,7 @@ def main() -> int:
             depth_reader = RecordingDepthSource(rec_dir)
 
     metric_recon = MetricReconstructor(None, cfg, sim=True)
-    detector = TargetDetector(cfg)
+    detector = create_target_detector(cfg)
 
     cap = cv2.VideoCapture(args.video) if args.video else cv2.VideoCapture(args.camera, cv2.CAP_DSHOW)
     if not cap.isOpened():
@@ -71,15 +70,12 @@ def main() -> int:
             }
             print(json.dumps(record))
 
-        method = cfg.get("cv", {}).get("method", "hsv")
-        crop_size = cfg.get("cv", {}).get("yolo_input_size", 320)
-        overlay = draw_overlay(
+        overlay = draw_mission_overlay(
             frame,
             cv_packet,
             "METRIC_BENCH",
+            cfg,
             metric=metric,
-            show_yolo_crop=method in ("yolo", "both"),
-            yolo_crop_size=crop_size,
         )
         cv2.imshow("Metric Bench", overlay)
         if cv2.waitKey(1) & 0xFF == ord("q"):
