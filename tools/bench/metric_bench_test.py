@@ -9,9 +9,8 @@ import sys
 
 import cv2
 
-from valiant.autonomy.cv.detector import TargetDetector
-from valiant.autonomy.cv.ui import draw_overlay
-from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
+from valiant.autonomy.cv import create_target_detector, draw_mission_overlay
+from valiant.autonomy.metric_recon import create_metric_reconstructor
 from valiant.common.config import load_config
 
 
@@ -38,8 +37,8 @@ def main() -> int:
         if rec_dir:
             depth_reader = RecordingDepthSource(rec_dir)
 
-    metric_recon = MetricReconstructor(None, cfg, sim=True)
-    detector = TargetDetector(cfg)
+    metric_recon = create_metric_reconstructor(None, cfg, sim=True)
+    detector = create_target_detector(cfg)
 
     cap = cv2.VideoCapture(args.video) if args.video else cv2.VideoCapture(args.camera, cv2.CAP_DSHOW)
     if not cap.isOpened():
@@ -60,7 +59,15 @@ def main() -> int:
         if metric:
             record = {
                 "target_px": metric.target_px,
+                "aim_px": metric.aim_px,
                 "pixel_offset": metric.pixel_offset,
+                "target_offset": metric.target_offset,
+                "corner_target": metric.corner_target,
+                "edge_proximity": metric.edge_proximity.labels(),
+                "lateral_clearance_ok": metric.lateral_clearance_ok,
+                "vertical_clearance_ok": metric.vertical_clearance_ok,
+                "body_alt_bias_m": metric.body_alt_bias_m,
+                "body_clearance_ok": metric.body_clearance_ok,
                 "distance_m": metric.distance_m,
                 "slant_range_m": metric.slant_range_m,
                 "horizontal_range_m": metric.horizontal_range_m,
@@ -71,15 +78,12 @@ def main() -> int:
             }
             print(json.dumps(record))
 
-        method = cfg.get("cv", {}).get("method", "hsv")
-        crop_size = cfg.get("cv", {}).get("yolo_input_size", 320)
-        overlay = draw_overlay(
+        overlay = draw_mission_overlay(
             frame,
             cv_packet,
             "METRIC_BENCH",
+            cfg,
             metric=metric,
-            show_yolo_crop=method in ("yolo", "both"),
-            yolo_crop_size=crop_size,
         )
         cv2.imshow("Metric Bench", overlay)
         if cv2.waitKey(1) & 0xFF == ord("q"):

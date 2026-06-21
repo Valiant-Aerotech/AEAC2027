@@ -8,7 +8,7 @@ import sys
 
 from valiant.common.config import load_config
 from valiant.common.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error
-from valiant.autonomy.spray.actuation import WaterTrigger
+from valiant.autonomy.spray import create_water_trigger
 
 
 def main() -> int:
@@ -39,7 +39,7 @@ def main() -> int:
         print_mavlink_connect_error(exc)
         return 1
 
-    trigger = WaterTrigger(master, cfg)
+    trigger = create_water_trigger(master, cfg)
     print("Firing...")
     trigger.fire(args.duration)
     trigger.cleanup()

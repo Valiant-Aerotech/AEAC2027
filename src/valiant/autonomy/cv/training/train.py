@@ -29,7 +29,7 @@ def train(
     data_yaml: Path,
     *,
     epochs: int = 50,
-    imgsz: int = 224,
+    imgsz: int = 294,
     output_name: str = "dry_shot",
 ) -> None:
     if not data_yaml.is_file():
@@ -74,7 +74,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train YOLO dry/shot detectors")
     parser.add_argument("--data", type=Path, default=DEFAULT_DATA_YAML)
     parser.add_argument("--epochs", type=int, default=50)
-    parser.add_argument("--imgsz", type=int, default=224)
+    parser.add_argument("--imgsz", type=int, default=294)
     parser.add_argument("--name", default="dry_shot")
     args = parser.parse_args()
     train(args.data, epochs=args.epochs, imgsz=args.imgsz, output_name=args.name)

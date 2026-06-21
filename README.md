@@ -57,7 +57,7 @@ src/valiant/       <- library code
 config/            <- vion.yaml, conops, calibration
 tools/valiant.py   <- one CLI for bench, SITL, bringup
 docs/runbooks/     <- bringup, field test, SITL
-models/            <- best.onnx (gitignored; copy locally)
+models/            <- dry.onnx / best.onnx (gitignored; copy locally)
 ```
 
 ## More docs

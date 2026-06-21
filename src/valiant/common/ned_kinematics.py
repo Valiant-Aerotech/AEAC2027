@@ -228,6 +228,34 @@ def apply_wall_constraint(
     return out
 
 
+def ceiling_z_ned(scene: dict[str, Any] | None) -> float | None:
+    """NED z of ceiling plane (down-positive); lower z = higher altitude."""
+    if not scene:
+        return None
+    if "ceiling_z_ned" in scene:
+        return float(scene["ceiling_z_ned"])
+    wall = scene.get("wall")
+    if isinstance(wall, dict) and "z_top" in wall:
+        return float(wall["z_top"])
+    return None
+
+
+def apply_ceiling_constraint(
+    v_ned: np.ndarray,
+    pose: VehiclePose,
+    ceiling_z: float | None,
+    standoff_m: float,
+) -> np.ndarray:
+    """Limit climb (negative vz) when within standoff of ceiling."""
+    if ceiling_z is None or not pose.ok:
+        return v_ned
+    out = v_ned.copy()
+    margin_z = ceiling_z + standoff_m
+    if pose.z < margin_z and out[2] < 0:
+        out[2] = 0.0
+    return out
+
+
 def scale_speed_by_range(
     pose: VehiclePose,
     scene: dict[str, Any] | None,

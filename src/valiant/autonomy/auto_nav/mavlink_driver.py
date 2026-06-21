@@ -37,7 +37,9 @@ class MavlinkDriver:
         vz_ned: float = 0.0,
     ) -> None:
         self._vel_stream.start()
-        px, py = packet.target_px
+        px, py = packet.servo_px
+        if self._gimbal_pitch:
+            py = packet.target_px[1]
         vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
         alpha = self._lateral_blend
         vel_right = alpha * vel_right
@@ -58,7 +60,9 @@ class MavlinkDriver:
         camera_down: bool = True,
         vz_ned: float = 0.0,
     ) -> None:
-        px, py = packet.target_px
+        px, py = packet.servo_px
+        if self._gimbal_pitch:
+            py = packet.target_px[1]
         vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
         vel_right *= self._lateral_blend
         if self._gimbal_pitch:

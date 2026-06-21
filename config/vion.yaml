@@ -72,6 +72,12 @@ camera:
 
 cv:
   method: yolo                          # yolo (trained dry) + HSV shot; or hsv | both
+  inference_mode: subframe              # subframe (294 spiral tiles) | center_crop (legacy 224)
+  subframe_size: 294
+  max_subframes: 10
+  max_target_cover_area: 100
+  edge_margin: 10
+  nms_threshold: 0.4
   models:
     dry: models/dry.onnx               # or models/dry.pt / models/best.pt
     shot: models/shot.onnx
@@ -95,6 +101,15 @@ metric_recon:
   wall_offset_m: 0.0
   camera_down: true
   rangefinder_stale_s: 1.0
+  corner_edge_frac: 0.18          # edge trigger; alias: edge_edge_frac
+  corner_min_bbox_area_px: 800
+  body_half_width_m: 0.25
+  clearance_margin_m: 0.10
+  body_half_height_m: 0.15
+  vertical_clearance_margin_m: 0.10
+  lateral_sample_offset_px: 48
+  vertical_sample_offset_px: 48
+  lateral_depth_jump_min_m: 0.15
 
 flight_profiles:
   vivi:
@@ -328,7 +343,6 @@ flight_profiles:
       source: rpi_local
     metric_recon:
       mode: depth_at_target
-      rangefinder: depth_at_target
       camera_down: false
     safety:
       geofence_abort: false
@@ -355,7 +369,6 @@ flight_profiles:
       source: rpi_local
     metric_recon:
       mode: depth_at_target
-      rangefinder: depth_at_target
       camera_down: false
     cv:
       method: yolo
@@ -384,6 +397,9 @@ auto_nav:
   vel_smooth: 0.42                       # low-pass on velocity commands
   max_vel: 0.15                          # cap lateral correction (m/s)
   deadband_px: 50
+  spray_deadband_px: 60
+  spray_vertical_deadband_px: 60
+  vertical_clearance_m: 0.8
   approach_speed: 0.10                   # forward creep during approach (m/s)
   creep_speed: 0.10                      # minimum forward speed when remediating
   approach_slow_zone_m: 2.5              # taper approach inside this range (m)

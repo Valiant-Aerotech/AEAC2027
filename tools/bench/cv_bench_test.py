@@ -10,8 +10,7 @@ import time
 
 import cv2
 
-from valiant.autonomy.cv.detector import TargetDetector
-from valiant.autonomy.cv.ui import draw_overlay
+from valiant.autonomy.cv import create_target_detector, draw_mission_overlay, resolve_dry_model_path
 from valiant.common.config import load_config
 
 
@@ -27,7 +26,7 @@ def _run_regression(args) -> int:
     if args.method:
         cfg.setdefault("cv", {})["method"] = args.method
 
-    detector = TargetDetector(cfg)
+    detector = create_target_detector(cfg)
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         print(f"ERROR: could not open {video_path}")
@@ -112,7 +111,7 @@ def main() -> int:
     if args.method:
         cfg.setdefault("cv", {})["method"] = args.method
 
-    detector = TargetDetector(cfg)
+    detector = create_target_detector(cfg)
     log_file = open(args.log, "w", encoding="utf-8") if args.log else None
 
     if args.video:
@@ -126,10 +125,7 @@ def main() -> int:
 
     print("CV bench test running. Press Q to quit.")
     print(f"Detection method: {cfg.get('cv', {}).get('method', 'hsv')}")
-    model_path = None
-    from valiant.autonomy.cv.detector import _resolve_model_path
-
-    model_path = _resolve_model_path(cfg)
+    model_path = resolve_dry_model_path(cfg)
     if model_path:
         print(f"YOLO weights: {model_path}")
     elif cfg.get("cv", {}).get("method", "hsv") in ("yolo", "both"):
@@ -162,15 +158,7 @@ def main() -> int:
             if log_file:
                 log_file.write(json.dumps(record) + "\n")
 
-            method = cfg.get("cv", {}).get("method", "hsv")
-            crop_size = cfg.get("cv", {}).get("yolo_input_size", 320)
-            overlay = draw_overlay(
-                frame,
-                packet,
-                "BENCH",
-                show_yolo_crop=method in ("yolo", "both"),
-                yolo_crop_size=crop_size,
-            )
+            overlay = draw_mission_overlay(frame, packet, "BENCH", cfg)
             cv2.putText(
                 overlay,
                 f"{elapsed_ms:.1f}ms",

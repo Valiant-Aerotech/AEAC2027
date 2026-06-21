@@ -102,7 +102,7 @@ jobs:
           pip install -e ".[dev,cv]"
       - name: Import smoke
         run: |
-          python -c "from valiant.autonomy.cv.detector import TargetDetector; from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor"
+          python -c "from valiant.autonomy.cv import create_target_detector, draw_mission_overlay; from valiant.autonomy.metric_recon import create_metric_reconstructor; from valiant.autonomy.auto_nav import create_motion_planner; from valiant.autonomy.spray import is_aimed"
       - name: pytest
         run: |
           python -m pytest \

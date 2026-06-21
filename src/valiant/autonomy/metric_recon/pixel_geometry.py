@@ -8,8 +8,11 @@ from valiant.autonomy.packets import TargetHit
 
 
 def pixel_offset(hit: TargetHit, frame_w: int, frame_h: int) -> tuple[float, float]:
-    cx, cy = frame_w // 2, frame_h // 2
-    return (float(hit.cx - cx), float(hit.cy - cy))
+    return pixel_offset_from(hit.cx, hit.cy, frame_w, frame_h)
+
+
+def pixel_offset_from(cx: int, cy: int, frame_w: int, frame_h: int) -> tuple[float, float]:
+    return (float(cx - frame_w // 2), float(cy - frame_h // 2))
 
 
 def estimate_distance_fov(

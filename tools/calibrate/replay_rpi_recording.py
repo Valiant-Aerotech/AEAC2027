@@ -8,10 +8,8 @@ import sys
 
 import cv2
 
-from valiant.autonomy.cv.detector import TargetDetector
-from valiant.autonomy.cv.ui import draw_overlay
-from valiant.autonomy.metric_recon.depth_source import InlineDepthSource
-from valiant.autonomy.metric_recon.reconstructor import MetricReconstructor
+from valiant.autonomy.cv import create_target_detector, draw_mission_overlay
+from valiant.autonomy.metric_recon import InlineDepthSource, create_metric_reconstructor
 from valiant.common.config import load_config
 
 
@@ -23,8 +21,8 @@ def main() -> int:
     cfg = load_config()
     cfg.setdefault("metric_recon", {})["rangefinder"] = "depth_at_target"
     depth_source = InlineDepthSource()
-    recon = MetricReconstructor(None, cfg, sim=True, depth_source=depth_source)
-    detector = TargetDetector(cfg)
+    recon = create_metric_reconstructor(None, cfg, sim=True)
+    detector = create_target_detector(cfg)
 
     import json
     from pathlib import Path
@@ -49,10 +47,10 @@ def main() -> int:
             depth_source.set_frame(None)
         h, w = frame.shape[:2]
         cv_packet = detector.detect(frame)
-        metric = recon.reconstruct(cv_packet, w, h)
+        metric = recon.reconstruct(cv_packet, w, h, depth_mm=depth_source.get_depth_mm())
         if metric:
             print(json.dumps({"distance_m": metric.distance_m, "source": metric.distance_source}))
-        overlay = draw_overlay(frame, cv_packet, "REPLAY", metric=metric)
+        overlay = draw_mission_overlay(frame, cv_packet, "REPLAY", cfg, metric=metric)
         cv2.imshow("Replay", overlay)
         if cv2.waitKey(200) & 0xFF == ord("q"):
             break

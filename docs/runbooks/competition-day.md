@@ -10,7 +10,7 @@ Bringup reference: [vion-bringup.md](vion-bringup.md)
 - [ ] `python tools\valiant.py conops check` passes
 - [ ] `config\rpas.yaml` COM port correct (GCS radio)
 - [ ] `config\defaults.yaml` team name and upload settings correct
-- [ ] Pi has `models/best.onnx` and `config/rpas_calibration.yaml` (or legacy `vion_calibration.yaml`)
+- [ ] Pi has dry YOLO weights (`models/dry.onnx` or `models/best.onnx`) and `config/rpas_calibration.yaml` (or legacy `vion_calibration.yaml`)
 - [ ] `python tools\valiant.py gcs verify-safety` passes (SCR_ENABLE + `scripts/safety.lua`)
 - [ ] Mission Planner Messages shows `safety: kill monitor loaded (RC8)` after FC reboot
 - [ ] Emergency RC switch tested (flip → LAND; see [`hardware/vion/lua/safety.lua`](../../hardware/vion/lua/safety.lua))
