@@ -24,10 +24,10 @@ ALLOWED_CV_MODULES = {
 
 ORCHESTRATOR_FORBIDDEN_PREFIXES = (
     "valiant.autonomy.metric_recon.reconstructor",
-    "valiant.autonomy.metric_recon.corner_target",
     "valiant.autonomy.metric_recon.edge_proximity",
     "valiant.autonomy.metric_recon.aim_offset",
     "valiant.autonomy.metric_recon.lateral_clearance",
+    "valiant.autonomy.metric_recon.vertical_clearance",
     "valiant.autonomy.metric_recon.depth_map",
     "valiant.autonomy.metric_recon.geometry_3d",
     "valiant.autonomy.auto_nav.mavlink_driver",

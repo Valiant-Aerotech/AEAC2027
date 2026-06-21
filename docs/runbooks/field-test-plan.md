@@ -17,7 +17,7 @@ Phased validation from bench to competition. Each phase has pass criteria before
 | 0.3 | Safety logic | `python tools\valiant.py bench safety` | Battery, geofence, timeout aborts |
 | 0.4 | CV dry detection | `python tools\valiant.py bench cv --camera 0` | Purple dry targets boxed on synthetic or printed circles |
 | 0.5 | CV shot detection | Wet a blue test circle, run bench cv | Shot list populates after wetting |
-| 0.6 | Metric pipeline (3D) | `python tools\valiant.py bench metric --camera 0` | distance_m, horizontal_range_m, altitude_error_m print steadily |
+| 0.6 | Metric pipeline (3D) | `python tools\valiant.py bench metric --camera 0` | `distance_m`, `horizontal_range_m`, `altitude_error_m`; edge labels `L/R/T/B`, `aim_px`, clearance flags when target near frame edge |
 | 0.7 | Sim orchestrator | `python missions\task2_vion_auto_extinguish.py --sim --max-targets 1` | State machine reaches VERIFYING or COMPLETE without crash |
 | 0.8 | SITL closed loop | WSL: `.\tools\launch_sitl.ps1`; then `.\tools\run_sitl_mission.ps1 -Profile sitl` | Monitor shows APPROACHING; SITL armed GUIDED; velocity non-zero when target off-centre |
 
@@ -133,7 +133,7 @@ Use [competition-day.md](competition-day.md) checklist. Run Phase 3+4 back-to-ba
 
 These are tracked as GitHub issues. Highest priority before Phase 3:
 
-1. **CV refinement** - outdoor HSV tuning, false positive rejection, optional YOLO ONNX models
+1. **CV refinement** - outdoor HSV tuning for shot verify, false positive rejection, optional `models/shot.onnx`
 2. **Metric recon calibration** - FOV vs VL53L1X agreement, target diameter range 5-30 cm
 3. **Auto-nav tuning** - PD gains for real approach, no oscillation near target
 4. **Spray aim hardware** - body-frame velocity vs physical nozzle aim if 2-axis gimbal added

@@ -39,6 +39,7 @@ Built by `MetricReconstructor` from `CVPacket` + frame geometry + gimbal pitch +
 
 | Field | Meaning |
 |-------|---------|
+| `target_px` | Detected target centre (from CV) |
 | `pixel_offset` | Servo aim centre vs frame centre (from `aim_px` when set, else `target_px`) |
 | `distance_m` | **Planner-facing horizontal range** (falls back to slant when decomposition unavailable) |
 | `slant_range_m` | Raw measured range along camera ray |
@@ -59,6 +60,9 @@ Built by `MetricReconstructor` from `CVPacket` + frame geometry + gimbal pitch +
 | `body_alt_bias_m` | Gimbal-mode vertical body shift (+ = hold higher; floor edge) |
 | `lateral_clearance_m` | Optional ToF depth-jump hint on open lateral side |
 | `vertical_open_clearance_m` | Optional ToF depth-jump on open vertical side |
+| `servo_px` | Property: visual-servo pixel point (`aim_px` or `target_px`) |
+| `edge_lateral` / `edge_vertical` | Properties: any left/right or top/bottom edge active |
+| `timestamp` | Packet time (seconds) |
 
 **Dual alignment (edge targets):** `pixel_offset` is computed from `aim_px` when set (body/servo). Spray gating uses `target_offset` via `is_target_aligned()`; body hold uses `is_body_aligned()`. Gimbal pitch tracks detected `hit.cy`; vertical body uses `body_alt_bias_m` in `_metric_vz_ned`. Camera-down mode uses full `servo_px` including vertical aim.
 
@@ -74,11 +78,11 @@ Airframe tuning lives in `config/vion.yaml`; default platform loads via `config/
 
 | method | Behaviour |
 |--------|-----------|
-| `hsv` | Purple/blue HSV only - no ONNX required |
-| `yolo` | `models/best.onnx` for dry via 294px spiral subframes; HSV for shot confirm only |
-| `both` | HSV for dry+shot first; YOLO supplements dry if HSV finds nothing |
+| `hsv` | Purple/blue HSV only — no ONNX required (bench / fallback) |
+| `yolo` | **Dry:** YOLO ONNX via 294px spiral subframes. **Shot:** YOLO if `models/shot.onnx` exists, else HSV blue/wet. **Dry fallback:** HSV only if dry ONNX missing (`method` becomes `hsv_fallback`) |
+| `both` | Same as `yolo` for shot; YOLO dry first, HSV dry supplements when YOLO finds nothing |
 
-Model path: `cv.models.dry` (default `models/best.onnx`). Inference via onnxruntime.
+Model path: `cv.models.dry` (in `vion.yaml`: `models/dry.onnx`). Resolver also checks `models/best.onnx`, `dry.pt`, etc. (`model_paths.resolve_dry_model_path`). Inference via onnxruntime.
 
 Subframe settings (`config/vion.yaml`): `cv.inference_mode` (`subframe` | `center_crop`), `cv.subframe_size` (default 294), `cv.max_subframes`, `cv.edge_margin`, `cv.nms_threshold`. Legacy center crop uses 224px when `inference_mode: center_crop`.
 
@@ -92,12 +96,13 @@ External code (orchestrator, bench tools, calibrate scripts) should import only:
 |--------|---------|
 | `create_target_detector(cfg)` | Factory for `TargetDetector` |
 | `TargetDetector.detect(frame)` | Returns `CVPacket` with full-frame pixel coords |
-| `draw_mission_overlay(frame, packet, state, cfg, ...)` | HUD; reads `cv.*` from cfg internally |
+| `draw_mission_overlay(frame, packet, state, cfg, ...)` | Mission HUD (detect + aim markers, edge labels) |
+| `render_sitl_dashboard(...)` | SITL 3-panel dashboard (orchestrator SITL mode only) |
 | `hits_to_bench_dict(hits)` | Bench dict format for `getTargets()` |
 | `resolve_dry_model_path(cfg)` | Locate dry ONNX/PT weights |
 | `crop_preview_for_display(frame, cfg)` | Display-only grid crop (bench) |
 
-Do **not** import `subframe_grid`, `subframe_yolo`, `yolo_onnx`, or `dry_detector` from orchestrator, metric recon, or auto-nav.
+Do **not** import `subframe_grid`, `subframe_yolo`, `yolo_onnx`, `dry_detector`, `shot_detector`, `hsv`, `detector`, or `ui` from orchestrator, metric recon, or auto-nav.
 
 ## Metric recon public API (`valiant.autonomy.metric_recon`)
 
@@ -105,10 +110,10 @@ Do **not** import `subframe_grid`, `subframe_yolo`, `yolo_onnx`, or `dry_detecto
 |--------|---------|
 | `create_metric_reconstructor(master, cfg, *, sim=False)` | Factory for `MetricReconstructor` |
 | `MetricReconstructor.reconstruct(cv_packet, w, h, ...)` | Returns `MetricPacket` |
-| `InlineDepthSource` / `RecordingDepthSource` | Bench/replay depth providers (calibrate tools) |
-| `metric_vz_from_altitude_error(...)` | Onboard vz from `altitude_error_m` (orchestrator helper) |
+| `InlineDepthSource` / `RecordingDepthSource` / `NullDepthSource` | Bench/replay depth providers |
+| `metric_vz_from_altitude_error(...)` | Onboard vz from `altitude_error_m` (+ `body_alt_bias_m` in orchestrator) |
 
-Do **not** import `corner_target`, `aim_offset`, `geometry_3d`, or `reconstructor` from orchestrator or auto-nav. Corner logic stays inside metric recon.
+Do **not** import `edge_proximity`, `aim_offset`, `geometry_3d`, `reconstructor`, `pixel_geometry`, `lateral_clearance`, or `vertical_clearance` from orchestrator or auto-nav. Edge / aim-offset logic stays inside metric recon.
 
 ## Auto-nav public API (`valiant.autonomy.auto_nav`)
 
@@ -119,7 +124,7 @@ Do **not** import `corner_target`, `aim_offset`, `geometry_3d`, or `reconstructo
 | `MotionIntent` | `APPROACH`, `HOLD_AIM`, `ABORT` |
 | `effective_approach_speed(cfg, metric, ...)` | Tapered forward speed during approach |
 
-Orchestrator consumes `MetricPacket` only; use `metric.servo_px` for the lateral servo point (virtual aim when corner offset is active).
+`MavlinkDriver` uses `metric.servo_px` for visual servo (lateral aim; gimbal mode keeps detect `cy` for pitch).
 
 Do **not** import `visual_servo`, `mavlink_driver`, or `planner` directly from orchestrator.
 
@@ -134,12 +139,12 @@ Do **not** import `visual_servo`, `mavlink_driver`, or `planner` directly from o
 
 ### Allowed imports by subsystem
 
-| Module | May import from CV | May import from metric_recon | May import from auto_nav | May import from spray |
-|--------|-------------------|------------------------------|--------------------------|----------------------|
-| `orchestrator` | `valiant.autonomy.cv`, `exceptions` | `valiant.autonomy.metric_recon` | `valiant.autonomy.auto_nav` | `valiant.autonomy.spray` |
-| `metric_recon` | — | internal only | — | — |
-| `auto_nav` | — | `valiant.autonomy.packets` only | internal; `spray` public API | `valiant.autonomy.spray` |
-| Bench / calibrate tools | `valiant.autonomy.cv` | `valiant.autonomy.metric_recon` | — | — |
+| Module | May import from CV | May import from metric_recon | May import from auto_nav | May import from spray | Other (orchestrator) |
+|--------|-------------------|------------------------------|--------------------------|----------------------|-------------------------|
+| `orchestrator` | `valiant.autonomy.cv`, `exceptions` | `valiant.autonomy.metric_recon` | `valiant.autonomy.auto_nav` | `valiant.autonomy.spray` | `conops`, `gcs_hud`, `gimbal`, `safety`, `upload`, `packets` |
+| `metric_recon` | — | internal only | — | — | `packets` only |
+| `auto_nav` | — | `packets` only | internal; `spray` public API | `valiant.autonomy.spray` | — |
+| Bench / calibrate tools | `valiant.autonomy.cv` | `valiant.autonomy.metric_recon` | — | — | — |
 
 ## Bench test
 
@@ -156,14 +161,15 @@ Legacy direct scripts were removed; use `python tools\valiant.py` subcommands on
 
 ## Auto-Nav and Spray (`config/vion.yaml`, inherited by `config/rpas.yaml`)
 
-- `metric_recon.mode`: `depth_at_target` (Pi) or `rangefinder` (GCS dev)
-- `metric_recon.rangefinder`: `fov_estimate`, `vl53l1x`, or `none`
+- `metric_recon.mode`: `depth_at_target` (Pi depth) or `rangefinder` (GCS / VL53L1X path)
+- `metric_recon.rangefinder`: `fov_estimate`, `vl53l1x`, or `none` (used when `mode: rangefinder`)
+- `auto_nav.vertical_clearance_m`: vertical FOV abort gate (mirrors `side_clearance_m`)
 - `metric_recon.alt_align_tolerance_m`: block fire until altitude aligned (~0.25 m)
 - `metric_recon.altitude_kp`: onboard vz from `altitude_error_m`
 - `metric_recon.min_approach_distance_m`: CONOPS 2 m approach validation
 - `metric_recon.fire_distance_m`: switch from APPROACHING to AIMING
 - `auto_nav.lateral_pixel_blend`: pixel PD weight for lateral fine-tune (world-primary 3D motion)
-- `auto_nav.side_clearance_m`: abort if target too close to frame edge
+- `auto_nav.side_clearance_m`: abort if target too close to frame edge (bypass when edge offset OK)
 - `sitl.alt_align_tolerance_m`: same gate in SITL (uses scene + metric)
 
 SITL motion: 3D NED velocity toward target (`ned_kinematics.velocity_toward_goal`); pixel servo fine-tunes lateral only.

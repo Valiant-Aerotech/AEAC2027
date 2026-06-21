@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from valiant.autonomy.cv.detector import TargetDetector
 from valiant.autonomy.cv.model_paths import resolve_dry_model_path
 from valiant.autonomy.cv.subframe_grid import DEFAULT_SUBFRAME_SIZE, crop_to_grid
+from valiant.autonomy.cv.sitl_map_view import render_sitl_dashboard
 from valiant.autonomy.cv.ui import draw_overlay
 from valiant.autonomy.packets import CVPacket, MetricPacket, TargetHit
 
@@ -77,5 +77,6 @@ __all__ = [
     "crop_preview_for_display",
     "draw_mission_overlay",
     "hits_to_bench_dict",
+    "render_sitl_dashboard",
     "resolve_dry_model_path",
 ]

@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 
 from valiant.autonomy.metric_recon.aim_offset import (
-    compute_aim_pixel,
     compute_aim_point,
     metres_to_pixels_x,
     metres_to_pixels_y,
@@ -40,36 +39,42 @@ def test_metres_to_pixels_x_sanity():
     assert 300 < delta < 400
 
 
-def test_left_edge_aim_shifts_right():
-    hit = _hit(200)
-    aim_x, aim_y, delta_px, lateral_m, ok = compute_aim_pixel(
-        hit, 1280, 720, _cfg(), range_m=1.0, hfov_deg=66.0,
+def _lateral_aim(hit: TargetHit):
+    edges = classify_edges(hit, 1280, 720, _cfg())
+    return compute_aim_point(
+        hit, 1280, 720, _cfg(), edges,
+        range_m=1.0, hfov_deg=66.0, vfov_deg=52.0,
     )
-    assert aim_y == hit.cy
-    assert lateral_m == 0.35
-    assert aim_x > hit.cx
-    assert abs(aim_x - (hit.cx + delta_px)) < 2
-    assert ok
+
+
+def test_left_edge_aim_shifts_right():
+    hit = _hit(80)
+    result = _lateral_aim(hit)
+    assert result.aim_y == hit.cy
+    assert result.lateral_offset_m == 0.35
+    assert result.aim_x > hit.cx
+    assert abs(result.aim_x - (hit.cx + result.delta_x_px)) < 2
+    assert result.lateral_ok
 
 
 def test_right_edge_aim_shifts_left():
-    hit = _hit(1080)
-    aim_x, _y, delta_px, _lat, ok = compute_aim_pixel(
-        hit, 1280, 720, _cfg(), range_m=1.0, hfov_deg=66.0,
-    )
-    assert aim_x < hit.cx
-    assert abs(aim_x - (hit.cx - delta_px)) < 2
-    assert ok
+    hit = _hit(1200)
+    result = _lateral_aim(hit)
+    assert result.aim_x < hit.cx
+    assert abs(result.aim_x - (hit.cx - result.delta_x_px)) < 2
+    assert result.lateral_ok
 
 
 def test_clamp_marks_body_clearance_not_ok():
     hit = _hit(1279)
-    aim_x, _y, delta_px, _lat, ok = compute_aim_pixel(
-        hit, 1280, 720, _cfg(), range_m=0.2, hfov_deg=66.0,
+    edges = classify_edges(hit, 1280, 720, _cfg())
+    result = compute_aim_point(
+        hit, 1280, 720, _cfg(), edges,
+        range_m=0.2, hfov_deg=66.0, vfov_deg=52.0,
     )
-    assert aim_x == 0
-    assert delta_px > 1000
-    assert not ok
+    assert result.aim_x == 0
+    assert result.delta_x_px > 1000
+    assert not result.lateral_ok
 
 
 def test_metres_to_pixels_y_sanity():

@@ -138,4 +138,4 @@ python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
 | `opt_qua` low | H-Flow mount, fly 0.5-3 m AGL, venue-like floor |
 | `depth: n/a` | ArduCam driver pending; FOV fallback active |
 | Monitor LOST | Firewall; `--gcs-connection udpout:<LAPTOP_IP>:14550` |
-| No YOLO hits | `models/best.onnx` on Pi; lighting; purple target in frame |
+| No YOLO hits | Dry ONNX on Pi (`models/dry.onnx` or `best.onnx`); lighting; purple target in frame |

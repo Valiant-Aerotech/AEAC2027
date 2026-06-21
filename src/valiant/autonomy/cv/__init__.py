@@ -6,6 +6,7 @@ from valiant.autonomy.cv.api import (
     crop_preview_for_display,
     draw_mission_overlay,
     hits_to_bench_dict,
+    render_sitl_dashboard,
     resolve_dry_model_path,
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     "crop_preview_for_display",
     "draw_mission_overlay",
     "hits_to_bench_dict",
+    "render_sitl_dashboard",
     "resolve_dry_model_path",
 ]

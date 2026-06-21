@@ -8,13 +8,11 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
+from valiant.autonomy.cv.constants import CAPTURE_HEIGHT, CAPTURE_WIDTH
 from valiant.autonomy.packets import TargetHit
 
 if TYPE_CHECKING:
     import numpy.typing as npt
-
-CAPTURE_WIDTH = 1280
-CAPTURE_HEIGHT = 720
 
 
 class YoloOnnxDetector:

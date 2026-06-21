@@ -43,3 +43,8 @@ def test_diagonal_bottom_left():
     e = classify_edges(_hit(80, 680), 1280, 720, _cfg())
     assert e.left and e.bottom
     assert e.labels() == ("L", "B")
+
+
+def test_small_bbox_ignored():
+    e = classify_edges(_hit(80, 360, area=400), 1280, 720, _cfg())
+    assert not e.any_edge

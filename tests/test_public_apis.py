@@ -8,11 +8,13 @@ def test_cv_public_api():
         create_target_detector,
         draw_mission_overlay,
         hits_to_bench_dict,
+        render_sitl_dashboard,
         resolve_dry_model_path,
     )
 
     assert callable(create_target_detector)
     assert callable(draw_mission_overlay)
+    assert callable(render_sitl_dashboard)
     assert callable(hits_to_bench_dict)
     assert callable(resolve_dry_model_path)
 

@@ -11,7 +11,7 @@ import cv2
 from pymavlink import mavutil
 
 from valiant.autonomy.auto_nav import MotionIntent, create_mavlink_driver, create_motion_planner, effective_approach_speed
-from valiant.autonomy.cv import create_target_detector, draw_mission_overlay
+from valiant.autonomy.cv import create_target_detector, draw_mission_overlay, render_sitl_dashboard
 from valiant.autonomy.cv.exceptions import BadFrameError, CVError, LowConfidenceError
 from valiant.autonomy.metric_recon import create_metric_reconstructor, metric_vz_from_altitude_error
 from valiant.autonomy.packets import CVPacket, MetricPacket
@@ -838,8 +838,6 @@ class AutoExtinguisher:
                         else None
                     )
                     if scene is not None and self._sitl_pose is not None:
-                        from valiant.autonomy.cv.sitl_map_view import render_sitl_dashboard
-
                         display = render_sitl_dashboard(
                             overlay,
                             scene,

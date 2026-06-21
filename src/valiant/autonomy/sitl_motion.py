@@ -246,10 +246,13 @@ class SitlMotionStack:
                     pose, scene, **self._altitude_kwargs(state=state, has_target=True)
                 )
             if metric is not None and metric.altitude_error_m is not None:
-                from valiant.autonomy.metric_recon.geometry_3d import metric_vz_from_altitude_error
+                from valiant.autonomy.metric_recon import metric_vz_from_altitude_error
 
+                alt_err = metric.altitude_error_m
+                if alt_err is not None:
+                    alt_err = alt_err + metric.body_alt_bias_m
                 vz_metric = metric_vz_from_altitude_error(
-                    metric.altitude_error_m,
+                    alt_err,
                     kp=self._cfg.altitude_kp,
                     max_vz=self._cfg.max_vz,
                 )

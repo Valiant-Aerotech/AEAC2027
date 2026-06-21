@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from valiant.autonomy.metric_recon.edge_proximity import classify_edges
 from valiant.autonomy.packets import EdgeProximity, TargetHit
 
 
@@ -120,33 +119,4 @@ def compute_aim_point(
         lateral_ok=lateral_ok,
         vertical_ok=vertical_ok,
         body_alt_bias_m=body_alt_bias_m,
-    )
-
-
-def compute_aim_pixel(
-    hit: TargetHit,
-    frame_w: int,
-    frame_h: int,
-    cfg: dict,
-    *,
-    range_m: float,
-    hfov_deg: float,
-) -> tuple[int, int, float, float, bool]:
-    """Legacy lateral-only API; prefer compute_aim_point."""
-    from valiant.autonomy.metric_recon.edge_proximity import classify_edges
-
-    edges = classify_edges(hit, frame_w, frame_h, cfg)
-    if not edges.lateral:
-        edges = EdgeProximity(left=hit.cx < frame_w // 2, right=hit.cx >= frame_w // 2)
-    vfov = float(cfg.get("camera", {}).get("vfov_deg", cfg.get("fov", {}).get("vfov_deg", 52.0)))
-    result = compute_aim_point(
-        hit, frame_w, frame_h, cfg, edges,
-        range_m=range_m, hfov_deg=hfov_deg, vfov_deg=vfov,
-    )
-    return (
-        result.aim_x,
-        result.aim_y,
-        result.delta_x_px,
-        result.lateral_offset_m,
-        result.lateral_ok,
     )

@@ -101,7 +101,7 @@ metric_recon:
   wall_offset_m: 0.0
   camera_down: true
   rangefinder_stale_s: 1.0
-  corner_edge_frac: 0.18
+  corner_edge_frac: 0.18          # edge trigger; alias: edge_edge_frac
   corner_min_bbox_area_px: 800
   body_half_width_m: 0.25
   clearance_margin_m: 0.10
@@ -343,7 +343,6 @@ flight_profiles:
       source: rpi_local
     metric_recon:
       mode: depth_at_target
-      rangefinder: depth_at_target
       camera_down: false
     safety:
       geofence_abort: false
@@ -370,7 +369,6 @@ flight_profiles:
       source: rpi_local
     metric_recon:
       mode: depth_at_target
-      rangefinder: depth_at_target
       camera_down: false
     cv:
       method: yolo

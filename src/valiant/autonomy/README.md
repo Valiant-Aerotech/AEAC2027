@@ -11,8 +11,8 @@ autonomy/
   orchestrator.py       # State machine, SITL/field modes, main loop
   packets.py            # CVPacket, MetricPacket (3D fields)
   auto_nav/             # Planner, visual servo, MAVLink driver
-  cv/                   # HSV, YOLO, detector, overlay UI, SITL dashboard
-  metric_recon/         # geometry_3d.py, depth, FOV, clearance, altitude_error
+  cv/                   # Public API: detector, overlay, SITL dashboard
+  metric_recon/         # edge_proximity, aim_offset, geometry_3d, depth, FOV, clearance
   spray/                # Aim check (pixel + altitude), water trigger
   upload/               # Task 2 photo naming + Drive
   safety/               # Battery, geofence, timeout
@@ -33,9 +33,9 @@ common/
 
 | Mode | Flag / profile | Doc |
 |------|----------------|-----|
-| Field (Vion Pi) | `run_mission.py --profile vivi` | `hardware/vion/rpi/README.md` |
+| Field (Vion Pi) | `run_mission.py --profile indoor` (or `outdoor`) | `hardware/vion/rpi/README.md` |
+| Vivi bench / hand-test | `run_mission.py --profile vivi --hand-test` | `docs/runbooks/vivi-hand-test.md` |
 | SITL simulation | `--sitl` + `flight_profiles.sitl` | `docs/runbooks/sitl-overview.md` |
-| Vivi onboard | `flight_profiles.vivi` | `docs/runbooks/vivi-hand-test.md` |
 | Bench CV | `python tools/valiant.py bench cv` | `ONBOARDING.md` |
 | Bench metric (3D) | `python tools/valiant.py bench metric` | `docs/interfaces.md` |
 | CV training | `python -m valiant.autonomy.cv.training.train` | `models/README.md` |

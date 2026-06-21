@@ -10,20 +10,12 @@ from valiant.autonomy.cv.constants import CONF_THRESH
 from valiant.autonomy.cv.dry_detector import create_yolo_dry_backend, inference_mode
 from valiant.autonomy.cv.exceptions import BadFrameError, LowConfidenceError
 from valiant.autonomy.cv.hsv import detect_hsv
-from valiant.autonomy.cv.model_paths import resolve_dry_model_path, resolve_shot_model_path
+from valiant.autonomy.cv.model_paths import resolve_dry_model_path
 from valiant.autonomy.cv.shot_detector import ShotDetector
 from valiant.autonomy.packets import CVPacket
 
 if TYPE_CHECKING:
     import numpy.typing as npt
-
-# Backward compatibility for imports that referenced detector constants.
-from valiant.autonomy.cv.constants import (  # noqa: E402
-    CAPTURE_HEIGHT,
-    CAPTURE_WIDTH,
-    R_S,
-    SUBFRAME_SIZE,
-)
 
 
 class TargetDetector:
@@ -100,8 +92,3 @@ class TargetDetector:
             if shot_hit and not packet.shot:
                 packet.shot.append(shot_hit)
         return packet
-
-
-# Backward compatibility for private import used before facade existed.
-_resolve_model_path = resolve_dry_model_path
-_resolve_shot_model_path = resolve_shot_model_path
