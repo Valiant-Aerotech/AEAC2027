@@ -25,6 +25,7 @@ from valiant.autonomy.conops import (
     validate_conops_config,
 )
 from valiant.autonomy.safety.monitor import SafetyAbort, SafetyMonitor
+from valiant.autonomy.pilot_override import OverrideKind, PilotOverrideMonitor, override_message
 from valiant.autonomy.spray import create_water_trigger, is_aimed
 from valiant.autonomy.gcs_hud import (
     GcsHudReporter,
@@ -206,6 +207,9 @@ class AutoExtinguisher:
         self._last_metric: MetricPacket | None = None
         self._stop_loop = False
         self._sitl_pose = None
+        self._pilot_monitor: PilotOverrideMonitor | None = None
+        if not sim_mode and not sitl_mode and not hand_test:
+            self._pilot_monitor = PilotOverrideMonitor(self.master, cfg)
         self._sitl_map = None
         self._sitl_map_view_radius = 24.0
         if self.sitl:
@@ -463,6 +467,28 @@ class AutoExtinguisher:
             alt_tolerance_m=tol_m,
             require_gps=require_gps,
         )
+        if self._pilot_monitor is not None:
+            self._pilot_monitor.sync_from_vehicle()
+
+    def _hardware_pilot_override_active(self) -> bool:
+        if self._pilot_monitor is None:
+            return False
+        return self.state in (STATE_APPROACHING, STATE_AIMING, STATE_RETREAT)
+
+    def _handle_hardware_pilot_override(self) -> bool:
+        """Stop companion motion when pilot leaves GUIDED or hits kill switch."""
+        if not self._hardware_pilot_override_active():
+            return False
+        kind = self._pilot_monitor.poll()
+        if kind == OverrideKind.NONE:
+            return False
+        msg = override_message(kind)
+        if msg:
+            print(f"[Mission] {msg}")
+            self.send_hud_message(msg[:50])
+        self._sitl_stop_motion()
+        self.set_state(STATE_ABORTED)
+        return True
 
     def _complete_handoff_loiter(self) -> None:
         """Stop companion velocity stream and command LOITER for manual takeover."""
@@ -508,6 +534,8 @@ class AutoExtinguisher:
 
     def _tick_hardware_retreat(self) -> bool:
         """Stream body-frame back/up velocity. Returns True when retreat is done."""
+        if self._handle_hardware_pilot_override():
+            return True
         back_s, up_s, total_s = self._hardware_retreat_durations()
         elapsed = time.time() - self.state_start_time
         if elapsed >= total_s:
@@ -835,6 +863,9 @@ class AutoExtinguisher:
                     self._handle_safety_abort(safety_abort)
                     break
 
+                if self._handle_hardware_pilot_override():
+                    break
+
                 if self.sitl and time.time() - self._last_gcs_heartbeat > 1.0:
                     send_companion_heartbeat(self.master)
                     self._last_gcs_heartbeat = time.time()
@@ -1126,6 +1157,8 @@ class AutoExtinguisher:
 
                 elif self.state == STATE_RETREAT:
                     if self._tick_hardware_retreat():
+                        if self.state == STATE_ABORTED:
+                            break
                         back_m = float(self.cfg.get("mission", {}).get("retreat_back_m", 2.5))
                         up_m = float(self.cfg.get("mission", {}).get("retreat_up_m", 1.0))
                         self.nav.stop()

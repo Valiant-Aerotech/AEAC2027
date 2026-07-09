@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from pymavlink import mavutil
 
@@ -124,6 +124,7 @@ class GuidedMotionRunner:
     def stop_stream(self) -> None:
         self._stream.stop()
         self._servo.clear_stream_target()
+        self._servo.stop()
 
     def start_stream(self) -> None:
         self._stream.start()
@@ -141,6 +142,7 @@ class GuidedMotionRunner:
         arrival_m: float | None = None,
         timeout_s: float | None = None,
         anchor_xy: tuple[float, float] | None = None,
+        position_guard: Callable[[float, float], bool] | None = None,
     ) -> tuple[float, float]:
         """Drive toward a LOCAL NED waypoint; return (x, y) at end."""
         orbit_cfg = self.cfg.get("field_orbit", {})
@@ -180,6 +182,8 @@ class GuidedMotionRunner:
             if not pose.ok:
                 time.sleep(0.05)
                 continue
+            if position_guard is not None and not position_guard(pose.x, pose.y):
+                break
             remaining = math.hypot(target_x - pose.x, target_y - pose.y)
             traveled = math.hypot(pose.x - ax, pose.y - ay)
             now = time.time()
@@ -219,6 +223,7 @@ class GuidedMotionRunner:
         label: str,
         arrival_m: float | None = None,
         timeout_s: float | None = None,
+        position_guard: Callable[[float, float], bool] | None = None,
     ) -> tuple[float, float]:
         """Drive forward_m along anchor heading (body frame), measuring from anchor."""
         orbit_cfg = self.cfg.get("field_orbit", {})
@@ -253,6 +258,11 @@ class GuidedMotionRunner:
                 return pose.x, pose.y
             self.stop_stream()
             pose = self.refresh_pose(pose)
+            if not pose.ok:
+                time.sleep(0.05)
+                continue
+            if position_guard is not None and not position_guard(pose.x, pose.y):
+                break
             along = math.cos(yaw_rad) * (pose.x - anchor_x) + math.sin(yaw_rad) * (
                 pose.y - anchor_y
             )

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 from valiant.autonomy.pilot_override import (
     OverrideKind,
     PilotOverrideMonitor,
@@ -122,6 +124,21 @@ def test_guided_motion_stops_stream_on_override():
     motion = GuidedMotionRunner(master, cfg, log_tag="Test")
     motion.set_pilot_monitor(PilotOverrideMonitor(master, cfg))
     motion._stream._active = True
+    motion._servo.stop = MagicMock()
     kind = motion.check_pilot_override()
     assert kind == OverrideKind.MANUAL_TAKEOVER
     assert not motion._stream._active
+    motion._servo.stop.assert_called_once()
+
+
+def test_stop_stream_sends_zero_velocity():
+    from unittest.mock import MagicMock
+
+    from valiant.autonomy.guided_motion import GuidedMotionRunner
+
+    master = MagicMock()
+    cfg = {"field_orbit": {"pilot": {}}}
+    motion = GuidedMotionRunner(master, cfg, log_tag="Test")
+    motion._servo.stop = MagicMock()
+    motion.stop_stream()
+    motion._servo.stop.assert_called_once()

@@ -22,6 +22,7 @@ from valiant.autonomy.orbit_math import (
     velocity_toward_ned,
 )
 from valiant.autonomy.pilot_override import OverrideKind, PilotOverrideMonitor, override_message
+from valiant.autonomy.safety.monitor import SafetyMonitor
 from valiant.autonomy.sitl_preflight import (
     ensure_guided,
     wait_for_guided_trigger,
@@ -90,6 +91,7 @@ class FieldOrbitRunner:
         self._orbit_aborted = False
         self._last_status_log = 0.0
         self._pilot_monitor = PilotOverrideMonitor(master, cfg)
+        self._safety = SafetyMonitor(master, cfg, sim=False)
         self._motion = GuidedMotionRunner(
             master,
             cfg,
@@ -166,6 +168,17 @@ class FieldOrbitRunner:
         limit = float(self._ocfg.get("geofence_radius_m", 12.0))
         ox, oy = self._origin
         return math.hypot(x - ox, y - oy) <= limit
+
+    def _check_orbit_constraints(self, x: float, y: float) -> bool:
+        """Return True if safety/geofence abort was handled."""
+        abort = self._safety.check()
+        if abort:
+            self._abort_to_loiter(f"Safety: {abort.reason}")
+            return True
+        if not self._geofence_ok(x, y):
+            self._abort_to_loiter("Geofence - switching to loiter")
+            return True
+        return False
 
     def _duration_ok(self) -> bool:
         max_s = float(self._ocfg.get("max_duration_s", 600))
@@ -354,7 +367,11 @@ class FieldOrbitRunner:
                 forward_m,
                 label=f"Flying forward {forward_m:.0f} m",
                 arrival_m=forward_arrival_m,
+                position_guard=self._geofence_ok,
             )
+        pose = self._motion.refresh_pose(self._motion.last_pose)
+        if pose.ok and self._check_orbit_constraints(pose.x, pose.y):
+            return "complete"
         override = self._handle_pilot_override()
         if override:
             return override
@@ -427,9 +444,7 @@ class FieldOrbitRunner:
             else:
                 stale_pose_ticks = 0
                 last_px, last_py = pose.x, pose.y
-            if not self._geofence_ok(pose.x, pose.y):
-                orbit_exit = "geofence"
-                self._abort_to_loiter("Geofence - switching to loiter")
+            if self._check_orbit_constraints(pose.x, pose.y):
                 return "complete"
             blend = max(0.0, 1.0 - (time.time() - orbit_start) / max(entry_blend_s, 0.1))
             effective_radial = radial_kp + (entry_radial_kp - radial_kp) * blend
@@ -519,6 +534,8 @@ class FieldOrbitRunner:
             if not pose.ok:
                 time.sleep(0.05)
                 continue
+            if self._check_orbit_constraints(pose.x, pose.y):
+                return "complete"
             dist = math.hypot(pose.x - cx, pose.y - cy)
             if dist < center_tol:
                 break
@@ -597,6 +614,7 @@ def run_field_orbit(
     ip = gcs_ip or gcs_cfg.get("ip")
     if ip:
         telemetry = TelemetryBridge(ip, port=int(gcs_cfg.get("port", 14560)))
+    runner: FieldOrbitRunner | None = None
     try:
         if sitl and not skip_preflight:
             alt = takeoff_alt_m
@@ -623,6 +641,11 @@ def run_field_orbit(
         )
         runner.run()
     finally:
+        if runner is not None:
+            try:
+                runner._motion.stop_stream()
+            except Exception:
+                pass
         hud.close()
         if telemetry is not None:
             telemetry.close()

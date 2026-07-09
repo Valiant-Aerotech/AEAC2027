@@ -26,6 +26,9 @@ class _FakeMaster:
     def set_mode(self, _mode: int) -> None:
         pass
 
+    def set_position_target_local_ned_send(self, *args, **kwargs) -> None:
+        pass
+
     def recv_match(self, *, type, blocking=False, timeout=0.5):
         del type, blocking, timeout
         if self._idx < len(self._poses):

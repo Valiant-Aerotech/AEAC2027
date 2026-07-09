@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -243,3 +244,30 @@ def test_velocity_toward_center():
 def test_format_orbit_status(phase, lap, target, expected_prefix):
     line = format_orbit_status(phase, lap, target)
     assert line.startswith(expected_prefix.split()[0])
+
+
+def test_field_orbit_check_constraints_geofence_and_safety():
+    from valiant.autonomy.field_orbit import FieldOrbitRunner
+    from valiant.autonomy.safety.monitor import SafetyAbort
+
+    master = MagicMock()
+    cfg = {
+        "safety": {"geofence_abort": True},
+        "field_orbit": {"geofence_radius_m": 10.0, "forward_speed_m_s": 0.45},
+    }
+    runner = FieldOrbitRunner(master, cfg)
+    runner._origin = (0.0, 0.0)
+    runner._abort_to_loiter = MagicMock()
+
+    runner._safety.check = MagicMock(return_value=SafetyAbort("low battery"))
+    assert runner._check_orbit_constraints(0.0, 0.0) is True
+    runner._abort_to_loiter.assert_called_once_with("Safety: low battery")
+
+    runner._abort_to_loiter.reset_mock()
+    runner._safety.check = MagicMock(return_value=None)
+    assert runner._check_orbit_constraints(15.0, 0.0) is True
+    runner._abort_to_loiter.assert_called_once_with("Geofence - switching to loiter")
+
+    runner._abort_to_loiter.reset_mock()
+    assert runner._check_orbit_constraints(5.0, 0.0) is False
+    runner._abort_to_loiter.assert_not_called()

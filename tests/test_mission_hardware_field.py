@@ -7,7 +7,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from valiant.autonomy.orchestrator import AutoExtinguisher, STATE_RETREAT
+from valiant.autonomy.orchestrator import AutoExtinguisher, STATE_ABORTED, STATE_APPROACHING, STATE_RETREAT
+from valiant.autonomy.pilot_override import OverrideKind
 
 
 def _minimal_ext(*, cfg: dict | None = None, sitl: bool = False, sim: bool = False) -> AutoExtinguisher:
@@ -42,6 +43,7 @@ def _minimal_ext(*, cfg: dict | None = None, sitl: bool = False, sim: bool = Fal
     ext.nav = MagicMock()
     ext.state = STATE_RETREAT
     ext.state_start_time = time.time()
+    ext._pilot_monitor = None
     return ext
 
 
@@ -112,3 +114,41 @@ def test_mission_retreat_durations():
     assert back_s == 10.0  # 2.5 / 0.25
     assert up_s == pytest.approx(6.667, rel=0.01)
     assert total_s == back_s
+
+
+def test_hardware_pilot_override_aborts_mission():
+    ext = _minimal_ext()
+    ext.state = STATE_APPROACHING
+    ext._pilot_monitor = MagicMock()
+    ext._pilot_monitor.poll.return_value = OverrideKind.MANUAL_TAKEOVER
+    ext._allow_motion = MagicMock(return_value=True)
+    ext._sitl_stop_motion = MagicMock()
+    ext.set_state = MagicMock(side_effect=lambda s: setattr(ext, "state", s))
+
+    assert ext._handle_hardware_pilot_override() is True
+    ext._sitl_stop_motion.assert_called_once()
+    assert ext.state == STATE_ABORTED
+
+
+def test_hardware_pilot_override_ignored_when_searching():
+    ext = _minimal_ext()
+    ext.state = "SEARCHING"
+    ext._pilot_monitor = MagicMock()
+    ext._pilot_monitor.poll.return_value = OverrideKind.MANUAL_TAKEOVER
+
+    assert ext._handle_hardware_pilot_override() is False
+    ext._pilot_monitor.poll.assert_not_called()
+
+
+def test_retreat_aborts_on_pilot_override():
+    ext = _minimal_ext(cfg={"mission": {"retreat_before_loiter": True}})
+    ext._allow_motion = MagicMock(return_value=True)
+    ext._pilot_monitor = MagicMock()
+    ext._pilot_monitor.poll.return_value = OverrideKind.KILL_SWITCH
+    ext._sitl_stop_motion = MagicMock()
+    ext.set_state = MagicMock(side_effect=lambda s: setattr(ext, "state", s))
+    ext.state_start_time = time.time()
+
+    assert ext._tick_hardware_retreat() is True
+    assert ext.state == STATE_ABORTED
+    ext.nav.search_velocity.assert_not_called()
