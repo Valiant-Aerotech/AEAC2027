@@ -52,8 +52,10 @@ Set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). Airframe tuni
 | **Webcam CV** | `python tools\valiant.py bench cv --camera 0` |
 | **Virtual mission (SITL)** | [sitl-overview.md](docs/runbooks/sitl-overview.md) |
 | **GCS + drone first connect** | `python tools\valiant.py bringup phase1` |
-| **Pi first SSH** | `bash hardware/vion/rpi/first_connect.sh` |
-| **Competition flight (Pi)** | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
+| **Pi first SSH / field day** | `bash hardware/vion/rpi/pi_field_ready.sh --first-time` — [pi-fresh-install.md](docs/runbooks/pi-fresh-install.md) |
+| **Competition flight (Pi indoor)** | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
+| **Vivi field orbit** | `bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <ip> --laps 1` |
+| **Vivi outdoor mission** | `bash hardware/vion/rpi/pi_field_ready.sh --mission --gcs-ip <ip> --max-targets 1` |
 | **GCS monitor** | `python tools\valiant.py gcs monitor` |
 
 ### GCS dev missions (legacy / bench)

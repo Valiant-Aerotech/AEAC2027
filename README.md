@@ -33,7 +33,8 @@ python tools\valiant.py guide
 | Run unit tests (same as CI) | See [docs/branches.md](docs/branches.md#continuous-integration-github-actions) — five jobs (lint, mavlink, motion, CV, config) |
 | Virtual drone mission | `.\tools\setup_wsl.ps1` once, then `launch_sitl.ps1` + `valiant sitl mission` |
 | First connect to drone | `python tools\valiant.py bringup phase1` |
-| Fly on Pi (competition) | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
+| Fly on Pi (competition indoor) | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
+| Vivi field orbit (outdoor) | `bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <ip> --laps 1` |
 | GCS telemetry HUD | `python tools\valiant.py gcs monitor` |
 
 Full table: [START_HERE.md](START_HERE.md)
@@ -43,9 +44,9 @@ Full table: [START_HERE.md](START_HERE.md)
 | Machine | Run first |
 |---------|-----------|
 | GCS laptop | `python tools\valiant.py bringup phase1` |
-| Raspberry Pi (SSH) | `bash hardware/vion/rpi/first_connect.sh` |
+| Raspberry Pi (SSH) | `bash hardware/vion/rpi/pi_field_ready.sh --first-time` |
 
-Checklist: [docs/runbooks/vion-bringup.md](docs/runbooks/vion-bringup.md)
+Checklists: [docs/runbooks/pi-fresh-install.md](docs/runbooks/pi-fresh-install.md) · [docs/runbooks/vion-bringup.md](docs/runbooks/vion-bringup.md) · [hardware/vivi/WIRING.md](hardware/vivi/WIRING.md)
 
 ## Repo layout
 
@@ -65,6 +66,7 @@ models/            <- dry.onnx / best.onnx (gitignored; copy locally)
 - Architecture: [docs/architecture.md](docs/architecture.md)
 - SITL sim: [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
 - Before hardware: [docs/runbooks/whats-left-before-hardware.md](docs/runbooks/whats-left-before-hardware.md)
+- **Fresh Pi + field day:** [docs/runbooks/pi-fresh-install.md](docs/runbooks/pi-fresh-install.md)
 - Branches and CI: [docs/branches.md](docs/branches.md)
 - Competition rules: [docs/conops.md](docs/conops.md)
 

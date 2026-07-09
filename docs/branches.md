@@ -104,7 +104,9 @@ These modes are config/profile choices, not separate git branches:
 | **SITL orbit (no CV)** | `tcp:127.0.0.1:5760` | None (field orbit geometry) | `python tools/valiant.py sitl orbit` |
 | **Hand-test (FC, props off)** | `COM5` or UDP | scrcpy / webcam | `docs/runbooks/vivi-hand-test.md` |
 | **Vivi bench (Pi)** | Pi UART | RPi camera + ToF | `hardware/vion/rpi/run_mission.py --profile vivi` |
-| **Field (Vion)** | Radio COM | RPi camera | `hardware/vion/rpi/run_mission.py --profile indoor` |
+| **Vivi outdoor orbit** | Pi UART | RPi camera + GPS | `pi_field_ready.sh --orbit --gcs-ip <ip> --laps 1` — [vivi-orbit-field-test.md](runbooks/vivi-orbit-field-test.md) |
+| **Vivi outdoor mission** | Pi UART | RPi camera + GPS | `pi_field_ready.sh --mission --gcs-ip <ip> --max-targets 1` — [vivi-outdoor-field-day.md](runbooks/vivi-outdoor-field-day.md) |
+| **Field (Vion indoor)** | Radio COM | RPi camera | `hardware/vion/rpi/run_mission.py --profile indoor` |
 
 Full SITL guide: [runbooks/sitl-overview.md](runbooks/sitl-overview.md).
 

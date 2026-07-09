@@ -45,11 +45,11 @@ if [ ! -f config/rpas_calibration.yaml ]; then
 fi
 
 echo ""
-echo "First-time Pi? Run: bash hardware/vion/rpi/first_connect.sh"
+echo "First-time Pi? Run: bash hardware/vion/rpi/pi_field_ready.sh --first-time"
 echo ""
 echo "Every session:"
-echo "  source .venv/bin/activate"
-echo "  bash hardware/vion/rpi/session_start.sh"
+echo "  bash hardware/vion/rpi/pi_field_ready.sh --check"
+echo "  bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <IP> --laps 1"
 echo ""
 echo "ArduCam ToF (once):"
 echo "  bash hardware/vion/rpi/install_arducam_tof.sh"

@@ -2,40 +2,42 @@
 
 Onboard flight computer for Task 2 autonomy.
 
-**Bringup:** [docs/runbooks/vion-bringup.md](../../../docs/runbooks/vion-bringup.md)
+**Start here:** [docs/runbooks/pi-fresh-install.md](../../../docs/runbooks/pi-fresh-install.md) (fresh Pi OS → field flight)
 
-## Script flow (first time)
+**Bringup detail:** [docs/runbooks/vion-bringup.md](../../../docs/runbooks/vion-bringup.md)
+
+## One script (recommended)
 
 ```bash
-bash hardware/vion/rpi/first_connect.sh          # once
-bash hardware/vion/rpi/session_start.sh          # every session
-bash hardware/vion/rpi/capture_all_calibration.sh
-GCS_IP=<laptop-ip> bash hardware/vion/rpi/run_bringup_tests.sh
-bash hardware/vion/rpi/preflight_indoor.sh       # before props on
-python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
+bash hardware/vion/rpi/pi_field_ready.sh --first-time          # once after fresh OS
+bash hardware/vion/rpi/pi_field_ready.sh --check             # every session
+bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <IP> --laps 1
+bash hardware/vion/rpi/pi_field_ready.sh --mission --gcs-ip <IP> --max-targets 1
 ```
 
-## Scripts
+`first_connect.sh` and `session_start.sh` delegate to `pi_field_ready.sh`.
 
-| Script | Phase | Purpose |
-|--------|-------|---------|
-| `first_connect.sh` | C | First SSH: setup + checks |
-| `setup.sh` | C | venv, deps (called by first_connect) |
-| `session_start.sh` | C5 | Quick `--once` sensor check |
-| `check_sensors.py` | C5 | RGB, depth, MAVLink (`--once` for pass/fail) |
-| `capture_all_calibration.sh` | C6 | 1/2/3 m calibration captures |
-| `capture_calibration_set.py` | C6 | Single distance capture |
-| `run_bringup_tests.sh` | C7-D | Sim + tethered + optional monitor |
-| `preflight_indoor.sh` | E | Props-on checklist (incl. safety.lua via check_sensors) |
-| `run_mission.py` | E | Autonomous flight (CV orchestrator) |
-| `run_field_orbit.py` | E | GUIDED-triggered orbit, then LOITER (no CV) |
-
-Before props-on flight: `python tools/valiant.py gcs verify-safety` (or included in `preflight_indoor.sh` → `check_sensors.py --once`).
-
-## GCS pairing scripts
+## Script map
 
 | Script | Purpose |
 |--------|---------|
-| `tools/deploy/deploy_to_pi.ps1` | Copy model + calibration to Pi |
-| `tools/calibrate/run_calibration_pipeline.ps1` | Pull captures, validate, push yaml |
-| `python tools/valiant.py gcs monitor` | Start mission monitor (see [tools/README.md](../../../tools/README.md)) |
+| **`pi_field_ready.sh`** | **Primary entry:** setup, check, orbit, mission |
+| `first_connect.sh` | Alias for `--first-time` |
+| `session_start.sh` | Alias for `--check` |
+| `setup.sh` | venv + pip (called by `--first-time`) |
+| `check_sensors.py` | RGB, depth, MAVLink, safety.lua |
+| `run_field_orbit.py` | GUIDED orbit → LOITER (Run 1) |
+| `run_mission.py` | CV mission orchestrator (Run 2) |
+| `preflight_indoor.sh` | Props-on indoor checklist |
+| `run_bringup_tests.sh` | Sim + tethered tests |
+| `capture_all_calibration.sh` | 1/2/3 m calibration captures |
+
+Before props-on flight: `python tools/valiant.py gcs verify-safety` (included in `--check` when MAVLink up).
+
+## GCS pairing (laptop)
+
+| Script | Purpose |
+|--------|---------|
+| `tools/deploy/deploy_to_pi.ps1` | Copy repo + model to Pi |
+| `python tools/valiant.py gcs monitor` | UDP status monitor |
+| `python tools/valiant.py gcs verify-safety` | safety.lua + SCR_ENABLE |

@@ -61,6 +61,7 @@ STATE_FIRING = "FIRING"
 STATE_VERIFYING = "VERIFYING"
 STATE_CAPTURING = "CAPTURING"
 STATE_UPLOADING = "UPLOADING"
+STATE_RETREAT = "RETREAT"
 STATE_COMPLETE = "COMPLETE"
 STATE_ABORTED = "ABORTED"
 
@@ -489,6 +490,36 @@ class AutoExtinguisher:
             print("[Mission] LOITER engaged - pilot may take RC control")
         except RuntimeError as exc:
             print(f"[Mission] LOITER handoff failed: {exc}")
+
+    def _mission_retreat_enabled(self) -> bool:
+        if self.sitl or self.sim or self.hand_test or not self._allow_motion():
+            return False
+        return bool(self.cfg.get("mission", {}).get("retreat_before_loiter", False))
+
+    def _hardware_retreat_durations(self) -> tuple[float, float, float]:
+        mcfg = self.cfg.get("mission", {})
+        back_m = float(mcfg.get("retreat_back_m", 2.5))
+        up_m = float(mcfg.get("retreat_up_m", 1.0))
+        speed = max(float(mcfg.get("retreat_speed_m_s", 0.25)), 0.05)
+        up_speed = max(float(mcfg.get("retreat_up_vz_m_s", 0.15)), 0.05)
+        back_s = back_m / speed
+        up_s = up_m / up_speed
+        return back_s, up_s, max(back_s, up_s)
+
+    def _tick_hardware_retreat(self) -> bool:
+        """Stream body-frame back/up velocity. Returns True when retreat is done."""
+        back_s, up_s, total_s = self._hardware_retreat_durations()
+        elapsed = time.time() - self.state_start_time
+        if elapsed >= total_s:
+            return True
+        mcfg = self.cfg.get("mission", {})
+        speed = float(mcfg.get("retreat_speed_m_s", 0.25))
+        up_speed = float(mcfg.get("retreat_up_vz_m_s", 0.15))
+        vx = -speed if elapsed < back_s else 0.0
+        vz = -up_speed if elapsed < up_s else 0.0
+        self.nav.start_velocity_stream()
+        self.nav.search_velocity(vx, 0.0, vz)
+        return False
 
     def _sitl_hold_position(self) -> None:
         if not self._allow_motion():
@@ -1082,13 +1113,24 @@ class AutoExtinguisher:
                             )
                     self.target_number += 1
                     if self.max_targets is not None and self.targets_completed >= self.max_targets:
-                        self.set_state(STATE_COMPLETE)
+                        if self._mission_retreat_enabled():
+                            self.set_state(STATE_RETREAT)
+                        else:
+                            self.set_state(STATE_COMPLETE)
                     else:
                         print(
                             f"[CONOPS] Target {self.target_number - 1} done. "
                             f"Repositioning for next target..."
                         )
                         self.set_state(STATE_REPOSITION)
+
+                elif self.state == STATE_RETREAT:
+                    if self._tick_hardware_retreat():
+                        back_m = float(self.cfg.get("mission", {}).get("retreat_back_m", 2.5))
+                        up_m = float(self.cfg.get("mission", {}).get("retreat_up_m", 1.0))
+                        self.nav.stop()
+                        print(f"[Mission] Retreat complete ({back_m:.1f} m back, {up_m:.1f} m up)")
+                        self.set_state(STATE_COMPLETE)
 
                 elif self.state == STATE_COMPLETE:
                     hold_s = float(self.cfg.get("sitl", {}).get("complete_hold_s", 5.0))

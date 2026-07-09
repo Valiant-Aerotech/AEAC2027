@@ -9,6 +9,8 @@ Vivi uses a **Holybro Kakute H7** running **ArduPilot** (required - Betaflight/i
 | **GCS telemetry** | USB or TELEM radio | Connect laptop @ **57600** - pilot view, arm, params |
 | **Pi companion** | Pi UART → dedicated FC UART | **Not** the GCS port - Pi runs autonomy |
 
+Physical wiring: [WIRING.md](WIRING.md)
+
 Identify which `SERIALx` port is wired to the Pi in **Setup → Full Parameter List** (or Serial Ports tab). Example if Pi is on UART4:
 
 | Parameter | Value | Meaning |

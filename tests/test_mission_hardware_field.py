@@ -1,20 +1,36 @@
-"""Hardware field-day helpers on AutoExtinguisher (LOITER handoff, GUIDED standby)."""
+"""Hardware field-day helpers on AutoExtinguisher (LOITER handoff, GUIDED standby, retreat)."""
 
 from __future__ import annotations
 
+import time
 from unittest.mock import MagicMock, patch
 
-from valiant.autonomy.orchestrator import AutoExtinguisher
+import pytest
+
+from valiant.autonomy.orchestrator import AutoExtinguisher, STATE_RETREAT
 
 
 def _minimal_ext(*, cfg: dict | None = None, sitl: bool = False, sim: bool = False) -> AutoExtinguisher:
     base_cfg = {
         "spray": {"method": "MAVLINK_SERVO"},
-        "mission": {"loiter_on_complete": True, "loiter_settle_s": 0.0, "pilot_standby": False},
+        "mission": {
+            "loiter_on_complete": True,
+            "loiter_settle_s": 0.0,
+            "pilot_standby": False,
+            "retreat_before_loiter": False,
+            "retreat_back_m": 2.5,
+            "retreat_up_m": 1.0,
+            "retreat_speed_m_s": 0.25,
+            "retreat_up_vz_m_s": 0.15,
+        },
         "flight": {"require_gps": True},
     }
     if cfg:
-        base_cfg.update(cfg)
+        for key, value in cfg.items():
+            if isinstance(value, dict) and isinstance(base_cfg.get(key), dict):
+                base_cfg[key] = {**base_cfg[key], **value}
+            else:
+                base_cfg[key] = value
     ext = AutoExtinguisher.__new__(AutoExtinguisher)
     ext.cfg = base_cfg
     ext.sitl = sitl
@@ -24,6 +40,8 @@ def _minimal_ext(*, cfg: dict | None = None, sitl: bool = False, sim: bool = Fal
     ext.master = MagicMock()
     ext._gcs_hud = MagicMock()
     ext.nav = MagicMock()
+    ext.state = STATE_RETREAT
+    ext.state_start_time = time.time()
     return ext
 
 
@@ -66,3 +84,31 @@ def test_mission_pilot_standby_disabled_when_false():
     ext = _minimal_ext(cfg={"mission": {"pilot_standby": False}})
     ext._allow_motion = MagicMock(return_value=True)
     assert ext._mission_pilot_standby_enabled() is False
+
+
+def test_mission_retreat_enabled_on_hardware():
+    ext = _minimal_ext(cfg={"mission": {"retreat_before_loiter": True}})
+    ext._allow_motion = MagicMock(return_value=True)
+    assert ext._mission_retreat_enabled() is True
+    ext.sitl = True
+    assert ext._mission_retreat_enabled() is False
+
+
+def test_hardware_retreat_streams_velocity_until_done():
+    ext = _minimal_ext(cfg={"mission": {"retreat_before_loiter": True}})
+    ext._allow_motion = MagicMock(return_value=True)
+    ext.state_start_time = time.time() - 100.0
+    assert ext._tick_hardware_retreat() is True
+    ext.nav.stop.assert_not_called()
+
+    ext.state_start_time = time.time()
+    assert ext._tick_hardware_retreat() is False
+    ext.nav.search_velocity.assert_called_with(-0.25, 0.0, -0.15)
+
+
+def test_mission_retreat_durations():
+    ext = _minimal_ext(cfg={"mission": {"retreat_before_loiter": True}})
+    back_s, up_s, total_s = ext._hardware_retreat_durations()
+    assert back_s == 10.0  # 2.5 / 0.25
+    assert up_s == pytest.approx(6.667, rel=0.01)
+    assert total_s == back_s

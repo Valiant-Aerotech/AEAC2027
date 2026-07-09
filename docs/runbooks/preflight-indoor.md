@@ -1,6 +1,6 @@
 # Pre-flight indoor (props on)
 
-Run after bringup Phases B-D pass. See [vion-bringup.md](vion-bringup.md).
+Run after bringup Phases B-D pass. See [vion-bringup.md](vion-bringup.md). Session preflight: `bash hardware/vion/rpi/pi_field_ready.sh --check`.
 
 ## Automated checklist (Pi)
 

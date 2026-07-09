@@ -16,6 +16,7 @@ STATE_IDS = {
     "VERIFYING": 4,
     "CAPTURING": 5,
     "UPLOADING": 6,
+    "RETREAT": 9,
     "COMPLETE": 7,
     "ABORTED": 8,
 }

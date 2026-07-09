@@ -21,6 +21,7 @@ STATE_HUD_LABELS: dict[str, str] = {
     "VERIFYING": "Checking spray",
     "CAPTURING": "Taking photo",
     "UPLOADING": "Uploading photo",
+    "RETREAT": "Backing away from target",
     "COMPLETE": "Mission complete",
     "ABORTED": "Mission aborted",
 }

@@ -2,7 +2,7 @@
 
 Outdoor validation for **Vivi + Pi companion**: pilot arms and climbs manually, selects **GUIDED** on RC, companion runs a scripted orbit, then **LOITER** for manual return.
 
-For the full two-run hardware day (orbit + CV mission), see [vivi-outdoor-field-day.md](vivi-outdoor-field-day.md).
+For the full two-run hardware day (orbit + CV mission), see [vivi-outdoor-field-day.md](vivi-outdoor-field-day.md). Fresh Pi setup: [pi-fresh-install.md](pi-fresh-install.md).
 
 This is **not** the CV orchestrator (`run_mission.py`). No auto-arm, takeoff, spray, or target search.
 
@@ -15,7 +15,7 @@ Pick the step that matches where you are. Run from the **repo root** with the ve
 | **Windows + SITL (quick check)** | Terminal 1: `.\tools\launch_sitl.ps1` running | `python tools\valiant.py sitl orbit --laps 1` |
 | **Windows + SITL (full 5 laps)** | Same | `python tools\valiant.py sitl orbit` |
 | **Windows + SITL (with monitor)** | SITL up; optional third window | `python tools\valiant.py gcs monitor` then run orbit in another terminal |
-| **Pi companion (field)** | Repo on Pi, GPS lock, laptop IP known | `python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <laptop-ip> --laps 1` |
+| **Pi companion (field)** | Repo on Pi, GPS lock, laptop IP known | `bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <laptop-ip> --laps 1` |
 | **GCS laptop (dev, Pi UART)** | Pi connected by radio/USB relay | `python tools\valiant.py field orbit --gcs-ip <laptop-ip> --laps 1` |
 
 **Pilot steps (field):** start the script before arming → arm and climb to ~10 m in STABILIZE/ALT_HOLD → flip **mode switch to GUIDED** (channel TBD in Mission Planner) → script runs orbit → ends in **LOITER** → flip switch **off GUIDED** for manual control → fly home.
@@ -29,7 +29,7 @@ Pick the step that matches where you are. Run from the **repo root** with the ve
 | Method | When | Pass |
 |--------|------|------|
 | **Automated (required before flight)** | Before arming, Pi or GCS | `python tools\valiant.py gcs verify-safety` → `SCR_ENABLE=1` and `safety.lua preflight OK` |
-| **Pi session check** | Every `session_start` / preflight | `check_sensors.py --once` includes safety check when MAVLink up |
+| **Pi session check** | Every `pi_field_ready.sh --check` | `check_sensors.py --once` includes safety when MAVLink up |
 | **Mission Planner (visual)** | After FC power-on / reboot | Messages tab: `safety: kill monitor loaded (RC8)` |
 | **MAVFTP (manual)** | Once per SD card setup | CONFIG → MAVFTP → `scripts/safety.lua` exists |
 | **Kill switch functional test** | Props-off bench, before field | Flip kill switch → Messages: `safety: EMERGENCY...` → FC mode **LAND** |
@@ -103,18 +103,18 @@ See [sitl-wsl.md](sitl-wsl.md) orbit section.
 
 ## Pi setup
 
-1. Deploy repo to Pi (`tools/deploy/deploy_to_pi.ps1` or rsync).
-2. Every session: `bash hardware/vion/rpi/session_start.sh`
-3. **Before arming:** `python tools/valiant.py gcs verify-safety --connection /dev/ttyAMA0` (or from GCS laptop via radio)
-4. Start orbit script **before** arming:
+1. Deploy repo to Pi (`tools/deploy/deploy_to_pi.ps1` or rsync). See [pi-fresh-install.md](pi-fresh-install.md).
+2. Wire Pi to Kakute: [hardware/vivi/WIRING.md](../../hardware/vivi/WIRING.md)
+3. Every session: `bash hardware/vion/rpi/pi_field_ready.sh --check`
+4. **Before arming:** `python tools/valiant.py gcs verify-safety` (GCS laptop via radio, or Pi UART)
+5. Start orbit **before** arming:
 
 ```bash
-python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <laptop-ip>
-python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <laptop-ip> --laps 1
+bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <laptop-ip> --laps 1
 ```
 
-5. On GCS laptop: `python tools\valiant.py gcs monitor`
-6. Mission Planner: confirm `safety.lua` loaded; map flight-mode switch channel (TBD); confirm `T2:` Messages during tether test.
+6. On GCS laptop: `python tools\valiant.py gcs monitor`
+7. Mission Planner: confirm `safety.lua` loaded; map flight-mode switch to GUIDED; confirm `T2:` Messages during test.
 
 ## Pilot workflow
 

@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Session prep on Pi: venv, optional MAVLink check.
+# Session prep on Pi: venv + sensor/MAVLink check (delegates to pi_field_ready.sh).
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-cd "$ROOT"
-source .venv/bin/activate
-export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
-python hardware/vion/rpi/check_sensors.py --profile vivi --once "$@"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec bash "$SCRIPT_DIR/pi_field_ready.sh" --check "$@"

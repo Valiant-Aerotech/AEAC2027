@@ -1,8 +1,8 @@
 # Vivi outdoor hardware day (orbit + target mission)
 
-Two-run field day in an open parking lot: **Run 1** validates GUIDED orbit (no CV). **Run 2** runs the full CV mission pipeline with spray servo and LOITER handoff.
+Two-run field day in an open parking lot: **Run 1** validates GUIDED orbit (no CV). **Run 2** runs the full CV mission pipeline (spray servo, wet verify, photo, **retreat**, LOITER handoff). **Both runs are implemented in the current repo** — deploy to Pi before field.
 
-See also: [vivi-orbit-field-test.md](vivi-orbit-field-test.md), [vion-bringup.md](vion-bringup.md), [field-test-plan.md](field-test-plan.md).
+See also: [vivi-orbit-field-test.md](vivi-orbit-field-test.md), [vion-bringup.md](vion-bringup.md), [field-test-plan.md](field-test-plan.md), [pi-fresh-install.md](pi-fresh-install.md), [hardware/vivi/WIRING.md](../../hardware/vivi/WIRING.md).
 
 ## Before hardware day (once, at home)
 
@@ -22,15 +22,17 @@ Set telemetry COM in `config/rpas.yaml`. Deploy model to Pi:
 .\tools\deploy\deploy_to_pi.ps1 -PiHost pi@<PI_IP>
 ```
 
-Deploy copies `models/best.onnx` and/or `models/dry.onnx` when present locally.
+Deploy copies `models/best.onnx` and/or `models/dry.onnx` when present locally. Re-run deploy before Run 2 whenever laptop code changes.
 
 ### Pi (first SSH)
 
+Full guide: [pi-fresh-install.md](pi-fresh-install.md)
+
 ```bash
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git && cd AEAC2027
-bash hardware/vion/rpi/first_connect.sh
-sudo apt install python3-picamera2
-bash hardware/vion/rpi/session_start.sh
+bash hardware/vion/rpi/pi_field_ready.sh --first-time
+# After laptop deploy:
+bash hardware/vion/rpi/pi_field_ready.sh --check
 ```
 
 ### Flight controller (Mission Planner, once)
@@ -40,7 +42,7 @@ bash hardware/vion/rpi/session_start.sh
 - [ ] Map mode switch channel to **GUIDED**
 - [ ] GPS lock outdoors (3D fix, reasonable HDOP)
 - [ ] SERVO15 spray test props-off (Run 2)
-- [ ] Pi TELEM: `SERIALx_PROTOCOL=2`, `SERIALx_BAUD=57` on Pi UART only
+- [ ] Pi TELEM: `SERIALx_PROTOCOL=2`, `SERIALx_BAUD=57` on Pi UART only ([002-pi-telem-params.md](../../hardware/vion/mission-planner/002-pi-telem-params.md), [WIRING.md](../../hardware/vivi/WIRING.md))
 
 ### SITL smoke (night before)
 
@@ -58,12 +60,7 @@ python tools\valiant.py sitl orbit --laps 1
 **Pi (start before arming):**
 
 ```bash
-source .venv/bin/activate
-python hardware/vion/rpi/run_field_orbit.py \
-  --profile vivi_orbit \
-  --drone vivi \
-  --gcs-ip <LAPTOP_IP> \
-  --laps 2
+bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <LAPTOP_IP> --laps 2
 ```
 
 **Laptop:**
@@ -109,11 +106,7 @@ Full detail: [vivi-orbit-field-test.md](vivi-orbit-field-test.md)
 ### Pi command
 
 ```bash
-python hardware/vion/rpi/run_mission.py \
-  --profile vivi_outdoor_mission \
-  --drone vivi \
-  --max-targets 1 \
-  --gcs-ip <LAPTOP_IP>
+bash hardware/vion/rpi/pi_field_ready.sh --mission --gcs-ip <LAPTOP_IP> --max-targets 1
 ```
 
 ### Pilot workflow
@@ -124,9 +117,10 @@ With `mission.pilot_standby: true` (default in profile):
 2. Arm, climb toward pole in manual modes
 3. Flip **GUIDED** at altitude (script proceeds; motion only after target seen)
 4. Fly toward pole until purple fills part of camera view
-5. Watch GCS: `SEARCHING` → `APPROACHING` → `AIMING` → `FIRING` → `VERIFYING` → `CAPTURING` → `UPLOADING` → `COMPLETE`
-6. FC enters **LOITER** (`Loiter - manual control`); flip off GUIDED and fly home
-7. Photo on Pi: `task2_photos/Task_2_<team>_target_1.jpg`
+5. Watch GCS: `SEARCHING` → `APPROACHING` → `AIMING` → `FIRING` → `VERIFYING` → `CAPTURING` → `UPLOADING` → `RETREAT` → `COMPLETE`
+6. **When FIRING fires SERVO15:** wet the target with spray bottle (or use pre-wetted blue patch for testing)
+7. After photo saved: drone backs away (~2.5 m) and climbs slightly (~1 m) → **LOITER** (`Loiter - manual control`); flip off GUIDED and fly home
+8. Photo on Pi: `task2_photos/Task_2_<team>_target_1.jpg`
 
 ### Without ToF
 
@@ -146,7 +140,7 @@ With `mission.pilot_standby: true` (default in profile):
 | Time | Activity |
 |------|----------|
 | T-0 | Site setup, MP connect, GPS lock, verify-safety |
-| T+15 | Pi `session_start.sh`, deploy check |
+| T+15 | Pi `pi_field_ready.sh --check` |
 | **Run 1** | Orbit `--laps 1`, debrief |
 | **Run 2 prep** | Mount pole target |
 | **Run 2** | Mission `--max-targets 1`, debrief photos + logs |

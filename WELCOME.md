@@ -25,6 +25,7 @@ Then read [ONBOARDING.md](ONBOARDING.md) and [docs/architecture.md](docs/archite
 | **Try software (no drone)** | `python tools\valiant.py quickstart` then `bench cv --camera 0` |
 | **Virtual full mission** | `launch_sitl.ps1` + `python tools\valiant.py sitl mission` |
 | **Connect real hardware** | `python tools\valiant.py bringup phase1` |
+| **Fresh Pi + field day** | [docs/runbooks/pi-fresh-install.md](docs/runbooks/pi-fresh-install.md) |
 
 ## Pick your first GitHub issue
 

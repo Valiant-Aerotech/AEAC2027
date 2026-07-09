@@ -418,6 +418,11 @@ flight_profiles:
       standby_alt_m: 8.0
       loiter_on_complete: true
       loiter_settle_s: 2.0
+      retreat_before_loiter: true
+      retreat_back_m: 2.5
+      retreat_up_m: 1.0
+      retreat_speed_m_s: 0.25
+      retreat_up_vz_m_s: 0.15
     cv:
       method: yolo
       hsv_dry: { h_min: 125, h_max: 175, s_min: 40, v_min: 40 }

@@ -5,7 +5,7 @@ Props **off**. Pi runs full perception; GCS monitors only. Drone velocity and sp
 ## Prerequisites
 
 - Kakute H7 running **ArduPilot** ([`hardware/vivi/mission-planner/001-kakute-h7.md`](../../hardware/vivi/mission-planner/001-kakute-h7.md))
-- Pi UART on dedicated FC port; GCS telemetry on a **separate** port
+- Pi UART on dedicated FC port ([WIRING.md](../../hardware/vivi/WIRING.md)); GCS telemetry on a **separate** port
 - Set `flight_profiles.vivi.gimbal.channel` in [`config/vion.yaml`](../../config/vion.yaml) to your AUX output
 - Tune `pwm_min` / `pwm_max` / `pwm_neutral` on bench with:
 
@@ -27,7 +27,7 @@ Mission Planner @ 57600 (telemetry radio) - heartbeat OK.
 ```bash
 cd ~/AEAC2027 && source .venv/bin/activate
 export PYTHONPATH=src
-bash hardware/vion/rpi/session_start.sh
+bash hardware/vion/rpi/pi_field_ready.sh --check
 ```
 
 Pass: RGB frame + MAVLink heartbeat on Pi UART.

@@ -38,3 +38,5 @@ def test_vivi_outdoor_mission_profile_enables_spray_and_standby():
     mission = cfg.get("mission", {})
     assert mission.get("pilot_standby") is True
     assert mission.get("loiter_on_complete") is True
+    assert mission.get("retreat_before_loiter") is True
+    assert mission.get("retreat_back_m") == 2.5

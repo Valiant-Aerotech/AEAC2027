@@ -24,9 +24,10 @@ cd AEAC2027
 | **Test target detection on webcam** | `python tools\valiant.py bench cv --camera 0` | USB webcam + purple target |
 | **Run full virtual mission** (no hardware) | See [Virtual drone (SITL)](#virtual-drone-sitl) below | WSL + ArduPilot (one-time) |
 | **First connect GCS + drone** | `python tools\valiant.py bringup phase1` | Radio + powered Pixhawk |
-| **First connect Raspberry Pi** | `bash hardware/vion/rpi/first_connect.sh` | SSH to Pi |
-| **Fly Task 2 autonomously** | On Pi: `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` | Full bringup done |
-| **Vivi GUIDED orbit (no CV)** | On Pi: `python hardware/vion/rpi/run_field_orbit.py --profile vivi_orbit --gcs-ip <ip> --laps 1` | Run `gcs verify-safety` first; see [vivi-orbit-field-test.md](docs/runbooks/vivi-orbit-field-test.md) |
+| **First connect Raspberry Pi** | `bash hardware/vion/rpi/pi_field_ready.sh --first-time` | SSH to Pi; see [pi-fresh-install.md](docs/runbooks/pi-fresh-install.md) |
+| **Fly Task 2 autonomously (indoor)** | On Pi: `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` | Full bringup done |
+| **Vivi GUIDED orbit (field)** | On Pi: `bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <ip> --laps 1` | [pi-fresh-install.md](docs/runbooks/pi-fresh-install.md), [vivi-orbit-field-test.md](docs/runbooks/vivi-orbit-field-test.md) |
+| **Vivi outdoor CV mission (field)** | On Pi: `bash hardware/vion/rpi/pi_field_ready.sh --mission --gcs-ip <ip> --max-targets 1` | [vivi-outdoor-field-day.md](docs/runbooks/vivi-outdoor-field-day.md) |
 | **Watch telemetry on GCS** | `python tools\valiant.py gcs monitor` | Pi sending UDP to laptop |
 
 **Forgot the command?** Run:
@@ -146,5 +147,8 @@ Do **not** run the other `tools\*.py` files directly - use `valiant.py` subcomma
 | Full onboarding | [ONBOARDING.md](ONBOARDING.md) |
 | Architecture | [docs/architecture.md](docs/architecture.md) |
 | Drone + Pi bringup | [docs/runbooks/vion-bringup.md](docs/runbooks/vion-bringup.md) |
+| **Fresh Pi OS → field flight** | [docs/runbooks/pi-fresh-install.md](docs/runbooks/pi-fresh-install.md) |
+| Vivi outdoor hardware day | [docs/runbooks/vivi-outdoor-field-day.md](docs/runbooks/vivi-outdoor-field-day.md) |
+| Pi ↔ Kakute wiring | [hardware/vivi/WIRING.md](hardware/vivi/WIRING.md) |
 | Before hardware day | [docs/runbooks/whats-left-before-hardware.md](docs/runbooks/whats-left-before-hardware.md) |
 | Field test phases | [docs/runbooks/field-test-plan.md](docs/runbooks/field-test-plan.md) |

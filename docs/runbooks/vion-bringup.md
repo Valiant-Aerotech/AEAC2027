@@ -1,5 +1,7 @@
 # Vion First-Time Bringup (Drone + Pi)
 
+**Fresh Raspberry Pi OS from scratch:** [pi-fresh-install.md](pi-fresh-install.md) (recommended starting point).
+
 Two independent MAVLink links. Do not put GCS radio and Pi on the same Pixhawk serial port.
 
 | Link | Path | Role |
@@ -16,12 +18,14 @@ Script map by phase:
 | B - MAVLink | `python tools\valiant.py gcs heartbeat` | - |
 | B - Spray test | `python tools\valiant.py gcs spray` | - |
 | B - FC params | `.\tools\bringup\print_fc_params.ps1` | - |
-| C - First SSH | `.\tools\deploy\deploy_to_pi.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/first_connect.sh` |
-| C - Sensors | - | `bash hardware/vion/rpi/session_start.sh` |
+| C - First SSH | `.\tools\deploy\deploy_to_pi.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/pi_field_ready.sh --first-time` |
+| C - Sensors | - | `bash hardware/vion/rpi/pi_field_ready.sh --check` |
 | C - Calibration | `.\tools\calibrate\run_calibration_pipeline.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/capture_all_calibration.sh` |
 | C/D - Sim/tether/monitor | `python tools\valiant.py gcs monitor` | `GCS_IP=<ip> bash hardware/vion/rpi/run_bringup_tests.sh` |
 | E - Preflight | - | `bash hardware/vion/rpi/preflight_indoor.sh` |
-| E - Flight | `python tools\valiant.py gcs monitor` | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
+| E - Flight (indoor) | `python tools\valiant.py gcs monitor` | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
+| E - Field orbit (Vivi) | `python tools\valiant.py gcs monitor` | `bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <ip> --laps 1` |
+| E - Field mission (Vivi) | `python tools\valiant.py gcs monitor` | `bash hardware/vion/rpi/pi_field_ready.sh --mission --gcs-ip <ip> --max-targets 1` |
 
 **Before hardware day:** [whats-left-before-hardware.md](whats-left-before-hardware.md)
 
@@ -59,7 +63,7 @@ ssh <user>@<pi-ip>
 cd ~
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
-bash hardware/vion/rpi/first_connect.sh
+bash hardware/vion/rpi/pi_field_ready.sh --first-time
 ```
 
 From GCS laptop:
@@ -68,19 +72,14 @@ From GCS laptop:
 .\tools\deploy\deploy_to_pi.ps1 -PiHost <user>@<pi-ip>
 ```
 
-### UART (if first_connect warns)
+### UART (if bootstrap warns)
 
-```bash
-sudo raspi-config
-# Serial Port -> login shell No, hardware Yes
-sudo reboot
-```
+See [hardware/vivi/WIRING.md](../../hardware/vivi/WIRING.md) and [002-pi-telem-params.md](../../hardware/vion/mission-planner/002-pi-telem-params.md).
 
 ### Every session
 
 ```bash
-source .venv/bin/activate
-bash hardware/vion/rpi/session_start.sh
+bash hardware/vion/rpi/pi_field_ready.sh --check
 ```
 
 ### Calibration
