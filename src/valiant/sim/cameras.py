@@ -29,14 +29,13 @@ import numpy as np
 
 from valiant.core.config import repo_root
 from valiant.perception.types import Detection, DetectionFrame
+from valiant.core.kinematics import VehiclePose
+from valiant.core.gimbal.pwm import gimbal_pitch_deg_to_pwm, pwm_to_gimbal_pitch_deg
 from valiant.sim.physics import (
-    VehiclePose,
     active_targets,
     body_elevation_deg,
-    gimbal_pitch_deg_to_pwm,
     nearest_active_target_ned,
     project_target_ned,
-    pwm_to_gimbal_pitch_deg,
     relative_target_body,
     target_display_color,
 )

@@ -1,4 +1,4 @@
-"""Field orbit mission: GUIDED-triggered altitude hold, forward, circle, LOITER."""
+"""Field orbit mission: GUIDED-triggered altitude hold, forward, circle, handoff."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from valiant.core.mavlink import (
     request_guided_telemetry_streams,
     send_land,
 )
-from valiant.sim.physics import wait_vehicle_pose
+from valiant.core.pose import wait_vehicle_pose
 
 
 class OrbitPhase(str, Enum):
@@ -43,7 +43,7 @@ class OrbitPhase(str, Enum):
     FORWARD = "FORWARD"
     ORBIT = "ORBIT"
     RETURN_CENTER = "RETURN_CENTER"
-    LOITER = "LOITER"
+    HANDOFF = "HANDOFF"
     DONE = "DONE"
     ABORT = "ABORT"
 
@@ -57,7 +57,7 @@ def _direction_clockwise(direction: str) -> bool:
 
 
 class FieldOrbitRunner:
-    """Pilot-triggered GUIDED orbit: hold alt, forward, circle, return, LOITER."""
+    """Pilot-triggered GUIDED orbit: hold alt, forward, circle, return, hand back."""
 
     def __init__(
         self,
@@ -75,6 +75,9 @@ class FieldOrbitRunner:
         self._hud = hud
         self._telemetry = telemetry
         self._sitl = sitl
+        # Handing back to LOITER only makes sense when a pilot is holding a
+        # transmitter, which in SITL nobody is. See core.motion.hold.
+        self._hand_back = not sitl
         self._skip_standby = skip_standby
         self._phase = OrbitPhase.STANDBY
         self._laps = 0.0
@@ -173,10 +176,10 @@ class FieldOrbitRunner:
         """Return True if safety/geofence abort was handled."""
         abort = self._safety.check()
         if abort:
-            self._abort_to_loiter(f"Safety: {abort.reason}")
+            self._abort_to_hold(f"Safety: {abort.reason}")
             return True
         if not self._geofence_ok(x, y):
-            self._abort_to_loiter("Geofence - switching to loiter")
+            self._abort_to_hold("Geofence breach - holding position")
             return True
         return False
 
@@ -186,21 +189,20 @@ class FieldOrbitRunner:
             return True
         return (time.time() - self._start_time) <= max_s
 
-    def _abort_to_loiter(self, message: str) -> None:
-        """Stop GUIDED velocity and hand off to LOITER (geofence / timeout)."""
+    def _abort_to_hold(self, message: str) -> None:
+        """Stop the orbit and hold position (geofence breach or timeout).
+
+        Holds in GUIDED rather than switching to LOITER. An abort is not the
+        moment to start depending on where a pilot left the throttle stick.
+        """
         self._orbit_aborted = True
         self._motion.stop_stream()
         self._motion.say(message)
-        kind = self._pilot_monitor.poll()
-        if kind != OverrideKind.NONE:
+        if self._pilot_monitor.poll() != OverrideKind.NONE:
             self._phase = OrbitPhase.STANDBY
             return
-        try:
-            self._motion.set_loiter()
-        except RuntimeError:
-            self._motion.say("LOITER unavailable - stopping commands")
+        self._motion.finish(hand_back=self._hand_back, hold_s=3.0, message=message)
         self._phase = OrbitPhase.DONE
-        self._motion.say("Orbit complete - manual control")
 
     def _altitude_m(self, pose) -> float:
         return -pose.z if pose.ok else 0.0
@@ -343,7 +345,7 @@ class FieldOrbitRunner:
         self._log_status(pose, "START", trigger_alt, force=True)
 
         if not self._ensure_at_altitude(trigger_alt, tol):
-            self._abort_to_loiter("Altitude not reached - loiter")
+            self._abort_to_hold("Altitude not reached - holding position")
             return "complete"
         override = self._handle_pilot_override()
         if override:
@@ -427,7 +429,7 @@ class FieldOrbitRunner:
             if override:
                 return override
             if not self._duration_ok():
-                self._abort_to_loiter("Max duration - switching to loiter")
+                self._abort_to_hold("Max duration reached - holding position")
                 return "complete"
             self._motion.stop_stream()
             pose = self._motion.refresh_pose(pose)
@@ -517,7 +519,7 @@ class FieldOrbitRunner:
             return override
 
         if self._laps < self._lap_target and not return_on_timeout:
-            self._abort_to_loiter(
+            self._abort_to_hold(
                 f"Orbit incomplete (lap={self._laps:.1f}/{self._lap_target:.0f}) - loiter"
             )
             return "complete"
@@ -561,13 +563,13 @@ class FieldOrbitRunner:
         if override:
             return override
 
-        self._set_phase(OrbitPhase.LOITER, silent=True)
-        try:
-            self._motion.set_loiter()
-        except RuntimeError:
-            self._motion.say("LOITER unavailable - stopping commands")
+        self._set_phase(OrbitPhase.HANDOFF, silent=True)
+        self._motion.finish(
+            hand_back=self._hand_back,
+            hold_s=None if self._hand_back else 3.0,
+            message="Orbit complete",
+        )
         self._phase = OrbitPhase.DONE
-        self._motion.say("Orbit complete - manual control")
         self._telemetry_send(pose)
         time.sleep(2.0)
         return "complete"
@@ -591,7 +593,7 @@ def run_field_orbit(
 
     baud = int(cfg.get("mavlink", {}).get("baud", 57600))
     try:
-        master = connect(connection, baud)
+        master = connect(connection, baud, sitl=sitl)
     except MavlinkConnectError as exc:
         print_mavlink_connect_error(exc, prefix="[Orbit]")
         raise SystemExit(1) from None

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from valiant.comms.gcs_hud import format_orbit_status
+from valiant.core.safety.pilot_override import OverrideKind
 from valiant.core.motion.orbit import (
     advance_arc_progress_m,
     circle_center,
@@ -257,17 +258,40 @@ def test_field_orbit_check_constraints_geofence_and_safety():
     }
     runner = FieldOrbitRunner(master, cfg)
     runner._origin = (0.0, 0.0)
-    runner._abort_to_loiter = MagicMock()
+    runner._abort_to_hold = MagicMock()
 
     runner._safety.check = MagicMock(return_value=SafetyAbort("low battery"))
     assert runner._check_orbit_constraints(0.0, 0.0) is True
-    runner._abort_to_loiter.assert_called_once_with("Safety: low battery")
+    runner._abort_to_hold.assert_called_once_with("Safety: low battery")
 
-    runner._abort_to_loiter.reset_mock()
+    runner._abort_to_hold.reset_mock()
     runner._safety.check = MagicMock(return_value=None)
     assert runner._check_orbit_constraints(15.0, 0.0) is True
-    runner._abort_to_loiter.assert_called_once_with("Geofence - switching to loiter")
+    runner._abort_to_hold.assert_called_once_with("Geofence breach - holding position")
 
-    runner._abort_to_loiter.reset_mock()
+    runner._abort_to_hold.reset_mock()
     assert runner._check_orbit_constraints(5.0, 0.0) is False
-    runner._abort_to_loiter.assert_not_called()
+    runner._abort_to_hold.assert_not_called()
+
+
+def test_orbit_abort_holds_position_instead_of_switching_mode():
+    """An abort must not hand a SITL aircraft to LOITER. See core.motion.hold."""
+    from valiant.core.motion.field_orbit import FieldOrbitRunner, OrbitPhase
+
+    runner = FieldOrbitRunner(MagicMock(), {"field_orbit": {}}, sitl=True)
+    assert runner._hand_back is False
+    runner._pilot_monitor.poll = MagicMock(return_value=OverrideKind.NONE)
+    runner._motion.finish = MagicMock()
+
+    runner._abort_to_hold("Geofence breach - holding position")
+
+    runner._motion.finish.assert_called_once()
+    assert runner._motion.finish.call_args.kwargs["hand_back"] is False
+    assert runner.phase is OrbitPhase.DONE
+
+
+def test_field_orbit_hands_back_to_pilot_only_in_the_field():
+    from valiant.core.motion.field_orbit import FieldOrbitRunner
+
+    assert FieldOrbitRunner(MagicMock(), {}, sitl=False)._hand_back is True
+    assert FieldOrbitRunner(MagicMock(), {}, sitl=True)._hand_back is False

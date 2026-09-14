@@ -2,17 +2,35 @@
 
 from __future__ import annotations
 
+import socket
+
 import pytest
 from pymavlink import mavutil
 
-from valiant.core.flight.preflight import _wait_sitl_ready, arm_guided_takeoff, verify_sitl_motion_ready
 from valiant.core.config import load_config
+from valiant.core.flight.preflight import _wait_sitl_ready, arm_guided_takeoff, verify_sitl_motion_ready
 
-SITL_CONNECTION = "tcp:127.0.0.1:5760"
+SITL_HOST = "127.0.0.1"
+SITL_PORT = 5760
+SITL_CONNECTION = f"tcp:{SITL_HOST}:{SITL_PORT}"
 _EKF_BOOT_WAIT_S = 90.0
 
 
+def sitl_port_open(timeout_s: float = 1.0) -> bool:
+    """Cheap TCP probe before touching pymavlink.
+
+    ``mavutil.mavlink_connection`` on a TCP URL retries the connect for a long
+    time when nothing is listening, which used to wedge a plain ``pytest`` run
+    for minutes. A socket probe fails in milliseconds.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(timeout_s)
+        return sock.connect_ex((SITL_HOST, SITL_PORT)) == 0
+
+
 def sitl_heartbeat_available(timeout_s: float = 3.0) -> bool:
+    if not sitl_port_open():
+        return False
     try:
         master = mavutil.mavlink_connection(SITL_CONNECTION)
         master.wait_heartbeat(timeout=timeout_s)

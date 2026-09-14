@@ -1,4 +1,4 @@
-"""Shared GUIDED motion: forward legs, yaw hold, altitude hold, LOITER handoff."""
+"""Shared GUIDED motion: forward legs, yaw hold, altitude hold, terminal hold."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from valiant.comms.gcs_hud import GcsHudReporter
 from valiant.core.motion.orbit import velocity_toward_ned, wrap_pi
 from valiant.core.safety.pilot_override import OverrideKind, PilotOverrideMonitor
 from valiant.core.mavlink import send_companion_heartbeat
-from valiant.sim.physics import drain_vehicle_pose, refresh_vehicle_pose, wait_vehicle_pose
+from valiant.core.pose import drain_vehicle_pose, refresh_vehicle_pose, wait_vehicle_pose
 
 
 class GuidedMotionRunner:
@@ -418,22 +418,24 @@ class GuidedMotionRunner:
             return 0.0
         return max(-max_vz, min(max_vz, kp_z * err_z))
 
-    def set_loiter(self, *, message: str = "Loiter - manual control") -> None:
-        self.stop_stream()
-        mapping = self.master.mode_mapping()
-        if "LOITER" not in mapping:
-            raise RuntimeError(f"LOITER not available: {mapping}")
-        self.say(message)
-        self.master.set_mode(mapping["LOITER"])
-        deadline = time.time() + 8.0
-        want = mapping["LOITER"]
-        while time.time() < deadline:
-            self.heartbeat()
-            hb = self.master.recv_match(type="HEARTBEAT", blocking=True, timeout=1.0)
-            if hb is not None and hb.get_srcSystem() == self.master.target_system:
-                if hb.custom_mode == want:
-                    return
-        print(f"[{self._log_tag}] Warning: LOITER not confirmed")
+    def finish(
+        self,
+        *,
+        hand_back: bool = False,
+        hold_s: float | None = None,
+        message: str = "Mission complete - holding position",
+    ) -> None:
+        """Terminal state for a scripted segment.
+
+        Defaults to a GUIDED zero-velocity hold. Only pass ``hand_back=True``
+        on hardware with a pilot on the sticks; see ``core.motion.hold`` for
+        why an autonomous LOITER is a way to lose an aircraft.
+        """
+        from valiant.core.motion import hold
+
+        if hand_back and hold.hand_back_to_pilot(self, message=message):
+            return
+        hold.hold_position(self, duration_s=hold_s, message=message)
 
     def hold_hover_at_altitude(
         self,

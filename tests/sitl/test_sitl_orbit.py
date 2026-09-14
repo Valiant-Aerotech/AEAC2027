@@ -10,7 +10,7 @@ from valiant.core.motion.field_orbit import FieldOrbitRunner, OrbitPhase
 from valiant.core.flight.profile import apply_flight_profile
 from valiant.core.config import load_config
 from valiant.core.mavlink import request_guided_telemetry_streams
-from valiant.sim.physics import drain_vehicle_pose
+from valiant.core.pose import drain_vehicle_pose
 
 
 @pytest.mark.sitl

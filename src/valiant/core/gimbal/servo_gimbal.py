@@ -51,7 +51,7 @@ class GimbalController:
         return pwm
 
     def point_pitch_deg(self, pitch_deg: float, *, send: bool = True) -> int:
-        from valiant.sim.physics import gimbal_pitch_deg_to_pwm
+        from valiant.core.gimbal.pwm import gimbal_pitch_deg_to_pwm
 
         pwm = gimbal_pitch_deg_to_pwm(
             pitch_deg,

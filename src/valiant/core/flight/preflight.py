@@ -181,7 +181,7 @@ def wait_altitude_settled(
 ) -> float:
     """Wait until relative altitude is within tolerance for stable_s. Returns final alt (m)."""
     from valiant.core.mavlink import request_message_interval
-    from valiant.sim.physics import drain_vehicle_pose
+    from valiant.core.pose import drain_vehicle_pose
 
     request_message_interval(master, mavutil.mavlink.MAVLINK_MSG_ID_LOCAL_POSITION_NED, 10)
     stable_since: float | None = None
@@ -315,7 +315,7 @@ def wait_for_guided_trigger(
 
     Returns (x0, y0, z0, yaw0) snapshot at trigger.
     """
-    from valiant.sim.physics import drain_vehicle_pose
+    from valiant.core.pose import drain_vehicle_pose
 
     print(f"[Orbit] Standby: arm, climb to ~{min_alt_m:.0f} m, select GUIDED on RC")
     while True:
@@ -387,7 +387,7 @@ def verify_sitl_motion_ready(
     sample_s: float = 4.0,
 ) -> tuple[bool, str]:
     """Return (ready, reason) for velocity-command flight (armed, airborne, GUIDED)."""
-    from valiant.sim.physics import drain_vehicle_pose
+    from valiant.core.pose import drain_vehicle_pose
 
     deadline = time.time() + sample_s
     pose = drain_vehicle_pose(master)

@@ -164,10 +164,15 @@ def connect(
     source_component: int = 191,
     retries: int = 5,
     retry_delay_s: float = 2.0,
+    sitl: bool = False,
 ) -> mavutil.mavfile:
     """Open a MAVLink connection.
 
     Uses source_component=191 (companion computer) for commands and heartbeats.
+
+    Pass ``sitl=True`` to park the simulated RC channels at neutral. The
+    simulator has no transmitter, so channel 3 otherwise reads at minimum and
+    any RC-aware mode treats that as full-down throttle.
     """
     import time
 
@@ -182,7 +187,12 @@ def connect(
             )
             if wait_heartbeat:
                 master.wait_heartbeat(timeout=15)
-            return attach_io_lock(master)
+            master = attach_io_lock(master)
+            if sitl:
+                from valiant.core.motion.hold import neutralize_sitl_rc
+
+                neutralize_sitl_rc(master)
+            return master
         except Exception as exc:
             last_err = exc
             if attempt < retries:

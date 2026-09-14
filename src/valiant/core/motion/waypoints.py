@@ -1,4 +1,4 @@
-"""Guided SITL pattern flight: straight legs, turns, then LOITER."""
+"""Guided SITL pattern flight: straight legs, turns, then position hold."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from valiant.core.mavlink import (
     print_mavlink_connect_error,
     request_guided_telemetry_streams,
 )
-from valiant.sim.physics import wait_vehicle_pose
+from valiant.core.pose import wait_vehicle_pose
 
 _wrap_pi = wrap_pi  # re-export for tests
 
@@ -40,7 +40,13 @@ DEFAULT_PATTERN: tuple[PatternLeg, ...] = (
 
 
 class SitlPatternRunner:
-    """Execute a scripted GUIDED box pattern, then switch to LOITER."""
+    """Execute a scripted GUIDED box pattern, then hold position.
+
+    SITL only, so it never hands back to a pilot - there is nobody on the
+    sticks and LOITER without RC input descends. See ``core.motion.hold``.
+    """
+
+    _hand_back = False
 
     def __init__(
         self,
@@ -83,9 +89,7 @@ class SitlPatternRunner:
                 self._motion.turn_degrees(leg.value, label=leg.label)
             else:
                 raise ValueError(f"Unknown leg kind: {leg.kind}")
-        self._motion.set_loiter()
-        self._motion.say("Pattern complete - hold in loiter")
-        time.sleep(2.0)
+        self._motion.finish(hand_back=self._hand_back, hold_s=3.0, message="Pattern complete")
 
 
 def run_pattern_flight(
@@ -96,12 +100,12 @@ def run_pattern_flight(
     skip_preflight: bool = False,
     speed_m_s: float = 0.45,
 ) -> None:
-    """Connect, take off in GUIDED, fly the default box, end in LOITER."""
+    """Connect, take off in GUIDED, fly the default box, end holding position."""
     from valiant.core.flight.preflight import arm_guided_takeoff
 
     baud = int(cfg.get("mavlink", {}).get("baud", 57600))
     try:
-        master = connect(connection, baud)
+        master = connect(connection, baud, sitl=True)
     except MavlinkConnectError as exc:
         print_mavlink_connect_error(exc, prefix="[Pattern]")
         raise SystemExit(1) from None

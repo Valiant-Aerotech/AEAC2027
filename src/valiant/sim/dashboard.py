@@ -13,7 +13,7 @@ import numpy as np
 from valiant.comms.draw import C_BORDER, C_MUTED, state_color
 from valiant.comms.gcs_map import GcsMapView, MapVehicle
 from valiant.core.geo import offset_lat_lon
-from valiant.sim.physics import VehiclePose
+from valiant.core.kinematics import VehiclePose
 
 DEFAULT_WIDTH = 1280
 DEFAULT_HEIGHT = 720

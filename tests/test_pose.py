@@ -3,11 +3,7 @@
 from __future__ import annotations
 
 from valiant.core.kinematics import VehiclePose
-from valiant.sim.physics import (
-    drain_vehicle_pose,
-    refresh_vehicle_pose,
-    wait_vehicle_pose,
-)
+from valiant.core.pose import drain_vehicle_pose, refresh_vehicle_pose, wait_vehicle_pose
 
 
 class _FakeMsg:
@@ -52,7 +48,7 @@ def _ned_msg(x: float, y: float = 0.0, z: float = -10.0) -> _FakeMsg:
 def test_wait_vehicle_pose_updates_position_with_previous_ok(monkeypatch):
     """Regression: previous.ok must not skip draining new LOCAL_POSITION_NED."""
     monkeypatch.setattr(
-        "valiant.core.mavlink.request_sitl_telemetry_streams",
+        "valiant.core.pose.request_sitl_telemetry_streams",
         lambda _master: None,
     )
     previous = VehiclePose(x=2.0, y=0.0, z=-10.0, ok=True)

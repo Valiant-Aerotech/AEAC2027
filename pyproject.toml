@@ -30,6 +30,9 @@ norecursedirs = ["reference", ".venv", "*.egg-info"]
 markers = [
     "sitl: requires ArduPilot SITL on tcp:127.0.0.1:5760",
 ]
+# SITL tests fly an aircraft and take minutes. A bare `pytest` stays fast and
+# offline; run them deliberately with `pytest -m sitl`.
+addopts = "-m 'not sitl'"
 
 [tool.ruff]
 target-version = "py310"
