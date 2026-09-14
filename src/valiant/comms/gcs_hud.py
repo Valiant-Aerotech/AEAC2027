@@ -6,6 +6,7 @@ import time
 
 from pymavlink import mavutil
 
+from valiant.core.errors import clip_crew_message
 from valiant.core.mavlink import GcsStatustextOptions, send_statustext_for_gcs
 
 HUD_PREFIX = "VA: "
@@ -128,7 +129,7 @@ class GcsHudReporter:
         if not body:
             return
         max_body = MAX_STATUSTEXT_LEN - len(self._prefix.encode("utf-8", errors="ignore"))
-        body = body[:max_body]
+        body = clip_crew_message(body, limit=max_body)
         now = time.time()
         if not force:
             if body == self._last_body:
@@ -144,3 +145,14 @@ class GcsHudReporter:
         )
         self._last_body = body
         self._last_sent = now
+
+
+def notify_crew(hud: GcsHudReporter | None, message: str, *, force: bool = True) -> None:
+    """Print a crew message and send it to Mission Planner if a HUD exists.
+
+    Modules without a motion runner (param readback, perception) use this so
+    the crew still sees the warning on the same channel as everything else.
+    """
+    print(f"[Crew] {message}")
+    if hud is not None:
+        hud.send(message, force=force)

@@ -1,22 +1,21 @@
-"""Ground control station map display.
+"""Top-down map view for simulation and development. Not a flight-line tool.
 
-CONOPS 4.2: "During flight, a ground control station must always show the
-aircraft's real-time location and the competition flight area. Each UAV must
-have its own GCS display."
+**Mission Planner is the competition GCS display.** CONOPS 4.2 requires that
+"a ground control station must always show the aircraft's real-time location
+and the competition flight area", and Mission Planner does exactly that once
+the boundary from :func:`~valiant.core.safety.boundary.write_polygon_file` is
+loaded as an inclusion fence. Using it means the display, the geofence and the
+termination action are one configuration instead of three, which is the whole
+point: fewer things to babysit while the window is running.
 
-This is the primary way we satisfy that. It renders, in one window:
+This module exists because watching a SITL run through Mission Planner is
+awkward, and because it can draw things Mission Planner cannot - competition
+traffic with their exclusion cylinders, and the soft boundary inset. It reads
+the same Appendix C constants, so what you watch in simulation matches what
+the crew sees in the field.
 
-* the Appendix C flight boundary, drawn from the same constants the flight
-  termination check uses, so the display and the safety logic can never
-  disagree
-* the aircraft's live position, heading and flown track
-* other traffic reported by the competition server, with their exclusion
-  cylinders
-* a satellite backdrop when a map mosaic is available
-
-The backup is ``core.safety.boundary.write_mission_planner_fence``, which
-emits the same polygon as a file Mission Planner can load. If this window
-fails on the flight line, load that instead and the requirement is still met.
+Do not put this on the flight line. It is a second window to go wrong during
+a scored window, for a requirement that is already met.
 """
 
 from __future__ import annotations
@@ -75,7 +74,7 @@ class MapVehicle:
     keepout_radius_m: float | None = None
 
 
-class GcsMapView:
+class SimMapView:
     """Live map of the flight area and everything flying in it.
 
     Keeps the flown track between frames, so call :meth:`render` on every
@@ -287,23 +286,13 @@ def render_boundary_preview(
     height: int = DEFAULT_HEIGHT,
 ) -> np.ndarray:
     """Draw the Appendix C polygon with no aircraft. Useful for a sanity check."""
-    view = GcsMapView(width=width, height=height)
+    view = SimMapView(width=width, height=height)
     view.fit_to_boundary()
     return view.render(None)
 
 
-def boundary_distance_readout(lat: float, lon: float) -> str:
-    """One-line human summary, for the HUD and for statustext."""
-    d = signed_distance_m(lat, lon, HARD_BOUNDARY)
-    where = "inside" if d >= 0 else "OUTSIDE"
-    return f"{abs(d):.0f} m {where} the flight boundary"
-
-
 __all__ = [
-    "C_GREEN",
-    "C_TEXT",
-    "GcsMapView",
     "MapVehicle",
-    "boundary_distance_readout",
+    "SimMapView",
     "render_boundary_preview",
 ]

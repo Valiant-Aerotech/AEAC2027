@@ -16,10 +16,11 @@ try:
 except ImportError:
     HAVE_PICAMERA2 = False
 
+from valiant.core.errors import Degradable, PerceptionDegraded
 from valiant.perception.sensors.arducam_tof import ArducamTofReader
 
 
-class RpiLocalCamera:
+class RpiLocalCamera(Degradable):
     """Onboard camera facade: RGB frame + optional depth mm array."""
 
     def __init__(
@@ -51,8 +52,10 @@ class RpiLocalCamera:
 
     def start(self) -> None:
         if not HAVE_PICAMERA2:
-            raise RuntimeError(
-                "picamera2 not available. On Pi: sudo apt install python3-picamera2"
+            self.latch_degraded("picamera2 not available")
+            raise PerceptionDegraded(
+                "picamera2 not available. On Pi: sudo apt install python3-picamera2",
+                crew_message="Pi camera missing",
             )
         self._picam = Picamera2()
         config = self._picam.create_still_configuration(

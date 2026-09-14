@@ -7,6 +7,7 @@ import time
 
 from pymavlink import mavutil
 
+from valiant.core.errors import FlightPreconditionError
 from valiant.core.mavlink_io import mavlink_io
 
 
@@ -22,7 +23,10 @@ def _wait_mode(master: mavutil.mavfile, mode: str, timeout_s: float) -> None:
             hb = master.recv_match(type="HEARTBEAT", blocking=True, timeout=2)
         if _vehicle_heartbeat(master, hb) and hb.custom_mode == want:
             return
-    raise RuntimeError(f"Timed out waiting for mode {mode}")
+    raise FlightPreconditionError(
+        f"Timed out waiting for mode {mode}",
+        crew_message=f"{mode} timeout",
+    )
 
 
 def _parse_ekf_statustext(low: str) -> tuple[bool, bool]:
@@ -111,8 +115,9 @@ def _wait_sitl_ready(master: mavutil.mavfile, timeout_s: float) -> None:
             return
 
     print("[SITL] Warning: EKF/GPS ready not confirmed within timeout")
-    raise RuntimeError(
-        "SITL EKF/GPS not ready - wait for sim to finish boot or increase sitl.ekf_wait_s"
+    raise FlightPreconditionError(
+        "SITL EKF/GPS not ready - wait for sim to finish boot or increase sitl.ekf_wait_s",
+        crew_message="EKF/GPS not ready",
     )
 
 
@@ -155,7 +160,10 @@ def _wait_armed(master: mavutil.mavfile, timeout_s: float) -> None:
         elif mtype == "HEARTBEAT" and _vehicle_heartbeat(master, msg):
             if msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED:
                 return
-    raise RuntimeError("Timed out waiting for armed state")
+    raise FlightPreconditionError(
+        "Timed out waiting for armed state",
+        crew_message="Arm timeout",
+    )
 
 
 def _wait_altitude(master: mavutil.mavfile, min_alt_m: float, timeout_s: float) -> None:
@@ -168,7 +176,10 @@ def _wait_altitude(master: mavutil.mavfile, min_alt_m: float, timeout_s: float) 
             if alt >= min_alt_m:
                 print(f"[SITL] Airborne at {alt:.1f}m")
                 return
-    raise RuntimeError(f"Timed out waiting for takeoff ({min_alt_m}m)")
+    raise FlightPreconditionError(
+        f"Timed out waiting for takeoff ({min_alt_m}m)",
+        crew_message="Takeoff timeout",
+    )
 
 
 def wait_altitude_settled(
@@ -234,7 +245,10 @@ def arm_guided_takeoff(
     _wait_sitl_ready(master, ekf_wait_s)
     mode = "GUIDED"
     if mode not in master.mode_mapping():
-        raise RuntimeError(f"Mode {mode!r} not available: {master.mode_mapping()}")
+        raise FlightPreconditionError(
+            f"Mode {mode!r} not available: {master.mode_mapping()}",
+            crew_message=f"{mode} missing",
+        )
     master.set_mode(master.mode_mapping()[mode])
     _wait_mode(master, mode, timeout_s)
     _wait_armed(master, timeout_s)

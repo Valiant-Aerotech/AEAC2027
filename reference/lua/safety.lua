@@ -1,3 +1,6 @@
+-- STUDY COPY. Inert. Live flight script: hardware/vion/lua/safety.lua
+-- Learn: RC8 kill must fail to "no kill"; missing PWM is not a command. See NOTES.md.
+
 -- Independent kill switch, running on the flight controller itself.
 --
 -- Watches RC channel 8. When the switch goes high the aircraft is put into

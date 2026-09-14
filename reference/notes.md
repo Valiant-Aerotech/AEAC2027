@@ -1,5 +1,7 @@
 # Reference: 2026 fire-suppression code
 
+Need lua / safety / SITL? Start at [`topics.md`](topics.md).
+
 This folder is **inert**. It is not a Python package, it is not on `PYTHONPATH`, and
 `pyproject.toml` excludes it from ruff, pytest and the build. Nothing here can be
 imported by live code, and deleting the whole folder is a safe one-line operation.

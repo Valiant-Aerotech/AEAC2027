@@ -44,7 +44,7 @@ def cmd_quickstart(_: argparse.Namespace) -> int:
     print("=== Valiant quickstart ===\n")
     steps = (
         ("Environment", cmd_env_check),
-        ("CONOPS config", cmd_conops_check),
+        ("Flight boundary", cmd_boundary_check),
         ("Safety logic", cmd_bench_safety),
     )
     failed = False
@@ -82,16 +82,63 @@ def cmd_diagnose(_: argparse.Namespace) -> int:
     return _run("bench/diagnose.py")
 
 
-def cmd_conops_check(_: argparse.Namespace) -> int:
-    return _run("bench/conops_check.py")
+BOUNDARY_POLY = ROOT / "config" / "aeac2027_boundary.poly"
+
+
+def _boundary_module():
+    """Import the boundary module without tools/valiant.py shadowing the package."""
+    sys.path.insert(0, str(ROOT / "src"))
+    from valiant.core.safety import boundary
+
+    return boundary
+
+
+def cmd_boundary_export(_: argparse.Namespace) -> int:
+    """Write the Appendix C polygon for Mission Planner to load."""
+    b = _boundary_module()
+    out = b.write_polygon_file(BOUNDARY_POLY)
+    print(f"Wrote {out.relative_to(ROOT)} ({len(b.HARD_BOUNDARY)} vertices)\n")
+    print("Load it in Mission Planner:")
+    print("  1. Plan screen, FENCE in the dropdown at top right")
+    print("  2. Polygon tool, Load Polygon, pick this file")
+    print("  3. Polygon tool again, Fence Inclusion")
+    print("  4. Write")
+    print("\nThe link must be MAVLink2 to upload a fence. USB already is.")
+    return 0
+
+
+def cmd_boundary_check(_: argparse.Namespace) -> int:
+    """Confirm the committed polygon file still matches the coded constants."""
+    b = _boundary_module()
+    lat_min, lon_min, lat_max, lon_max = b.polygon_bounds()
+    centre = b.polygon_centroid()
+    print(f"Vertices:  {len(b.HARD_BOUNDARY)}")
+    print(f"Latitude:  {lat_min:.7f} .. {lat_max:.7f}")
+    print(f"Longitude: {lon_min:.7f} .. {lon_max:.7f}")
+    print(f"Centroid:  {centre[0]:.7f}, {centre[1]:.7f}")
+    print(f"Ceiling:   {b.MAX_ALTITUDE_AGL_M:.0f} m AGL")
+    print(f"Soft inset: {b.DEFAULT_SOFT_INSET_M:.0f} m (our value, not the CONOPS - see docs)")
+
+    if not BOUNDARY_POLY.exists():
+        error(f"{BOUNDARY_POLY.name} is missing. Run: valiant boundary export")
+        return 1
+
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        fresh = b.write_polygon_file(Path(tmp) / "check.poly")
+        if fresh.read_text(encoding="utf-8") != BOUNDARY_POLY.read_text(encoding="utf-8"):
+            error(
+                f"{BOUNDARY_POLY.name} does not match the coded boundary. "
+                "Run: valiant boundary export"
+            )
+            return 1
+    print(f"\nOK: {BOUNDARY_POLY.name} matches the coded boundary.")
+    return 0
 
 
 def cmd_gcs_heartbeat(args: argparse.Namespace) -> int:
     return _run("gcs/check_mavlink_gcs.py", args.extra)
-
-
-def cmd_gcs_spray(args: argparse.Namespace) -> int:
-    return _run("gcs/test_spray_gcs.py", args.extra)
 
 
 def cmd_gcs_monitor(args: argparse.Namespace) -> int:
@@ -102,13 +149,11 @@ def cmd_gcs_verify_statustext(args: argparse.Namespace) -> int:
     return _run("gcs/verify_sitl_statustext.py", args.extra)
 
 
-def cmd_gcs_verify_safety(args: argparse.Namespace) -> int:
+def cmd_gcs_params(args: argparse.Namespace) -> int:
     argv = list(args.extra or [])
     if args.connection:
         argv.extend(["--connection", args.connection])
-    if args.profile:
-        argv.extend(["--profile", args.profile])
-    return _run("gcs/verify_safety_lua.py", argv)
+    return _run("gcs/read_fc_params.py", argv)
 
 
 def cmd_gcs_listen(args: argparse.Namespace) -> int:
@@ -144,10 +189,6 @@ def cmd_calibrate_validate(args: argparse.Namespace) -> int:
 
 def cmd_calibrate_replay(args: argparse.Namespace) -> int:
     return _run("calibrate/replay_rpi_recording.py", args.extra)
-
-
-def cmd_upload_test(_: argparse.Namespace) -> int:
-    return _run("deploy/test_upload_drive.py")
 
 
 def cmd_bringup_phase1(args: argparse.Namespace) -> int:
@@ -304,26 +345,27 @@ def build_parser() -> argparse.ArgumentParser:
         func=cmd_env_check
     )
 
-    p = sub.add_parser("conops", help="CONOPS validation")
+    p = sub.add_parser("boundary", help="Competition flight boundary (CONOPS Appendix C)")
     s = p.add_subparsers(dest="sub", required=True)
-    s.add_parser("check", help="Validate config against CONOPS").set_defaults(
-        func=cmd_conops_check
+    s.add_parser("export", help="Write the polygon file for Mission Planner").set_defaults(
+        func=cmd_boundary_export
+    )
+    s.add_parser("check", help="Verify the polygon file matches the coded boundary").set_defaults(
+        func=cmd_boundary_check
     )
 
     p = sub.add_parser("gcs", help="Ground control station tools")
     s = p.add_subparsers(dest="sub", required=True)
-    for name, fn in (
-        ("heartbeat", cmd_gcs_heartbeat),
-        ("spray", cmd_gcs_spray),
-        ("monitor", cmd_gcs_monitor),
-        ("listen", cmd_gcs_listen),
-        ("verify-statustext", cmd_gcs_verify_statustext),
-        ("verify-safety", cmd_gcs_verify_safety),
+    for name, fn, help_text in (
+        ("heartbeat", cmd_gcs_heartbeat, "Check the MAVLink link to the aircraft"),
+        ("monitor", cmd_gcs_monitor, "Watch companion telemetry"),
+        ("listen", cmd_gcs_listen, "Print incoming MAVLink messages"),
+        ("verify-statustext", cmd_gcs_verify_statustext, "Check STATUSTEXT reaches the GCS"),
+        ("params", cmd_gcs_params, "Read back FC safety parameters (advisory)"),
     ):
-        sp = s.add_parser(name)
-        if name == "verify-safety":
+        sp = s.add_parser(name, help=help_text)
+        if name == "params":
             sp.add_argument("--connection", default=None)
-            sp.add_argument("--profile", default="vivi_orbit")
         sp.add_argument("extra", nargs=argparse.REMAINDER)
         sp.set_defaults(func=fn)
 
@@ -406,12 +448,6 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("extra", nargs=argparse.REMAINDER)
     sp.set_defaults(func=cmd_field_orbit)
 
-    p = sub.add_parser("upload", help="Photo upload tools")
-    s = p.add_subparsers(dest="sub", required=True)
-    s.add_parser("test", help="Smoke-test local/Drive upload path").set_defaults(
-        func=cmd_upload_test
-    )
-
     return parser
 
 
@@ -433,6 +469,13 @@ def main(argv: list[str] | None = None) -> int:
             return code
         return 1
     except Exception as exc:
+        try:
+            from valiant.core.errors import ValiantError
+        except ImportError:
+            return unexpected(exc)
+        if isinstance(exc, ValiantError):
+            print(f"ERROR: {exc.detail}", file=sys.stderr)
+            return 1
         return unexpected(exc)
 
 

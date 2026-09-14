@@ -24,6 +24,9 @@ class VehiclePose:
     vy: float = 0.0
     vz: float = 0.0
     ok: bool = False
+    lat: float | None = None
+    lon: float | None = None
+    alt_agl_m: float | None = None
 
 
 class ApproachPhase(str, Enum):

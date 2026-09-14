@@ -8,9 +8,10 @@ import cv2
 import numpy as np
 
 from valiant.core.config import repo_root
+from valiant.core.errors import Degradable, PerceptionDegraded
 
 
-class VideoReplayCamera:
+class VideoReplayCamera(Degradable):
     """OpenCV video file replay with optional loop and synthetic depth."""
 
     def __init__(
@@ -30,7 +31,11 @@ class VideoReplayCamera:
         self._synthetic_depth_m = synthetic_depth_m
         self._cap = cv2.VideoCapture(str(path))
         if not self._cap.isOpened():
-            raise RuntimeError(f"Could not open video: {path}")
+            self.latch_degraded(f"Could not open video: {path}")
+            raise PerceptionDegraded(
+                f"Could not open video: {path}",
+                crew_message="Video camera failed",
+            )
         self._last_depth_mm: np.ndarray | None = None
         if synthetic_depth_m is not None:
             w = int(self._cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640

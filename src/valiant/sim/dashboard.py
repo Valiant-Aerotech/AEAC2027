@@ -1,8 +1,7 @@
-"""Single-window SITL dashboard: camera view beside the live GCS map.
+"""Single-window SITL dashboard: camera view beside the map.
 
-Development convenience, not a competition deliverable. The map half is the
-same :class:`~valiant.comms.gcs_map.GcsMapView` the flight line uses, so what
-you watch in simulation is what the crew watches in the field.
+Development convenience, not a competition deliverable. On the flight line the
+crew watches Mission Planner; see :mod:`valiant.sim.map_view`.
 """
 
 from __future__ import annotations
@@ -11,7 +10,7 @@ import cv2
 import numpy as np
 
 from valiant.comms.draw import C_BORDER, C_MUTED, state_color
-from valiant.comms.gcs_map import GcsMapView, MapVehicle
+from valiant.sim.map_view import MapVehicle, SimMapView
 from valiant.core.geo import offset_lat_lon
 from valiant.core.kinematics import VehiclePose
 
@@ -63,7 +62,7 @@ class SitlDashboard:
         *,
         home_lat: float,
         home_lon: float,
-        map_view: GcsMapView | None = None,
+        map_view: SimMapView | None = None,
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
     ):
@@ -71,7 +70,7 @@ class SitlDashboard:
         self.home_lon = home_lon
         self.width = width
         self.height = height
-        self.map_view = map_view or GcsMapView(height=height, width=height)
+        self.map_view = map_view or SimMapView(height=height, width=height)
         self.map_view.fit_to_boundary()
 
     def render(

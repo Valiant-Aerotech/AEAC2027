@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
+from valiant.core.errors import Degradable, PerceptionDegraded
+
 if TYPE_CHECKING:
     import numpy.typing as npt
 
@@ -22,14 +24,18 @@ except ImportError:
     HAVE_SCREEN_CAPTURE = False
 
 
-class WebcamCamera:
+class WebcamCamera(Degradable):
     """Capture frames from a local USB webcam (bench testing without scrcpy)."""
 
     def __init__(self, camera_index: int = 0):
         backend = cv2.CAP_DSHOW if os.name == "nt" else cv2.CAP_ANY
         self.cap = cv2.VideoCapture(camera_index, backend)
         if not self.cap.isOpened():
-            raise RuntimeError(f"Could not open camera index {camera_index}")
+            self.latch_degraded(f"Could not open camera index {camera_index}")
+            raise PerceptionDegraded(
+                f"Could not open camera index {camera_index}",
+                crew_message="Camera failed",
+            )
 
     def get_frame(self) -> npt.NDArray[np.uint8] | None:
         ret, frame = self.cap.read()
@@ -39,7 +45,7 @@ class WebcamCamera:
         self.cap.release()
 
 
-class ScrcpyCamera:
+class ScrcpyCamera(Degradable):
     """Capture frames from a scrcpy mirror window."""
 
     def __init__(
@@ -54,8 +60,10 @@ class ScrcpyCamera:
         min_grab_interval_s: float = 0.0,
     ):
         if not HAVE_SCREEN_CAPTURE:
-            raise RuntimeError(
-                "mss and pygetwindow required. Run: pip install mss pygetwindow"
+            self.latch_degraded("mss/pygetwindow missing")
+            raise PerceptionDegraded(
+                "mss and pygetwindow required. Run: pip install mss pygetwindow",
+                crew_message="Camera deps missing",
             )
         self.window_title = window_title
         self.min_grab_interval_s = min_grab_interval_s
@@ -94,8 +102,10 @@ class ScrcpyCamera:
                 creationflags=c_flags,
             )
         except FileNotFoundError as exc:
-            raise RuntimeError(
-                "scrcpy not found on PATH. Install scrcpy before running Task 2."
+            self.latch_degraded("scrcpy not on PATH")
+            raise PerceptionDegraded(
+                "scrcpy not found on PATH. Install scrcpy before running a camera mission.",
+                crew_message="scrcpy missing",
             ) from exc
 
     @classmethod
@@ -132,6 +142,7 @@ class ScrcpyCamera:
             }
         except Exception:
             self.window = None
+            self.latch_degraded("scrcpy window lost")
             return None
 
         if bbox["width"] <= 0 or bbox["height"] <= 0:

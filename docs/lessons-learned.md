@@ -67,3 +67,35 @@ rather than a workaround: the real sensor has no useful range at survey
 altitude either, and saturation correctly means "no depth reading", which
 makes `metric_recon` fall back to its apparent-size estimate. Do not size
 range gates on ToF depth above about 60 m.
+
+---
+
+## A missing RC channel looked like a kill switch
+
+**Symptom.** `hardware/vion/lua/safety.lua` (now `hardware/lua/safety.lua`
+after the flatten) would put a healthy aircraft into LAND and disarm it if
+RC8 could not be read.
+
+**Cause.** The channel read defaulted to PWM 1500 when `rc:get_pwm` failed.
+1500 is above the 1300 trigger threshold, so "no signal" and "switch thrown"
+were the same state. A kill switch must fail to *no kill*.
+
+**Fix.** No default. Below 800 PWM is treated as no signal and ignored. The
+script announces the trigger once on the Messages tab. Bench-test polarity
+before every field day with props off.
+
+---
+
+## An uncaught Python exception left the aircraft with no hold
+
+**Symptom.** A MAVLink timeout or pose failure dumped a traceback and exited.
+In SITL the aircraft was still armed in GUIDED with no velocity stream.
+
+**Cause.** Library runners raised `SystemExit` or let `RuntimeError` escape
+with no terminal hold. The crew on Mission Planner never saw a STATUSTEXT.
+
+**Fix.** Typed `ValiantError` with a short `crew_message`. Runners catch,
+send STATUSTEXT, call `hold_position()`, then re-raise. Library code never
+raises `SystemExit`. Perception failures latch `degraded` instead of
+returning silent empty detections.
+

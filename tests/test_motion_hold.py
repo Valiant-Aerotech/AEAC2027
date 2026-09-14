@@ -8,6 +8,9 @@ into the ground. These tests pin the three properties of the fix.
 
 from __future__ import annotations
 
+import pytest
+
+from valiant.core.errors import FlightPreconditionError
 from valiant.core.motion import hold
 
 
@@ -209,12 +212,8 @@ def test_hand_back_can_be_forced_for_a_deliberate_field_handoff():
 
 def test_hand_back_raises_when_the_vehicle_has_no_loiter():
     master = _FakeMaster(throttle_pwm=1500, has_loiter=False)
-    try:
+    with pytest.raises(FlightPreconditionError, match="LOITER"):
         hold.hand_back_to_pilot(_FakeMotion(master))
-    except RuntimeError as exc:
-        assert "LOITER" in str(exc)
-    else:
-        raise AssertionError("expected RuntimeError")
 
 
 # --- 3. The simulator gets its RC parked at neutral ----------------------

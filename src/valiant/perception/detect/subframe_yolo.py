@@ -38,6 +38,7 @@ from valiant.perception.detect.subframe_grid import (
 from valiant.perception.detect.yolo_onnx import YoloOnnxDetector
 from valiant.perception.types import Detection, DetectionFrame
 from valiant.core.config import repo_root
+from valiant.core.errors import Degradable
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -112,7 +113,7 @@ class _UltralyticsTileBackend:
         return out
 
 
-class SubframeYoloDetector:
+class SubframeYoloDetector(Degradable):
     """Tiled detection; returns Detection objects in full sensor-frame pixels."""
 
     def __init__(self, cfg: dict):
@@ -131,10 +132,15 @@ class SubframeYoloDetector:
             return True
         path = resolve_model_path(self.cfg)
         if path is None:
+            self.latch_degraded("No detection model found")
             return False
         self.model_path = path
         if path.suffix.lower() == ".onnx":
-            self._onnx = YoloOnnxDetector(path, conf_thresh=self.params.confidence_threshold)
+            try:
+                self._onnx = YoloOnnxDetector(path, conf_thresh=self.params.confidence_threshold)
+            except Exception as exc:
+                self.latch_degraded(f"ONNX load failed: {exc}")
+                return False
             if self._onnx.imgsz != self.params.subframe_size:
                 print(
                     f"[YOLO] WARNING: ONNX imgsz={self._onnx.imgsz} "
@@ -144,8 +150,9 @@ class SubframeYoloDetector:
         try:
             self._ultra = _UltralyticsTileBackend(path, self.params.confidence_threshold)
             return True
-        except ImportError as exc:
+        except Exception as exc:
             print(f"[YOLO] Cannot load {path}: {exc}")
+            self.latch_degraded(f"Detector load failed: {exc}")
             return False
 
     def _predict_tile(self, tile: np.ndarray) -> list[tuple[list[float], float, int]]:

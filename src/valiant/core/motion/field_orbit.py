@@ -23,6 +23,7 @@ from valiant.core.motion.orbit import (
 )
 from valiant.core.safety.pilot_override import OverrideKind, PilotOverrideMonitor, override_message
 from valiant.core.safety.monitor import SafetyMonitor
+from valiant.core.safety.boundary import BoundaryMonitor, boundary_status_text
 from valiant.core.flight.preflight import (
     ensure_guided,
     wait_for_guided_trigger,
@@ -95,6 +96,7 @@ class FieldOrbitRunner:
         self._last_status_log = 0.0
         self._pilot_monitor = PilotOverrideMonitor(master, cfg)
         self._safety = SafetyMonitor(master, cfg, sim=False)
+        self._boundary = BoundaryMonitor(hud=hud)
         self._motion = GuidedMotionRunner(
             master,
             cfg,
@@ -172,7 +174,7 @@ class FieldOrbitRunner:
         ox, oy = self._origin
         return math.hypot(x - ox, y - oy) <= limit
 
-    def _check_orbit_constraints(self, x: float, y: float) -> bool:
+    def _check_orbit_constraints(self, x: float, y: float, pose=None) -> bool:
         """Return True if safety/geofence abort was handled."""
         abort = self._safety.check()
         if abort:
@@ -181,6 +183,12 @@ class FieldOrbitRunner:
         if not self._geofence_ok(x, y):
             self._abort_to_hold("Geofence breach - holding position")
             return True
+        if pose is not None and pose.lat is not None and pose.lon is not None:
+            alt = pose.alt_agl_m if pose.alt_agl_m is not None else self._altitude_m(pose)
+            check = self._boundary.update(pose.lat, pose.lon, alt)
+            if check.should_stop:
+                self._abort_to_hold(boundary_status_text(check))
+                return True
         return False
 
     def _duration_ok(self) -> bool:
@@ -309,19 +317,29 @@ class FieldOrbitRunner:
         )
 
     def run(self) -> None:
+        from valiant.core.errors import ValiantError
+        from valiant.core.motion.hold import hold_after_fault
+
         request_guided_telemetry_streams(self.master)
         retrigger = bool(self._ocfg.get("standby_retrigger", True)) and not self._skip_standby
-        while True:
-            outcome = self._execute_mission()
-            if outcome == "complete" or not retrigger:
+        try:
+            while True:
+                outcome = self._execute_mission()
+                if outcome == "complete" or not retrigger:
+                    break
+                if outcome == "standby":
+                    self._laps = 0.0
+                    self._radius_err = 0.0
+                    self._orbit_aborted = False
+                    print("[Orbit] Standby - waiting for next GUIDED trigger")
+                    continue
                 break
-            if outcome == "standby":
-                self._laps = 0.0
-                self._radius_err = 0.0
-                self._orbit_aborted = False
-                print("[Orbit] Standby - waiting for next GUIDED trigger")
-                continue
-            break
+        except Exception as exc:
+            message = (
+                exc.crew_message if isinstance(exc, ValiantError) else "Companion fault - holding"
+            )
+            hold_after_fault(self._motion, message=message)
+            raise
 
     def _execute_mission(self) -> str:
         """Run one orbit cycle from GUIDED trigger through LOITER handoff."""
@@ -372,7 +390,7 @@ class FieldOrbitRunner:
                 position_guard=self._geofence_ok,
             )
         pose = self._motion.refresh_pose(self._motion.last_pose)
-        if pose.ok and self._check_orbit_constraints(pose.x, pose.y):
+        if pose.ok and self._check_orbit_constraints(pose.x, pose.y, pose):
             return "complete"
         override = self._handle_pilot_override()
         if override:
@@ -439,14 +457,18 @@ class FieldOrbitRunner:
             moved = math.hypot(pose.x - last_px, pose.y - last_py)
             if moved < 0.02:
                 stale_pose_ticks += 1
-                if stale_pose_ticks >= 40:
-                    print("[Orbit] WARN: pose stale >2s - re-requesting telemetry")
+                if stale_pose_ticks == 40:
+                    self._motion.say("Pose stale - holding", force=True)
                     request_guided_telemetry_streams(self.master)
-                    stale_pose_ticks = 0
-            else:
-                stale_pose_ticks = 0
-                last_px, last_py = pose.x, pose.y
-            if self._check_orbit_constraints(pose.x, pose.y):
+                    self._motion.servo.send_velocity_ned(0.0, 0.0, 0.0)
+                if stale_pose_ticks >= 200:
+                    self._abort_to_hold("Pose lost - holding position")
+                    return "complete"
+                time.sleep(orbit_tick_dt)
+                continue
+            stale_pose_ticks = 0
+            last_px, last_py = pose.x, pose.y
+            if self._check_orbit_constraints(pose.x, pose.y, pose):
                 return "complete"
             blend = max(0.0, 1.0 - (time.time() - orbit_start) / max(entry_blend_s, 0.1))
             effective_radial = radial_kp + (entry_radial_kp - radial_kp) * blend
@@ -536,7 +558,7 @@ class FieldOrbitRunner:
             if not pose.ok:
                 time.sleep(0.05)
                 continue
-            if self._check_orbit_constraints(pose.x, pose.y):
+            if self._check_orbit_constraints(pose.x, pose.y, pose):
                 return "complete"
             dist = math.hypot(pose.x - cx, pose.y - cy)
             if dist < center_tol:
@@ -587,7 +609,7 @@ def run_field_orbit(
     skip_safety_check: bool = False,
 ) -> None:
     """Connect and run the field orbit sequence."""
-    from valiant.core.flight.fc_safety import SafetyPreflightError, assert_safety_lua
+    from valiant.core.flight.fc_safety import preflight_readback
     from valiant.core.flight.preflight import arm_guided_takeoff
     from valiant.core.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error
 
@@ -596,22 +618,17 @@ def run_field_orbit(
         master = connect(connection, baud, sitl=sitl)
     except MavlinkConnectError as exc:
         print_mavlink_connect_error(exc, prefix="[Orbit]")
-        raise SystemExit(1) from None
-    if not sitl and not skip_safety_check:
-        try:
-            assert_safety_lua(master, cfg, sitl=False)
-        except SafetyPreflightError:
-            try:
-                master.close()
-            except Exception:
-                pass
-            raise SystemExit(1) from None
+        raise
     gcs_cfg = cfg.get("gcs_monitor", {})
     hud = GcsHudReporter(
         master,
         interval_s=float(gcs_cfg.get("statustext_interval_s", 2.0)),
         options=gcs_statustext_options_from_cfg(cfg, sitl=sitl),
     )
+    if not skip_safety_check:
+        # Advisory. A wrong parameter prints a warning and the pilot decides;
+        # refusing to fly here would strand us on the flight line.
+        preflight_readback(master, sitl=sitl, hud=hud)
     telemetry: TelemetryBridge | None = None
     ip = gcs_ip or gcs_cfg.get("ip")
     if ip:
@@ -642,6 +659,18 @@ def run_field_orbit(
             skip_standby=skip_standby or (sitl and skip_preflight),
         )
         runner.run()
+    except Exception as exc:
+        from valiant.core.errors import ValiantError
+        from valiant.comms.gcs_hud import notify_crew
+        from valiant.core.motion.hold import hold_after_fault
+
+        message = (
+            exc.crew_message if isinstance(exc, ValiantError) else "Companion fault - holding"
+        )
+        notify_crew(hud, message)
+        if runner is not None:
+            hold_after_fault(runner._motion, message=message)
+        raise
     finally:
         if runner is not None:
             try:

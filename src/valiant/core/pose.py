@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import time
 
+from valiant.core.errors import FlightPreconditionError
 from valiant.core.kinematics import VehiclePose
 from valiant.core.mavlink import request_sitl_telemetry_streams
 from valiant.core.mavlink_io import mavlink_io
@@ -34,6 +35,10 @@ def _apply_pose_message(pose: VehiclePose, msg) -> tuple[bool, bool]:
         pose.yaw = float(msg.yaw)
         pose.ok = True
         got_att = True
+    elif mtype == "GLOBAL_POSITION_INT":
+        pose.lat = float(msg.lat) / 1e7
+        pose.lon = float(msg.lon) / 1e7
+        pose.alt_agl_m = float(msg.relative_alt) / 1000.0
     return got_pos, got_att
 
 
@@ -52,11 +57,17 @@ def drain_vehicle_pose(master, previous: VehiclePose | None = None) -> VehiclePo
         pose.vy = previous.vy
         pose.vz = previous.vz
         pose.ok = previous.ok
+        pose.lat = previous.lat
+        pose.lon = previous.lon
+        pose.alt_agl_m = previous.alt_agl_m
 
     target_sys = getattr(master, "target_system", 0)
     with mavlink_io(master):
         while True:
-            msg = master.recv_match(type=["LOCAL_POSITION_NED", "ATTITUDE"], blocking=False)
+            msg = master.recv_match(
+                type=["LOCAL_POSITION_NED", "ATTITUDE", "GLOBAL_POSITION_INT"],
+                blocking=False,
+            )
             if msg is None:
                 break
             if msg.get_srcSystem() != target_sys:
@@ -82,7 +93,7 @@ def refresh_vehicle_pose(
     while time.time() < deadline:
         with mavlink_io(master):
             msg = master.recv_match(
-                type=["LOCAL_POSITION_NED", "ATTITUDE"],
+                type=["LOCAL_POSITION_NED", "ATTITUDE", "GLOBAL_POSITION_INT"],
                 blocking=True,
                 timeout=min(0.05, deadline - time.time()),
             )
@@ -116,6 +127,9 @@ def wait_vehicle_pose(
         pose.vy = previous.vy
         pose.vz = previous.vz
         pose.ok = True
+        pose.lat = previous.lat
+        pose.lon = previous.lon
+        pose.alt_agl_m = previous.alt_agl_m
 
     has_position = not need_position
     has_attitude = not need_attitude
@@ -125,7 +139,7 @@ def wait_vehicle_pose(
     with mavlink_io(master):
         while True:
             msg = master.recv_match(
-                type=["LOCAL_POSITION_NED", "ATTITUDE"],
+                type=["LOCAL_POSITION_NED", "ATTITUDE", "GLOBAL_POSITION_INT"],
                 blocking=False,
             )
             if msg is None:
@@ -146,7 +160,7 @@ def wait_vehicle_pose(
             return pose
         with mavlink_io(master):
             msg = master.recv_match(
-                type=["LOCAL_POSITION_NED", "ATTITUDE"],
+                type=["LOCAL_POSITION_NED", "ATTITUDE", "GLOBAL_POSITION_INT"],
                 blocking=True,
                 timeout=0.5,
             )
@@ -163,6 +177,7 @@ def wait_vehicle_pose(
         missing.append("LOCAL_POSITION_NED")
     if need_attitude and not has_attitude:
         missing.append("ATTITUDE")
-    raise RuntimeError(
-        f"Timed out waiting for {', '.join(missing)} ({timeout_s:.0f}s)"
+    raise FlightPreconditionError(
+        f"Timed out waiting for {', '.join(missing)} ({timeout_s:.0f}s)",
+        crew_message="No pose from FC",
     )

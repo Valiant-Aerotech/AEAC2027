@@ -20,6 +20,8 @@ from typing import Any
 
 import yaml
 
+from valiant.core.errors import ConfigError
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _CONFIG_DIR = _REPO_ROOT / "config"
 
@@ -51,8 +53,27 @@ def local_path() -> Path:
 def _read_yaml(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
-    with open(path, encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            loaded = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        raise ConfigError(
+            f"Invalid YAML in {path}: {exc}",
+            crew_message="Bad config YAML",
+        ) from exc
+    except OSError as exc:
+        raise ConfigError(
+            f"Could not read {path}: {exc}",
+            crew_message="Config unreadable",
+        ) from exc
+    if loaded is None:
+        return {}
+    if not isinstance(loaded, dict):
+        raise ConfigError(
+            f"{path} must be a YAML mapping, not {type(loaded).__name__}",
+            crew_message="Bad config YAML",
+        )
+    return loaded
 
 
 def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
@@ -78,7 +99,10 @@ def load_config(config_path: str | Path | None = None) -> dict[str, Any]:
         if not extra.is_absolute() and not extra.is_file():
             extra = _REPO_ROOT / extra
         if not extra.is_file():
-            raise FileNotFoundError(f"Config file not found: {config_path}")
+            raise ConfigError(
+                f"Config file not found: {config_path}",
+                crew_message="Config file missing",
+            )
         cfg = deep_merge(cfg, _read_yaml(extra))
 
     return cfg

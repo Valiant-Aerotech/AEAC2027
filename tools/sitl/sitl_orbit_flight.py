@@ -13,6 +13,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from valiant.core.motion.field_orbit import run_field_orbit  # noqa: E402
 from valiant.core.flight.profile import apply_flight_profile  # noqa: E402
 from valiant.core.config import load_config  # noqa: E402
+from valiant.core.errors import ValiantError  # noqa: E402
+from valiant.core.mavlink import MavlinkConnectError, print_mavlink_connect_error  # noqa: E402
 
 
 def main() -> int:
@@ -37,15 +39,22 @@ def main() -> int:
     if takeoff is None:
         takeoff = float(cfg.get("field_orbit", {}).get("trigger_alt_m", 10.0))
 
-    run_field_orbit(
-        connection=conn,
-        cfg=cfg,
-        sitl=True,
-        skip_preflight=args.skip_preflight,
-        skip_standby=args.skip_preflight,
-        takeoff_alt_m=takeoff,
-        gcs_ip=args.gcs_ip,
-    )
+    try:
+        run_field_orbit(
+            connection=conn,
+            cfg=cfg,
+            sitl=True,
+            skip_preflight=args.skip_preflight,
+            skip_standby=args.skip_preflight,
+            takeoff_alt_m=takeoff,
+            gcs_ip=args.gcs_ip,
+        )
+    except MavlinkConnectError as exc:
+        print_mavlink_connect_error(exc, prefix="[Orbit]")
+        return 1
+    except ValiantError as exc:
+        print(f"ERROR: {exc.detail}", file=sys.stderr)
+        return 1
     return 0
 
 

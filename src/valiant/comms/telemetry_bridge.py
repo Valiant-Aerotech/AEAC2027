@@ -1,4 +1,16 @@
-"""UDP telemetry mirror from Pi to GCS monitor (read-only)."""
+"""UDP telemetry mirror from the companion to a bench monitor. Dev only.
+
+Not for the flight line. This opens a second socket on a second port to a
+second process, which is three extra things to fail during a scored window,
+and it duplicates information the crew can already see. On the flight line the
+companion talks to the crew through MAVLink STATUSTEXT
+(:mod:`valiant.comms.gcs_hud`), which rides the link that already exists,
+appears in Mission Planner's Messages tab, and is captured in the ``.tlog`` for
+post-flight review.
+
+Keep this for bench work and SITL, where a machine-readable status stream into
+a scratch script is genuinely convenient.
+"""
 
 from __future__ import annotations
 

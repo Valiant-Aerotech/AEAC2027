@@ -1,19 +1,34 @@
-"""Competition flight boundary and the flight-termination trigger it drives.
+"""Competition flight boundary. Advisory only - this module never terminates.
 
 CONOPS v1.0 Appendix C gives the boundary for the Medicine Hat RC'ers club
 site as six GPS coordinates. They are module constants rather than config,
 because a boundary that can be overridden by a YAML file on someone's laptop
 is not a safety feature.
 
-CONOPS 4.5 requires that crossing the boundary automatically activates the
-flight termination system. :class:`FlightBoundary` provides the detection; the
-FTS hook is what wires it to the actual termination path.
+Who enforces what
+-----------------
+The flight controller is the sole enforcer. The hard polygon below is exported
+by :func:`write_polygon_file`, loaded into Mission Planner by hand, and written
+to the autopilot as an inclusion fence, where ``FENCE_ACTION = 2`` (Always
+Land) with ``LAND_SPEED >= 200`` cm/s satisfies CONOPS 4.5. That path involves
+no companion computer, no Python, and nothing that can crash mid-flight.
+
+This module is the *advisory* half, and the rules themselves draw the line.
+CONOPS 4.2: if the aircraft leaves the **soft** boundary "the operator will be
+required to bring it back within the boundary", and only on leaving the
+**hard** boundary "it must be terminated immediately". So a soft breach is a
+human recovery, which means the useful thing software can do is warn the crew
+early and stop flying further out. :class:`BoundaryMonitor` does exactly that
+and nothing more. There is deliberately no termination hook: a second path to
+killing the aircraft is a second thing that can kill it by mistake.
 
 Note on the CONOPS text: Appendix C's prose says the soft boundary is Table C1
 and the hard boundary is Table C2, but the document contains exactly one table,
-labelled "Table C1: Hard Flight Boundary GPS Coordinates". These six points are
-coded as the *hard* boundary, and the soft boundary is derived as an inset. Ask
-the judges to confirm before the FRR.
+labelled "Table C1: Hard Flight Boundary GPS Coordinates", and no Table C2 at
+all. So one boundary is missing and the other is labelled both ways. These six
+points are coded as the hard boundary and the soft boundary is derived as an
+inset, which makes ``DEFAULT_SOFT_INSET_M`` our invention until a judge
+confirms it. Outstanding question tracked in docs/conops-2027.md.
 """
 
 from __future__ import annotations
@@ -39,7 +54,9 @@ HARD_BOUNDARY: tuple[tuple[float, float], ...] = (
 MAX_ALTITUDE_AGL_M = 100.0
 
 # How far inside the hard boundary the soft boundary sits. Crossing the soft
-# boundary is a warning to the crew; crossing the hard boundary terminates.
+# boundary warns the crew and stops the mission; crossing the hard boundary is
+# the flight controller's business, not ours. See the module docstring on why
+# this number is currently a guess.
 DEFAULT_SOFT_INSET_M = 15.0
 DEFAULT_ALTITUDE_MARGIN_M = 5.0
 
@@ -63,12 +80,17 @@ class BoundaryCheck:
 
     @property
     def inside(self) -> bool:
+        """Inside the hard boundary, warning band included."""
         return self.status in (BoundaryStatus.INSIDE, BoundaryStatus.SOFT_WARNING)
 
     @property
-    def terminate(self) -> bool:
-        """Whether this check should trigger flight termination."""
-        return self.status in (BoundaryStatus.OUTSIDE, BoundaryStatus.ABOVE_CEILING)
+    def should_stop(self) -> bool:
+        """Whether the mission should stop flying further out.
+
+        True from the soft warning onward. Deliberately not called
+        ``terminate``: stopping is ours, terminating is the autopilot's.
+        """
+        return self.status is not BoundaryStatus.INSIDE
 
 
 def _metres_per_deg_lon(lat_deg: float) -> float:
@@ -146,11 +168,11 @@ def polygon_centroid(polygon=HARD_BOUNDARY) -> tuple[float, float]:
 
 
 class FlightBoundary:
-    """Boundary monitor with a flight-termination hook.
+    """Pure geometry: where is the aircraft relative to the boundary.
 
-    Call :meth:`check` on every position update. The first hard breach fires
-    the registered FTS callback exactly once; repeated breaches do not re-fire,
-    so the callback does not need to be idempotent.
+    Call :meth:`check` on every position update. Holds no state beyond the
+    last result, commands nothing, and has no side effects. Wrap it in
+    :class:`BoundaryMonitor` to get crew messaging out of it.
     """
 
     def __init__(
@@ -167,26 +189,11 @@ class FlightBoundary:
         self.max_altitude_agl_m = float(max_altitude_agl_m)
         self.soft_inset_m = float(soft_inset_m)
         self.altitude_margin_m = float(altitude_margin_m)
-        self._on_terminate = None
-        self._terminated = False
         self._last: BoundaryCheck | None = None
-
-    def on_terminate(self, callback) -> None:
-        """Register the FTS trigger, called once on the first hard breach."""
-        self._on_terminate = callback
-
-    @property
-    def terminated(self) -> bool:
-        return self._terminated
 
     @property
     def last_check(self) -> BoundaryCheck | None:
         return self._last
-
-    def reset(self) -> None:
-        """Clear the latched termination state between flights."""
-        self._terminated = False
-        self._last = None
 
     def check(self, lat: float, lon: float, alt_agl_m: float) -> BoundaryCheck:
         distance = signed_distance_m(lat, lon, self.polygon)
@@ -216,28 +223,78 @@ class FlightBoundary:
             reasons=tuple(reasons),
         )
         self._last = check
+        return check
 
-        if check.terminate and not self._terminated:
-            self._terminated = True
-            print(f"[Boundary] BREACH: {'; '.join(check.reasons)} - triggering FTS")
-            if self._on_terminate is not None:
-                self._on_terminate(check)
+
+def boundary_status_text(check: BoundaryCheck) -> str:
+    """One short line for the Mission Planner HUD, within the 50-char limit."""
+    if check.status is BoundaryStatus.INSIDE:
+        return f"In bounds, {check.distance_m:.0f}m to edge"
+    if check.status is BoundaryStatus.SOFT_WARNING:
+        return f"NEAR EDGE {check.distance_m:.0f}m - stopping"
+    if check.status is BoundaryStatus.ABOVE_CEILING:
+        return f"CEILING {check.altitude_agl_m:.0f}m AGL - descend"
+    return f"OUTSIDE by {abs(check.distance_m):.0f}m - recover now"
+
+
+class BoundaryMonitor:
+    """Turns boundary checks into crew warnings. Commands nothing.
+
+    Sends one STATUSTEXT per status *change* rather than per fix, so the
+    Mission Planner Messages tab stays readable at 1 Hz. The return value of
+    :meth:`update` tells the caller's mission loop whether to stop flying
+    outward; what to do about that is the mission's decision, not ours.
+    """
+
+    def __init__(self, boundary: FlightBoundary | None = None, *, hud=None):
+        self.boundary = boundary or FlightBoundary()
+        self._hud = hud
+        self._last_status: BoundaryStatus | None = None
+        self._breaches = 0
+
+    @property
+    def breaches(self) -> int:
+        """How many times the aircraft has left the soft boundary."""
+        return self._breaches
+
+    def reset(self) -> None:
+        self._last_status = None
+        self._breaches = 0
+
+    def update(self, lat: float, lon: float, alt_agl_m: float) -> BoundaryCheck:
+        check = self.boundary.check(lat, lon, alt_agl_m)
+
+        if check.status is not self._last_status:
+            if check.should_stop:
+                self._breaches += 1
+                print(f"[Boundary] {'; '.join(check.reasons)}")
+            if self._hud is not None:
+                self._hud.send(boundary_status_text(check), force=check.should_stop)
+            self._last_status = check.status
 
         return check
 
 
-def write_mission_planner_fence(path: str | Path, polygon=HARD_BOUNDARY) -> Path:
-    """Write a Mission Planner-loadable polygon fence from the same constants.
+def write_polygon_file(path: str | Path, polygon=HARD_BOUNDARY) -> Path:
+    """Write the boundary as a Mission Planner polygon file.
 
-    This is the backup for the CONOPS 4.2 GCS display requirement: load it in
-    Mission Planner and the competition flight area is drawn alongside the live
-    aircraft position, with no dependency on our own map view.
+    Emits the ``.poly`` format Mission Planner's Plan screen reads via Load
+    Polygon. From there: polygon tool, Fence Inclusion, Write. That is the
+    documented path to an ArduPilot inclusion fence, and it means the
+    coordinates the autopilot enforces come from the same six constants this
+    module checks against, rather than from someone clicking on a map.
+
+    The ring is left open. Mission Planner closes the polygon itself, so
+    repeating the first vertex here produces a duplicate seventh point in the
+    uploaded fence.
+
+    Loading it also satisfies CONOPS 4.2: Mission Planner then draws the
+    competition flight area alongside the live aircraft position, which is the
+    required GCS display.
     """
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    lines = ["#saved by Valiant Aerotech - AEAC 2027 CONOPS Appendix C Table C1"]
+    lines = ["#saved by Valiant Aerotech - AEAC 2027 CONOPS v1.0 Appendix C Table C1"]
     lines += [f"{lat:.7f} {lon:.7f}" for lat, lon in polygon]
-    # Mission Planner expects the ring closed.
-    lines.append(f"{polygon[0][0]:.7f} {polygon[0][1]:.7f}")
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return out

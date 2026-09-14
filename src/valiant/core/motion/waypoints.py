@@ -69,27 +69,37 @@ class SitlPatternRunner:
         )
 
     def run(self, legs: tuple[PatternLeg, ...] | None = None) -> None:
+        from valiant.core.errors import ValiantError
+        from valiant.core.motion.hold import hold_after_fault
+
         legs = legs or DEFAULT_PATTERN
-        self._motion.say("Pattern flight starting")
-        request_guided_telemetry_streams(self.master)
-        ensure_sitl_guided(self.master, force=True)
-        print("[Pattern] Waiting for position telemetry...")
-        self._motion.set_last_pose(
-            wait_vehicle_pose(
-                self.master,
-                timeout_s=20.0,
-                need_position=True,
-                need_attitude=True,
+        try:
+            self._motion.say("Pattern flight starting")
+            request_guided_telemetry_streams(self.master)
+            ensure_sitl_guided(self.master, force=True)
+            print("[Pattern] Waiting for position telemetry...")
+            self._motion.set_last_pose(
+                wait_vehicle_pose(
+                    self.master,
+                    timeout_s=20.0,
+                    need_position=True,
+                    need_attitude=True,
+                )
             )
-        )
-        for leg in legs:
-            if leg.kind == "forward":
-                self._motion.drive_forward(leg.value, label=leg.label)
-            elif leg.kind == "turn":
-                self._motion.turn_degrees(leg.value, label=leg.label)
-            else:
-                raise ValueError(f"Unknown leg kind: {leg.kind}")
-        self._motion.finish(hand_back=self._hand_back, hold_s=3.0, message="Pattern complete")
+            for leg in legs:
+                if leg.kind == "forward":
+                    self._motion.drive_forward(leg.value, label=leg.label)
+                elif leg.kind == "turn":
+                    self._motion.turn_degrees(leg.value, label=leg.label)
+                else:
+                    raise ValueError(f"Unknown leg kind: {leg.kind}")
+            self._motion.finish(hand_back=self._hand_back, hold_s=3.0, message="Pattern complete")
+        except Exception as exc:
+            message = (
+                exc.crew_message if isinstance(exc, ValiantError) else "Companion fault - holding"
+            )
+            hold_after_fault(self._motion, message=message)
+            raise
 
 
 def run_pattern_flight(
@@ -108,7 +118,7 @@ def run_pattern_flight(
         master = connect(connection, baud, sitl=True)
     except MavlinkConnectError as exc:
         print_mavlink_connect_error(exc, prefix="[Pattern]")
-        raise SystemExit(1) from None
+        raise
     gcs_cfg = cfg.get("gcs_monitor", {})
     hud = GcsHudReporter(
         master,

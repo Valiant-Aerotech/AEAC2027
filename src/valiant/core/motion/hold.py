@@ -39,6 +39,8 @@ from __future__ import annotations
 
 import time
 
+from valiant.core.errors import FlightPreconditionError
+
 RC_MID_PWM = 1500
 RC_CHANNEL_THROTTLE = 3
 # pymavlink treats 0 as "no change" and 65535 as "release override".
@@ -143,7 +145,10 @@ def hand_back_to_pilot(
     motion.stop_stream()
     mapping = motion.master.mode_mapping()
     if "LOITER" not in mapping:
-        raise RuntimeError(f"LOITER not available on this vehicle: {sorted(mapping)}")
+        raise FlightPreconditionError(
+            f"LOITER not available on this vehicle: {sorted(mapping)}",
+            crew_message="LOITER missing",
+        )
 
     motion.say(message)
     want = mapping["LOITER"]
@@ -157,6 +162,25 @@ def hand_back_to_pilot(
                 return True
     print("[Hold] Warning: LOITER not confirmed")
     return False
+
+
+def hold_after_fault(motion, *, message: str = "Companion fault - holding") -> None:
+    """In-flight uncaught exception: tell the crew and hold in GUIDED.
+
+    Never switches to LOITER. An exception is not the moment to start
+    depending on where a pilot left the throttle stick.
+    """
+    if motion is None:
+        return
+    try:
+        motion.stop_stream()
+    except Exception:
+        pass
+    try:
+        motion.say(message, force=True)
+        motion.finish(hand_back=False, hold_s=3.0, message=message)
+    except Exception as exc:
+        print(f"[Hold] Could not hold after fault: {exc}")
 
 
 def _rc_input_present(master, *, timeout_s: float = 1.5, min_pwm: int = 900) -> bool:

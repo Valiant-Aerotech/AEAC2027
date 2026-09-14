@@ -104,13 +104,13 @@ payload:
   actuate_s: 2.0
 
 competition:
-  # Telemetry to aeac.mylonics.com. The URL and transport are placeholders
-  # until the server specification is read - see docs/conops-2027.md.
+  # Token lives in `.env` (AEAC_COMP_TOKEN), not here. Live transmit is
+  # AEAC_COMP_LIVE=1 — default is loopback so a pasted token cannot leak
+  # over radio outside the flight window.
   enabled: false
   url: null
   uav_id: "valiant-1"
   packet_log: logs/competition_packets.jsonl
-  token_file: config/competition_token.txt
 
 safety:
   min_battery_pct: 20

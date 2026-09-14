@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from valiant.core.errors import Degradable
+
 if TYPE_CHECKING:
     import numpy.typing as npt
 
@@ -17,7 +19,7 @@ except ImportError:
     HAVE_ARDUCAM = False
 
 
-class ArducamTofReader:
+class ArducamTofReader(Degradable):
     """Wrap ArducamDepthCamera; depth frames as uint16 millimetres."""
 
     def __init__(self, *, amplitude_min: int = 30):
@@ -31,6 +33,7 @@ class ArducamTofReader:
 
     def start(self) -> bool:
         if not HAVE_ARDUCAM:
+            self.latch_degraded("ArducamDepthCamera not installed")
             print("[ToF] ArducamDepthCamera not installed - depth disabled")
             return False
         try:
@@ -47,6 +50,7 @@ class ArducamTofReader:
             return True
         except Exception as exc:
             print(f"[ToF] ArduCam start failed: {exc}")
+            self.latch_degraded(f"ToF start failed: {exc}")
             self._camera = None
             self._active = False
             return False

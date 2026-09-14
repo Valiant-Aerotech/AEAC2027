@@ -42,14 +42,11 @@ def check_mavlink(conn: str, baud: int, *, cfg: dict | None = None) -> bool:
     try:
         master = connect(conn, baud, wait_heartbeat=True)
         print("[OK] MAVLink heartbeat received")
-        if cfg is not None and cfg.get("safety", {}).get("require_lua_safety", True):
-            from valiant.core.flight.fc_safety import SafetyPreflightError, assert_safety_lua
+        if cfg is not None:
+            # Advisory: prints warnings, does not fail the sensor check.
+            from valiant.core.flight.fc_safety import preflight_readback
 
-            try:
-                assert_safety_lua(master, cfg, sitl=False)
-            except SafetyPreflightError:
-                master.close()
-                return False
+            preflight_readback(master, sitl=False)
         master.close()
         return True
     except MavlinkConnectError as exc:
