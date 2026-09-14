@@ -11,10 +11,10 @@ import time
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 
-from valiant.autonomy.flight.profile import apply_flight_profile, mavlink_connection_for_host
-from valiant.autonomy.gimbal.servo_gimbal import GimbalController
-from valiant.common.config import load_config
-from valiant.common.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error
+from valiant.core.flight.profile import apply_flight_profile, mavlink_connection_for_host
+from valiant.core.gimbal.servo_gimbal import GimbalController
+from valiant.core.config import load_config
+from valiant.core.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error
 
 
 def main() -> None:

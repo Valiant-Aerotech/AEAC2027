@@ -10,9 +10,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from valiant.autonomy.field_orbit import run_field_orbit  # noqa: E402
-from valiant.autonomy.flight.profile import apply_flight_profile  # noqa: E402
-from valiant.common.config import load_config  # noqa: E402
+from valiant.core.motion.field_orbit import run_field_orbit  # noqa: E402
+from valiant.core.flight.profile import apply_flight_profile  # noqa: E402
+from valiant.core.config import load_config  # noqa: E402
 
 
 def main() -> int:
@@ -28,7 +28,7 @@ def main() -> int:
     parser.add_argument("--gcs-ip", default=None)
     args = parser.parse_args()
 
-    cfg = apply_flight_profile(load_config("vion"), "sitl_orbit")
+    cfg = apply_flight_profile(load_config(), "sitl")
     if args.laps is not None:
         cfg.setdefault("field_orbit", {})["laps"] = args.laps
     mavlink = cfg.get("mavlink", {})

@@ -8,41 +8,41 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 FORBIDDEN_CV_PREFIXES = (
-    "valiant.autonomy.cv.subframe_",
-    "valiant.autonomy.cv.yolo_onnx",
-    "valiant.autonomy.cv.dry_detector",
-    "valiant.autonomy.cv.model_paths",
-    "valiant.autonomy.cv.shot_detector",
-    "valiant.autonomy.cv.hsv",
+    "valiant.perception.detect.subframe_",
+    "valiant.perception.detect.yolo_onnx",
+    "valiant.perception.detect.dry_detector",
+    "valiant.perception.detect.model_paths",
+    "valiant.perception.detect.shot_detector",
+    "valiant.perception.detect.hsv",
 )
 
 ALLOWED_CV_MODULES = {
-    "valiant.autonomy.cv",
-    "valiant.autonomy.cv.exceptions",
-    "valiant.autonomy.cv.api",
+    "valiant.perception.detect",
+    "valiant.perception.detect.exceptions",
+    "valiant.perception.detect.api",
 }
 
 ORCHESTRATOR_FORBIDDEN_PREFIXES = (
-    "valiant.autonomy.metric_recon.reconstructor",
-    "valiant.autonomy.metric_recon.edge_proximity",
-    "valiant.autonomy.metric_recon.aim_offset",
-    "valiant.autonomy.metric_recon.lateral_clearance",
-    "valiant.autonomy.metric_recon.vertical_clearance",
-    "valiant.autonomy.metric_recon.depth_map",
-    "valiant.autonomy.metric_recon.geometry_3d",
-    "valiant.autonomy.auto_nav.mavlink_driver",
-    "valiant.autonomy.auto_nav.planner",
-    "valiant.autonomy.auto_nav.visual_servo",
-    "valiant.autonomy.auto_nav.approach_motion",
+    "valiant.perception.metric_recon.reconstructor",
+    "valiant.perception.metric_recon.edge_proximity",
+    "valiant.perception.metric_recon.aim_offset",
+    "valiant.perception.metric_recon.lateral_clearance",
+    "valiant.perception.metric_recon.vertical_clearance",
+    "valiant.perception.depth.map",
+    "valiant.perception.geometry",
+    "valiant.core.nav.driver",
+    "valiant.core.nav.approach",
+    "valiant.core.nav.visual_servo",
+    "valiant.core.nav.approach_motion",
     "valiant.autonomy.spray.aim",
     "valiant.autonomy.spray.actuation",
 )
 
 ALLOWED_ORCHESTRATOR_MODULES = {
-    "valiant.autonomy.metric_recon",
-    "valiant.autonomy.metric_recon.api",
-    "valiant.autonomy.auto_nav",
-    "valiant.autonomy.auto_nav.api",
+    "valiant.perception.metric_recon",
+    "valiant.perception.metric_recon.api",
+    "valiant.core.nav",
+    "valiant.core.nav",
     "valiant.autonomy.spray",
     "valiant.autonomy.spray.api",
 }
@@ -72,10 +72,10 @@ def test_upstream_modules_avoid_cv_internals():
         for mod in _imported_modules(path):
             if any(mod.startswith(p) for p in FORBIDDEN_CV_PREFIXES):
                 violations.append(f"{path.name} imports forbidden {mod}")
-            if mod.startswith("valiant.autonomy.cv.") and mod not in ALLOWED_CV_MODULES:
-                if mod == "valiant.autonomy.cv.detector":
-                    violations.append(f"{path.name} imports internal {mod} (use valiant.autonomy.cv)")
-                elif mod == "valiant.autonomy.cv.ui":
+            if mod.startswith("valiant.perception.detect.") and mod not in ALLOWED_CV_MODULES:
+                if mod == "valiant.perception.detect.detector":
+                    violations.append(f"{path.name} imports internal {mod} (use valiant.perception.detect)")
+                elif mod == "valiant.perception.detect.ui":
                     violations.append(f"{path.name} imports internal {mod} (use draw_mission_overlay)")
     assert not violations, "\n".join(violations)
 
@@ -87,8 +87,8 @@ def test_orchestrator_uses_public_subsystem_apis():
         if any(mod.startswith(p) for p in ORCHESTRATOR_FORBIDDEN_PREFIXES):
             violations.append(f"orchestrator imports internal {mod}")
         for prefix in (
-            "valiant.autonomy.metric_recon.",
-            "valiant.autonomy.auto_nav.",
+            "valiant.perception.metric_recon.",
+            "valiant.core.nav.",
             "valiant.autonomy.spray.",
         ):
             if mod.startswith(prefix) and mod not in ALLOWED_ORCHESTRATOR_MODULES:
@@ -99,7 +99,7 @@ def test_orchestrator_uses_public_subsystem_apis():
 def test_metric_recon_imports_no_cv():
     path = REPO_ROOT / "src" / "valiant" / "autonomy" / "metric_recon" / "reconstructor.py"
     for mod in _imported_modules(path):
-        assert not mod.startswith("valiant.autonomy.cv"), f"metric recon imports {mod}"
+        assert not mod.startswith("valiant.perception.detect"), f"metric recon imports {mod}"
 
 
 def test_auto_nav_planner_imports_spray_public_api():

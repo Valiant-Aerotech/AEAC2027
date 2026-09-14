@@ -1,0 +1,46 @@
+{
+  "name": "close-in approach on one decoy",
+  "comment": "Pose-independent keyframes for fast closed-loop tests without SITL.",
+  "keyframes": [
+    {
+      "t": 0.0,
+      "cx": 380,
+      "cy": 150,
+      "bbox_w": 22,
+      "bbox_h": 22,
+      "depth_m": 30.0,
+      "label": "deer",
+      "text": ""
+    },
+    {
+      "t": 3.0,
+      "cx": 340,
+      "cy": 200,
+      "bbox_w": 48,
+      "bbox_h": 48,
+      "depth_m": 14.0,
+      "label": "deer",
+      "text": ""
+    },
+    {
+      "t": 6.0,
+      "cx": 320,
+      "cy": 235,
+      "bbox_w": 96,
+      "bbox_h": 96,
+      "depth_m": 6.0,
+      "label": "deer",
+      "text": "7B"
+    },
+    {
+      "t": 9.0,
+      "cx": 320,
+      "cy": 240,
+      "bbox_w": 180,
+      "bbox_h": 180,
+      "depth_m": 2.5,
+      "label": "deer",
+      "text": "7B"
+    }
+  ]
+}

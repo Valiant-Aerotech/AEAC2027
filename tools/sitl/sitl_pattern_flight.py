@@ -10,9 +10,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from valiant.autonomy.flight.profile import apply_flight_profile  # noqa: E402
-from valiant.autonomy.sitl_pattern import run_pattern_flight  # noqa: E402
-from valiant.common.config import load_config  # noqa: E402
+from valiant.core.flight.profile import apply_flight_profile  # noqa: E402
+from valiant.core.motion.waypoints import run_pattern_flight  # noqa: E402
+from valiant.core.config import load_config  # noqa: E402
 
 
 def main() -> int:
@@ -33,7 +33,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    cfg = apply_flight_profile(load_config("vion"), "sitl")
+    cfg = apply_flight_profile(load_config(), "sitl")
     mavlink = cfg.get("mavlink", {})
     conn = args.connection or mavlink.get("sitl_connection") or mavlink.get("connection")
     takeoff = args.takeoff_alt

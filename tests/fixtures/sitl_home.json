@@ -1,8 +1,8 @@
 {
-  "name": "Newfoundland SITL default",
-  "lat_deg": 47.5760833,
-  "lon_deg": -52.7343056,
-  "alt_m": 100,
+  "name": "Len Young Memorial Field, Medicine Hat RC'ers",
+  "lat_deg": 50.0978,
+  "lon_deg": -110.735,
+  "alt_m": 717,
   "heading_deg": 0,
-  "comment": "47°34'33.9\"N 52°44'03.5\"W"
+  "comment": "AEAC 2027 competition site. Inside the CONOPS Appendix C flight boundary, in the southern lobe near the flight line. Keeping SITL home here means geofence, boundary and lap-course behaviour are exercised against the real coordinates."
 }

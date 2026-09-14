@@ -10,8 +10,8 @@ import time
 
 import cv2
 
-from valiant.autonomy.cv import create_target_detector, draw_mission_overlay, resolve_dry_model_path
-from valiant.common.config import load_config
+from valiant.perception.detect import create_target_detector, draw_mission_overlay, resolve_dry_model_path
+from valiant.core.config import load_config
 
 
 def _run_regression(args) -> int:

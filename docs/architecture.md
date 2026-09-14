@@ -34,13 +34,13 @@ Pixhawk 6C + Holybro H-Flow (DroneCAN) handle indoor hover stability. H-Flow is 
 
 | Module | Code path |
 |--------|-----------|
-| CV (runtime) | `src/valiant/autonomy/cv/` |
+| CV (runtime) | `src/valiant/perception/detect/` |
 | CV (training) | `autonomy/cv/training/` (`generate_targets.py`, `train.py`) |
-| Metric Recon | `src/valiant/autonomy/metric_recon/` (+ `geometry_3d.py`) |
-| NED kinematics (SITL + shared) | `src/valiant/common/ned_kinematics.py` |
-| Auto-Nav | `src/valiant/autonomy/auto_nav/` |
-| Flight modes | `src/valiant/autonomy/flight/` |
-| Telemetry mirror | `src/valiant/autonomy/telemetry_bridge.py` |
+| Metric Recon | `src/valiant/perception/metric_recon/` (+ `geometry_3d.py`) |
+| NED kinematics (SITL + shared) | `src/valiant/core/kinematics.py` |
+| Auto-Nav | `src/valiant/core/nav/` |
+| Flight modes | `src/valiant/core/flight/` |
+| Telemetry mirror | `src/valiant/comms/telemetry_bridge.py` |
 | Spray Water | `src/valiant/autonomy/spray/` |
 | Upload | `src/valiant/autonomy/upload/` |
 | Orchestrator | `src/valiant/autonomy/orchestrator.py` |

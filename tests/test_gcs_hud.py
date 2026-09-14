@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from valiant.autonomy.gcs_hud import (
+from valiant.comms.gcs_hud import (
     GcsHudReporter,
     format_sitl_status_line,
     format_state_transition,

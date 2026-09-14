@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pymavlink import mavutil
 
-from valiant.autonomy.auto_nav.visual_servo import (
+from valiant.core.nav.visual_servo import (
     GUIDED_MASK_VELOCITY_YAW,
     GUIDED_MASK_YAW,
     GUIDED_MASK_YAW_RATE,
@@ -114,7 +114,7 @@ def test_send_yaw_rate_includes_zero_velocity():
 
 
 def test_send_velocity_ned_uses_local_ned():
-    from valiant.autonomy.auto_nav.visual_servo import GUIDED_MASK_VELOCITY
+    from valiant.core.nav.visual_servo import GUIDED_MASK_VELOCITY
 
     sent: list[tuple] = []
 
@@ -137,7 +137,7 @@ def test_send_velocity_ned_uses_local_ned():
 
 
 def test_resend_last_guided_repeats_ned_velocity():
-    from valiant.autonomy.auto_nav.visual_servo import GUIDED_MASK_VELOCITY
+    from valiant.core.nav.visual_servo import GUIDED_MASK_VELOCITY
 
     sent: list[tuple] = []
 

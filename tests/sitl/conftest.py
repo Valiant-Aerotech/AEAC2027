@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from pymavlink import mavutil
 
-from valiant.autonomy.sitl_preflight import _wait_sitl_ready, arm_guided_takeoff, verify_sitl_motion_ready
-from valiant.common.config import load_config
+from valiant.core.flight.preflight import _wait_sitl_ready, arm_guided_takeoff, verify_sitl_motion_ready
+from valiant.core.config import load_config
 
 SITL_CONNECTION = "tcp:127.0.0.1:5760"
 _EKF_BOOT_WAIT_S = 90.0

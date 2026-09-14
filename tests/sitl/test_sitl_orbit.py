@@ -6,16 +6,16 @@ import math
 
 import pytest
 
-from valiant.autonomy.field_orbit import FieldOrbitRunner, OrbitPhase
-from valiant.autonomy.flight.profile import apply_flight_profile
-from valiant.common.config import load_config
-from valiant.common.mavlink import request_guided_telemetry_streams
-from valiant.common.sitl_physics import drain_vehicle_pose
+from valiant.core.motion.field_orbit import FieldOrbitRunner, OrbitPhase
+from valiant.core.flight.profile import apply_flight_profile
+from valiant.core.config import load_config
+from valiant.core.mavlink import request_guided_telemetry_streams
+from valiant.sim.physics import drain_vehicle_pose
 
 
 @pytest.mark.sitl
 def test_sitl_orbit_one_lap(sitl_master):
-    cfg = apply_flight_profile(load_config("vion"), "sitl_orbit")
+    cfg = apply_flight_profile(load_config(), "sitl")
     cfg.setdefault("field_orbit", {})["laps"] = 1
     trigger_alt = float(cfg["field_orbit"].get("trigger_alt_m", 10.0))
     cfg["field_orbit"]["orbit_speed_m_s"] = 0.55

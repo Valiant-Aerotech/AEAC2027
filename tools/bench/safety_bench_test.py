@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import time
 
-from valiant.autonomy.safety.monitor import SafetyMonitor
-from valiant.common.config import load_config
+from valiant.core.safety.monitor import SafetyMonitor
+from valiant.core.config import load_config
 
 
 class _FakeMsg:

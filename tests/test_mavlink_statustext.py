@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pymavlink import mavutil
 
-from valiant.common.mavlink import (
+from valiant.core.mavlink import (
     GcsStatustextOptions,
     encode_statustext,
     gcs_statustext_options_from_cfg,

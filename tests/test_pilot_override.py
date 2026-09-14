@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from valiant.autonomy.pilot_override import (
+from valiant.core.safety.pilot_override import (
     OverrideKind,
     PilotOverrideMonitor,
     _rc_channel_pwm,
@@ -117,7 +117,7 @@ def test_rc_channel_pwm_1_based():
 
 
 def test_guided_motion_stops_stream_on_override():
-    from valiant.autonomy.guided_motion import GuidedMotionRunner
+    from valiant.core.motion.guided import GuidedMotionRunner
 
     master = _FakeMaster([_FakeHb(mode_id=5, armed=True)], flightmode="LOITER")
     cfg = {"field_orbit": {"pilot": {}}}
@@ -134,7 +134,7 @@ def test_guided_motion_stops_stream_on_override():
 def test_stop_stream_sends_zero_velocity():
     from unittest.mock import MagicMock
 
-    from valiant.autonomy.guided_motion import GuidedMotionRunner
+    from valiant.core.motion.guided import GuidedMotionRunner
 
     master = MagicMock()
     cfg = {"field_orbit": {"pilot": {}}}

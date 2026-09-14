@@ -1,0 +1,137 @@
+{
+  "name": "AEAC 2027 Task 1 herd survey",
+  "comment": "Deer decoys on the ground north of SITL home. lat/lon are the ground truth the survey report should recover; position_ned is what the camera projects from.",
+  "home_lat_deg": 50.0978,
+  "home_lon_deg": -110.735,
+  "hfov_deg": 66.0,
+  "vfov_deg": 52.0,
+  "tag_readable_px": 40,
+  "targets": [
+    {
+      "id": "d1",
+      "label": "deer",
+      "text": "7B",
+      "position_ned": [
+        180.0,
+        -40.0,
+        0.0
+      ],
+      "diameter_m": 1.4,
+      "color": [
+        70,
+        105,
+        165
+      ],
+      "lat": 50.099417,
+      "lon": -110.7355601
+    },
+    {
+      "id": "d2",
+      "label": "deer",
+      "text": "K2",
+      "position_ned": [
+        186.0,
+        -36.0,
+        0.0
+      ],
+      "diameter_m": 1.4,
+      "color": [
+        70,
+        105,
+        165
+      ],
+      "lat": 50.0994709,
+      "lon": -110.7355041
+    },
+    {
+      "id": "d3",
+      "label": "deer",
+      "text": "Q9",
+      "position_ned": [
+        183.0,
+        -44.0,
+        0.0
+      ],
+      "diameter_m": 1.4,
+      "color": [
+        70,
+        105,
+        165
+      ],
+      "lat": 50.0994439,
+      "lon": -110.7356162
+    },
+    {
+      "id": "d4",
+      "label": "deer",
+      "text": "M4",
+      "position_ned": [
+        240.0,
+        60.0,
+        0.0
+      ],
+      "diameter_m": 1.4,
+      "color": [
+        70,
+        105,
+        165
+      ],
+      "lat": 50.0999559,
+      "lon": -110.7341598
+    },
+    {
+      "id": "d5",
+      "label": "deer",
+      "text": "X1",
+      "position_ned": [
+        246.0,
+        64.0,
+        0.0
+      ],
+      "diameter_m": 1.4,
+      "color": [
+        70,
+        105,
+        165
+      ],
+      "lat": 50.1000098,
+      "lon": -110.7341038
+    },
+    {
+      "id": "d6",
+      "label": "deer",
+      "text": "A8",
+      "position_ned": [
+        320.0,
+        -10.0,
+        0.0
+      ],
+      "diameter_m": 1.4,
+      "color": [
+        70,
+        105,
+        165
+      ],
+      "lat": 50.1006746,
+      "lon": -110.73514
+    },
+    {
+      "id": "d7",
+      "label": "deer",
+      "text": "3C",
+      "position_ned": [
+        140.0,
+        120.0,
+        0.0
+      ],
+      "diameter_m": 1.4,
+      "color": [
+        70,
+        105,
+        165
+      ],
+      "lat": 50.0990576,
+      "lon": -110.7333196
+    }
+  ]
+}

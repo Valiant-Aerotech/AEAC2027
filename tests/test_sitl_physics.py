@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from valiant.common.sitl_physics import VehiclePose, project_target_ned
+from valiant.sim.physics import VehiclePose, project_target_ned
 
 
 def test_project_target_ahead_of_drone():

@@ -10,17 +10,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from valiant.autonomy.flight.fc_safety import (  # noqa: E402
+from valiant.core.flight.fc_safety import (  # noqa: E402
     SafetyPreflightError,
     assert_safety_lua,
     verify_safety_lua,
 )
-from valiant.autonomy.flight.profile import (  # noqa: E402
+from valiant.core.flight.profile import (  # noqa: E402
     apply_flight_profile,
     mavlink_connection_for_gcs,
 )
-from valiant.common.config import load_config  # noqa: E402
-from valiant.common.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error  # noqa: E402
+from valiant.core.config import load_config  # noqa: E402
+from valiant.core.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error  # noqa: E402
 
 
 def main() -> int:
@@ -33,11 +33,11 @@ def main() -> int:
         default="vivi_orbit",
         help="Flight profile for safety settings (connection uses GCS radio by default)",
     )
-    parser.add_argument("--drone", default="vion")
+    parser.add_argument("--config", default=None, help="Extra YAML merged on top of defaults")
     parser.add_argument("--strict", action="store_true", help="Exit 1 on warnings too")
     args = parser.parse_args()
 
-    cfg = apply_flight_profile(load_config(args.drone), args.profile)
+    cfg = apply_flight_profile(load_config(args.config), args.profile)
     conn, baud = mavlink_connection_for_gcs(cfg)
     if args.connection:
         conn = args.connection

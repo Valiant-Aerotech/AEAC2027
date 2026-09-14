@@ -16,13 +16,13 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from valiant.common.sitl_geo import (  # noqa: E402
+from valiant.core.geo import (  # noqa: E402
     TILE_SIZE_PX,
     SitlHome,
     lat_lon_to_tile,
     offset_lat_lon,
 )
-from valiant.common.sitl_map_asset import build_manifest_for_stitch  # noqa: E402
+from valiant.core.map_asset import build_manifest_for_stitch  # noqa: E402
 
 TILE_URL = (
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"

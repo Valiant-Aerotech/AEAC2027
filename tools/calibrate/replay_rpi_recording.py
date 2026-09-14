@@ -8,9 +8,9 @@ import sys
 
 import cv2
 
-from valiant.autonomy.cv import create_target_detector, draw_mission_overlay
-from valiant.autonomy.metric_recon import InlineDepthSource, create_metric_reconstructor
-from valiant.common.config import load_config
+from valiant.perception.detect import create_target_detector, draw_mission_overlay
+from valiant.perception.metric_recon import InlineDepthSource, create_metric_reconstructor
+from valiant.core.config import load_config
 
 
 def main() -> int:

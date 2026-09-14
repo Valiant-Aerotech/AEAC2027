@@ -12,8 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from valiant.common.config import load_config
-from valiant.common.mavlink import (
+from valiant.core.config import load_config
+from valiant.core.mavlink import (
     GcsStatustextOptions,
     MavlinkConnectError,
     connect,
@@ -21,7 +21,7 @@ from valiant.common.mavlink import (
     print_mavlink_connect_error,
     send_statustext_for_gcs,
 )
-from valiant.autonomy.gcs_hud import HUD_PREFIX
+from valiant.comms.gcs_hud import HUD_PREFIX
 
 
 def _sniff_statustext(connection: str, duration_s: float, out: list[str], errors: list[str]) -> None:
@@ -74,7 +74,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    cfg = load_config("vion")
+    cfg = load_config()
     conn = args.connection or cfg.get("mavlink", {}).get(
         "sitl_connection", "tcp:127.0.0.1:5760"
     )

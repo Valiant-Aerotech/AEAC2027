@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from valiant.autonomy.flight.fc_safety import (
+from valiant.core.flight.fc_safety import (
     SafetyLuaReport,
     fetch_param_value,
     verify_safety_lua,
@@ -64,7 +64,7 @@ def test_verify_safety_lua_ok_when_scr_enabled_no_ftp():
 
 
 def test_assert_safety_lua_raises_on_failure():
-    from valiant.autonomy.flight.fc_safety import SafetyPreflightError, assert_safety_lua
+    from valiant.core.flight.fc_safety import SafetyPreflightError, assert_safety_lua
 
     master = _FakeMaster([_ParamMsg("SCR_ENABLE", 0.0)])
     cfg = {"safety": {"require_lua_safety": True, "verify_lua_file": False}}

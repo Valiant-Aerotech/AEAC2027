@@ -8,10 +8,10 @@ build/
 venv/
 env/
 
-# Secrets - never commit
-config/gdrive_credentials.json
-config/vion_calibration.yaml
-config/rpas_calibration.yaml
+# Machine-local and secret config - never commit
+config/local.yaml
+config/calibration.yaml
+config/competition_token.txt
 *.pem
 .env
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from valiant.common.mavlink import (
+from valiant.core.mavlink import (
     MavlinkConnectError,
     connection_error_hints,
     format_mavlink_connect_error,
@@ -13,7 +13,7 @@ from valiant.common.mavlink import (
 
 def test_hints_windows_dev_tty_suggests_com():
     cause = OSError(2, "The system cannot find the path specified.")
-    with patch("valiant.common.mavlink.sys.platform", "win32"):
+    with patch("valiant.core.mavlink.sys.platform", "win32"):
         hints = connection_error_hints("/dev/ttyAMA0", cause)
     assert any("GCS laptop" in h for h in hints)
     assert any("COM5" in h for h in hints)
@@ -22,7 +22,7 @@ def test_hints_windows_dev_tty_suggests_com():
 
 def test_hints_linux_missing_uart():
     cause = OSError(2, "No such file or directory")
-    with patch("valiant.common.mavlink.sys.platform", "linux"):
+    with patch("valiant.core.mavlink.sys.platform", "linux"):
         hints = connection_error_hints("/dev/ttyAMA0", cause)
     assert any("raspi-config" in h for h in hints)
     assert not any("GCS laptop" in h for h in hints)

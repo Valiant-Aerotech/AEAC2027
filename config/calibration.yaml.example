@@ -1,0 +1,11 @@
+# Copy to config/calibration.yaml (gitignored) after running
+#   python tools/calibrate/calibrate_depth_rgb.py
+# Maps the ToF depth frame onto the RGB frame for this airframe.
+
+depth_scale: 0.001          # raw depth units -> metres
+depth_offset_m: 0.0
+depth_sample_window_px: 5
+rgb_to_depth_scale_x: 1.0
+rgb_to_depth_scale_y: 1.0
+rgb_to_depth_offset_x: 0
+rgb_to_depth_offset_y: 0

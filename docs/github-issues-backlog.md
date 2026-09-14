@@ -38,7 +38,7 @@ Merged **PR #85** (`cv-metric-integration`) to `main`.
 
 | Area | Status |
 |------|--------|
-| **CV public API** | `valiant.autonomy.cv` facade: `create_target_detector`, `draw_mission_overlay`, `hits_to_bench_dict`; subframe YOLO (294px spiral); import boundaries in `test_subsystem_boundaries.py` |
+| **CV public API** | `valiant.perception.detect` facade: `create_target_detector`, `draw_mission_overlay`, `hits_to_bench_dict`; subframe YOLO (294px spiral); import boundaries in `test_subsystem_boundaries.py` |
 | **Edge clearance** | L/R/T/B `EdgeProximity`, 2D virtual aim, planner bypass + fire gates, dual spray alignment, HUD edge labels; SITL ceiling constraint |
 | **Subsystem APIs** | `metric_recon/api.py`, `auto_nav/api.py`, `spray/api.py`; orchestrator uses public imports only |
 | **Docs** | `interfaces.md` CV methods + MetricPacket edge fields; field-test-plan drills 2.4b–d |

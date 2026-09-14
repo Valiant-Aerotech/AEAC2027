@@ -10,9 +10,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from valiant.autonomy.field_orbit import run_field_orbit  # noqa: E402
-from valiant.autonomy.flight.profile import apply_flight_profile, mavlink_connection_for_gcs  # noqa: E402
-from valiant.common.config import load_config  # noqa: E402
+from valiant.core.motion.field_orbit import run_field_orbit  # noqa: E402
+from valiant.core.flight.profile import apply_flight_profile, mavlink_connection_for_gcs  # noqa: E402
+from valiant.core.config import load_config  # noqa: E402
 
 
 def main() -> int:
@@ -20,12 +20,12 @@ def main() -> int:
     parser.add_argument("--profile", default="vivi_orbit")
     parser.add_argument("--connection", default=None)
     parser.add_argument("--gcs-ip", default=None)
-    parser.add_argument("--drone", default="vion")
+    parser.add_argument("--config", default=None, help="Extra YAML merged on top of defaults")
     parser.add_argument("--laps", type=int, default=None, help="Override orbit lap count")
     parser.add_argument("--skip-safety-check", action="store_true")
     args = parser.parse_args()
 
-    cfg = apply_flight_profile(load_config(args.drone), args.profile)
+    cfg = apply_flight_profile(load_config(args.config), args.profile)
     if args.laps is not None:
         cfg.setdefault("field_orbit", {})["laps"] = args.laps
     conn, baud = mavlink_connection_for_gcs(cfg)

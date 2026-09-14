@@ -8,13 +8,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from valiant.autonomy.sitl_mission import (
+from valiant.sim.mission import (
     SitlMissionError,
     apply_sitl_mission,
     load_sitl_mission,
     materialize_scenario,
 )
-from valiant.common.config import load_config, repo_root
+from valiant.core.config import load_config, repo_root
 
 
 def test_load_example_mission_file():

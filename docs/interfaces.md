@@ -1,6 +1,6 @@
 # Module Interfaces
 
-Data contracts between autonomy modules. Implemented in `src/valiant/autonomy/packets.py`.
+Data contracts between autonomy modules. Implemented in `src/valiant/perception/types.py`.
 
 ## TargetHit
 
@@ -70,7 +70,7 @@ Built by `MetricReconstructor` from `CVPacket` + frame geometry + gimbal pitch +
 
 Use `metric.planner_range_m()` for fire/approach gating (prefers `horizontal_range_m`).
 
-3D geometry: `src/valiant/autonomy/metric_recon/geometry_3d.py`. SITL motion uses `src/valiant/common/ned_kinematics.py` (rotation matrices, 3D velocity toward goal).
+3D geometry: `src/valiant/perception/geometry.py`. SITL motion uses `src/valiant/core/kinematics.py` (rotation matrices, 3D velocity toward goal).
 
 ## CV detection methods (`config/rpas.yaml` / `config/vion.yaml`)
 
@@ -88,7 +88,7 @@ Subframe settings (`config/vion.yaml`): `cv.inference_mode` (`subframe` | `cente
 
 Tune `hsv_dry` / `hsv_shot` / `hsv_min_area_px` for outdoor lighting.
 
-## CV public API (`valiant.autonomy.cv`)
+## CV public API (`valiant.perception.detect`)
 
 External code (orchestrator, bench tools, calibrate scripts) should import only:
 
@@ -104,7 +104,7 @@ External code (orchestrator, bench tools, calibrate scripts) should import only:
 
 Do **not** import `subframe_grid`, `subframe_yolo`, `yolo_onnx`, `dry_detector`, `shot_detector`, `hsv`, `detector`, or `ui` from orchestrator, metric recon, or auto-nav.
 
-## Metric recon public API (`valiant.autonomy.metric_recon`)
+## Metric recon public API (`valiant.perception.metric_recon`)
 
 | Symbol | Purpose |
 |--------|---------|
@@ -115,7 +115,7 @@ Do **not** import `subframe_grid`, `subframe_yolo`, `yolo_onnx`, `dry_detector`,
 
 Do **not** import `edge_proximity`, `aim_offset`, `geometry_3d`, `reconstructor`, `pixel_geometry`, `lateral_clearance`, or `vertical_clearance` from orchestrator or auto-nav. Edge / aim-offset logic stays inside metric recon.
 
-## Auto-nav public API (`valiant.autonomy.auto_nav`)
+## Auto-nav public API (`valiant.core.nav`)
 
 | Symbol | Purpose |
 |--------|---------|
@@ -141,10 +141,10 @@ Do **not** import `visual_servo`, `mavlink_driver`, or `planner` directly from o
 
 | Module | May import from CV | May import from metric_recon | May import from auto_nav | May import from spray | Other (orchestrator) |
 |--------|-------------------|------------------------------|--------------------------|----------------------|-------------------------|
-| `orchestrator` | `valiant.autonomy.cv`, `exceptions` | `valiant.autonomy.metric_recon` | `valiant.autonomy.auto_nav` | `valiant.autonomy.spray` | `conops`, `gcs_hud`, `gimbal`, `safety`, `upload`, `packets` |
+| `orchestrator` | `valiant.perception.detect`, `exceptions` | `valiant.perception.metric_recon` | `valiant.core.nav` | `valiant.autonomy.spray` | `conops`, `gcs_hud`, `gimbal`, `safety`, `upload`, `packets` |
 | `metric_recon` | — | internal only | — | — | `packets` only |
 | `auto_nav` | — | `packets` only | internal; `spray` public API | `valiant.autonomy.spray` | — |
-| Bench / calibrate tools | `valiant.autonomy.cv` | `valiant.autonomy.metric_recon` | — | — | — |
+| Bench / calibrate tools | `valiant.perception.detect` | `valiant.perception.metric_recon` | — | — | — |
 
 ## Bench test
 

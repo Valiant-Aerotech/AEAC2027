@@ -6,14 +6,14 @@ import math
 
 import numpy as np
 
-from valiant.autonomy.metric_recon.geometry_3d import (
+from valiant.perception.geometry import (
     altitude_error_from_pose,
     camera_ray_to_body,
     decompose_slant_range,
     pixel_to_unit_ray,
     ray_angles_deg,
 )
-from valiant.common.ned_kinematics import VehiclePose
+from valiant.core.kinematics import VehiclePose
 
 
 def test_pixel_ray_forward():

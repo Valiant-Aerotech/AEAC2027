@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from valiant.autonomy.cv.yolo_onnx import YoloOnnxDetector
+from valiant.perception.detect.yolo_onnx import YoloOnnxDetector
 
 MODEL = Path("models/best.onnx")
 

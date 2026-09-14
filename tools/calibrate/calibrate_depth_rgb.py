@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from valiant.common.config import default_calibration_example_path, default_calibration_path, repo_root
+from valiant.core.config import default_calibration_example_path, default_calibration_path, repo_root
 
 
 def main() -> int:

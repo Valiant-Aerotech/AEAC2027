@@ -1,0 +1,91 @@
+{
+  "name": "AEAC 2027 Task 2 tag, track and sample",
+  "comment": "One banded target animal to tag, plus three biological samples and the blue 32-inch delivery pad back at the flight line.",
+  "home_lat_deg": 50.0978,
+  "home_lon_deg": -110.735,
+  "hfov_deg": 66.0,
+  "vfov_deg": 52.0,
+  "tag_readable_px": 40,
+  "targets": [
+    {
+      "id": "banded",
+      "label": "deer",
+      "text": "",
+      "position_ned": [
+        150.0,
+        30.0,
+        0.0
+      ],
+      "diameter_m": 1.4,
+      "color": [
+        60,
+        180,
+        240
+      ],
+      "banded": true
+    },
+    {
+      "id": "egg",
+      "label": "sample",
+      "position_ned": [
+        95.0,
+        -55.0,
+        0.0
+      ],
+      "diameter_m": 0.08,
+      "color": [
+        230,
+        230,
+        235
+      ],
+      "sample_type": "egg"
+    },
+    {
+      "id": "dung",
+      "label": "sample",
+      "position_ned": [
+        102.0,
+        -48.0,
+        0.0
+      ],
+      "diameter_m": 0.15,
+      "color": [
+        55,
+        70,
+        95
+      ],
+      "sample_type": "dung_core"
+    },
+    {
+      "id": "droppings",
+      "label": "sample",
+      "position_ned": [
+        88.0,
+        -62.0,
+        0.0
+      ],
+      "diameter_m": 0.1,
+      "color": [
+        50,
+        60,
+        80
+      ],
+      "sample_type": "droppings"
+    },
+    {
+      "id": "pad",
+      "label": "landing_pad",
+      "position_ned": [
+        5.0,
+        0.0,
+        0.0
+      ],
+      "diameter_m": 0.81,
+      "color": [
+        200,
+        120,
+        40
+      ]
+    }
+  ]
+}

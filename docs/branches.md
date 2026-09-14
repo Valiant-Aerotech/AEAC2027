@@ -114,8 +114,8 @@ Full SITL guide: [runbooks/sitl-overview.md](runbooks/sitl-overview.md).
 
 ```
 src/valiant/autonomy/     # Task 2 pipeline (orchestrator, SITL, cv runtime)
-src/valiant/autonomy/gcs_hud.py
-src/valiant/autonomy/sitl_pattern.py
+src/valiant/comms/gcs_hud.py
+src/valiant/core/motion/waypoints.py
 src/valiant/common/       # ned_kinematics.py, mavlink.py
 config/rpas.yaml          # default platform (inherits config/vion.yaml)
 config/vion.yaml          # flight_profiles: sitl, sitl_physics, vivi

@@ -1,19 +1,204 @@
-# Shared defaults - overridden by per-drone YAML files
+# Shared baseline configuration. Committed, generic, airframe-agnostic.
+#
+# Override per machine in config/local.yaml (gitignored) - serial ports, IPs,
+# window titles. Override per run with --config <path> or --profile <name>.
+#
+# Competition rules are NOT here. Boundary coordinates, telemetry field names
+# and report formats live as constants in the module that uses them, so the
+# rule and the code implementing it stay side by side.
 
-team:
-  name: ValiantAerotech
-  photo_save_dir: task2_photos
+mavlink:
+  connection: "udpin:127.0.0.1:14550"   # ground station link (serial port on the laptop)
+  rpi_connection: "/dev/ttyAMA0"        # companion UART to the FC TELEM port
+  sitl_connection: "tcp:127.0.0.1:5760"
+  sitl_fallback: "udpin:127.0.0.1:14550"
+  baud: 57600
 
-upload:
-  method: local_copy                    # local_copy | gdrive_service_account
-  config_path: config/gdrive_credentials.json
-  folder_id: ""                         # Shared Drive folder ID (required for gdrive)
-  timeout_s: 15
-  retry_count: 3
-  retry_delay_s: 2.0
-  # Real Drive setup:
-  # 1. Create Google Cloud service account with Drive API enabled
-  # 2. Save JSON key to config/gdrive_credentials.json (gitignored)
-  # 3. Share team folder with service account email (Editor)
-  # 4. Set folder_id and method: gdrive_service_account
-  # 5. pip install google-api-python-client google-auth
+flight:
+  mode: GUIDED
+  require_gps: true
+  arm_check_gps: true
+
+camera:
+  source: scrcpy                        # scrcpy | webcam | rpi_local | video | synthetic | synthetic_world
+  scrcpy_window_title: SurveyCam
+  phone_ip: null
+  max_fps: 30
+  max_size: 1280
+  video_bit_rate_mbps: 8
+  no_audio: true
+  min_grab_interval_s: 0.0
+  hfov_deg: 66.0
+  vfov_deg: 52.0
+  rpi:
+    width: 1920
+    height: 1080
+    tof:
+      enabled: false                    # only needed for close-range sample work
+      amplitude_min: 30
+
+cv:
+  backend: subframe                     # subframe (tiled) | full_frame
+  subframe_size: 294
+  max_subframes: 24                     # a survey frame is worth more tiles than a close-in approach
+  max_target_cover_area: 100
+  edge_margin: 10
+  nms_threshold: 0.4
+  confidence_threshold: 0.35
+  max_frames_without_target: 45
+  models:
+    primary: models/detect.onnx
+  labels:                               # model class id -> mission label
+    0: deer
+    1: ear_tag
+
+metric_recon:
+  mode: rangefinder                     # rangefinder | depth_at_target
+  rangefinder: fov_estimate             # vl53l1x | fov_estimate | none
+  object_width_min_m: 0.60              # apparent-size range band for a deer decoy
+  object_width_max_m: 1.80
+  standoff_proof_m: 2.0                 # must observe from beyond this before acting
+  action_distance_m: 0.8                # in position to act on the payload
+  alt_align_tolerance_m: 0.25
+  altitude_kp: 0.22
+  alt_offset_m: 0.0
+  camera_down: true
+  rangefinder_stale_s: 1.0
+
+nav:
+  kp_x: 0.0006
+  kp_y: 0.0006
+  kd_x: 0.0014
+  kd_y: 0.0014
+  vel_smooth: 0.42
+  max_vel: 0.15
+  deadband_px: 50
+  approach_speed: 0.10
+  creep_speed: 0.10
+  approach_slow_zone_m: 2.5
+  lateral_pixel_blend: 0.3
+  target_lock_area_px: 15000
+  approach_timeout_s: 90
+  lock_duration_s: 1.5
+  lock_timeout_s: 30
+
+gimbal:
+  enabled: false
+  channel: 9
+  pwm_min: 1000
+  pwm_max: 2000
+  pwm_neutral: 1500
+  axis: pitch
+  kp: 0.8
+  deadband_px: 40
+  min_interval_s: 0.1
+
+payload:
+  # Tracker release and sample gripper. Both are one-shot servo actions on an
+  # FC output; see reference/spray/actuation.py for the 2026 implementation.
+  method: none                          # none | MAVLINK_SERVO | RPI_GPIO
+  tracker_channel: 15
+  sample_channel: 14
+  pwm_open: 1900
+  pwm_close: 1100
+  actuate_s: 2.0
+
+competition:
+  # Telemetry to aeac.mylonics.com. The URL and transport are placeholders
+  # until the server specification is read - see docs/conops-2027.md.
+  enabled: false
+  url: null
+  uav_id: "valiant-1"
+  packet_log: logs/competition_packets.jsonl
+  token_file: config/competition_token.txt
+
+safety:
+  min_battery_pct: 20
+  geofence_abort: true
+  mission_timeout_s: 600                # 0 disables the global timeout
+  rtl_on_abort: false
+  require_lua_safety: true              # block field flight without SCR_ENABLE + safety.lua
+  lua_safety_script: safety.lua
+  verify_lua_file: true
+  boundary_soft_inset_m: 15.0           # warn this far inside the hard boundary
+
+gcs_monitor:
+  port: 14560
+  ip: null
+  statustext_interval_s: 3.0
+  motion_events: false
+  statustext_severity: notice
+  mp_use_autopilot_sysid: true
+  debug_statustext: false
+
+sitl:
+  takeoff_alt_m: 30.0
+  cruise_alt_m: 30.0
+  velocity_local_ned: true
+  preflight_timeout_s: 75               # arm + takeoff; a cold EKF can take ~30 s
+  ekf_wait_s: 45
+  min_ground_clearance_m: 2.0
+  altitude_kp: 0.22
+  max_vz: 1.0
+  alt_align_tolerance_m: 0.25
+  complete_hold_s: 5.0
+  home: tests/fixtures/sitl_home.json
+  map:
+    manifest: tests/fixtures/sitl_map/manifest.json
+    view_radius_m: 600.0
+    radius_m: 2000
+
+field_orbit:
+  trigger_alt_m: 10.0
+  alt_tolerance_m: 0.35
+  forward_m: 2.0
+  forward_arrival_m: 0.25
+  forward_timeout_s: 12.0
+  radius_latch_tol_m: 1.0
+  radius_m: 5.0
+  laps: 5
+  direction: clockwise
+  orbit_speed_m_s: 0.40
+  radial_kp: 0.25
+  orbit_entry_radial_kp: 0.65
+  orbit_entry_blend_s: 4.0
+  yaw_follow_velocity: true
+  yaw_rate_max_deg_s: 25.0
+  altitude_kp: 0.22
+  max_vz: 0.15
+  geofence_radius_m: 12.0
+  max_duration_s: 600
+  return_on_timeout: false
+  loiter_settle_s: 2.0
+  standby_retrigger: true
+  pilot:
+    guided_mode_channel: null
+    kill_switch_rc_channel: 8
+    kill_switch_pwm_high: 1300
+    companion_land_on_kill: false
+
+# Named overlays merged on top of everything by --profile <name>.
+flight_profiles:
+  sitl:
+    camera:
+      source: synthetic_world
+      synthetic_scenario: tests/fixtures/sitl_survey_world.json
+      width: 640
+      height: 480
+    mavlink:
+      connection: "tcp:127.0.0.1:5760"
+    safety:
+      check_battery: false
+      require_lua_safety: false
+    competition:
+      enabled: false
+
+  companion:
+    camera:
+      source: rpi_local
+    mavlink:
+      connection: null                  # force the Pi UART
+    gimbal:
+      enabled: true
+    competition:
+      enabled: true

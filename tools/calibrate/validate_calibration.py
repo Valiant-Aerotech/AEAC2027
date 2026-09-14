@@ -11,9 +11,9 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from valiant.autonomy.cv import create_target_detector
-from valiant.autonomy.metric_recon import InlineDepthSource, create_metric_reconstructor
-from valiant.common.config import load_config, repo_root
+from valiant.perception.detect import create_target_detector
+from valiant.perception.metric_recon import InlineDepthSource, create_metric_reconstructor
+from valiant.core.config import load_config, repo_root
 
 
 def main() -> int:

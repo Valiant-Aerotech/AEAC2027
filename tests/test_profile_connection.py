@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from valiant.autonomy.flight.profile import (
+from valiant.core.flight.profile import (
     mavlink_connection_for_gcs,
     mavlink_connection_for_host,
 )
@@ -22,13 +22,13 @@ def test_gcs_connection_uses_telemetry_radio_not_pi_uart():
 
 
 def test_host_on_linux_with_rpi_local_uses_uart():
-    with patch("valiant.autonomy.flight.profile.sys.platform", "linux"):
+    with patch("valiant.core.flight.profile.sys.platform", "linux"):
         conn, _ = mavlink_connection_for_host(_RPI_LOCAL_CFG)
     assert conn == "/dev/ttyAMA0"
 
 
 def test_host_on_windows_with_rpi_local_uses_com():
-    with patch("valiant.autonomy.flight.profile.sys.platform", "win32"):
+    with patch("valiant.core.flight.profile.sys.platform", "win32"):
         conn, _ = mavlink_connection_for_host(_RPI_LOCAL_CFG)
     assert conn == "COM5"
 

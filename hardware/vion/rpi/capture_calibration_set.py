@@ -16,8 +16,8 @@ if str(_REPO) not in sys.path:
 import cv2
 import numpy as np
 
-from valiant.common.config import load_config, repo_root
-from valiant.common.rpi_local_camera import RpiLocalCamera
+from valiant.core.config import load_config, repo_root
+from valiant.perception.camera.rpi import RpiLocalCamera
 
 
 def main() -> int:

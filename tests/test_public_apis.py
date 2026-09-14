@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def test_cv_public_api():
-    from valiant.autonomy.cv import (
+    from valiant.perception.detect import (
         create_target_detector,
         draw_mission_overlay,
         hits_to_bench_dict,
@@ -20,7 +20,7 @@ def test_cv_public_api():
 
 
 def test_metric_recon_public_api():
-    from valiant.autonomy.metric_recon import (
+    from valiant.perception.metric_recon import (
         InlineDepthSource,
         create_metric_reconstructor,
     )
@@ -30,7 +30,7 @@ def test_metric_recon_public_api():
 
 
 def test_auto_nav_public_api():
-    from valiant.autonomy.auto_nav import (
+    from valiant.core.nav import (
         MotionIntent,
         create_mavlink_driver,
         create_motion_planner,
@@ -56,7 +56,7 @@ def test_spray_public_api():
 
 
 def test_metric_packet_servo_px():
-    from valiant.autonomy.packets import MetricPacket
+    from valiant.perception.types import MetricPacket
 
     centered = MetricPacket(target_px=(640, 360), pixel_offset=(0.0, 0.0))
     assert centered.servo_px == (640, 360)

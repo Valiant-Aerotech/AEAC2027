@@ -6,9 +6,9 @@ import math
 
 import pytest
 
-from valiant.autonomy.guided_motion import GuidedMotionRunner
-from valiant.autonomy.orbit_math import forward_entry_ned
-from valiant.common.ned_kinematics import VehiclePose
+from valiant.core.motion.guided import GuidedMotionRunner
+from valiant.core.motion.orbit import forward_entry_ned
+from valiant.core.kinematics import VehiclePose
 
 
 class _FakeMaster:
@@ -81,7 +81,7 @@ def test_drive_to_ned_point_arrives(monkeypatch):
     motion = GuidedMotionRunner(master, cfg, log_tag="Test")
     motion.set_last_pose(poses[0])
     monkeypatch.setattr(
-        "valiant.autonomy.guided_motion.send_companion_heartbeat",
+        "valiant.core.motion.guided.send_companion_heartbeat",
         lambda _m: None,
     )
     end_x, end_y = motion.drive_to_ned_point(

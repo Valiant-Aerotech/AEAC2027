@@ -7,8 +7,8 @@ import argparse
 import sys
 import time
 
-from valiant.common.config import load_config
-from valiant.common.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error
+from valiant.core.config import load_config
+from valiant.core.mavlink import MavlinkConnectError, connect, print_mavlink_connect_error
 
 
 def main() -> int:

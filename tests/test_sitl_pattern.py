@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 
-from valiant.autonomy.sitl_pattern import DEFAULT_PATTERN, _wrap_pi
-from valiant.common.mavlink import command_yaw_relative
+from valiant.core.motion.waypoints import DEFAULT_PATTERN, _wrap_pi
+from valiant.core.mavlink import command_yaw_relative
 
 
 def test_default_pattern_has_seven_legs():

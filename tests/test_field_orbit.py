@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from valiant.autonomy.gcs_hud import format_orbit_status
-from valiant.autonomy.orbit_math import (
+from valiant.comms.gcs_hud import format_orbit_status
+from valiant.core.motion.orbit import (
     advance_arc_progress_m,
     circle_center,
     combined_laps,
@@ -55,7 +55,7 @@ def test_intent_entry_and_center_from_anchor():
 
 
 def test_progress_along_heading():
-    from valiant.autonomy.orbit_math import progress_along_heading
+    from valiant.core.motion.orbit import progress_along_heading
 
     assert abs(progress_along_heading(2.0, 0.0, 0.0, 0.0, 0.0) - 2.0) < 1e-6
     assert abs(progress_along_heading(0.0, 2.0, 0.0, 0.0, math.pi / 2) - 2.0) < 1e-6
@@ -247,8 +247,8 @@ def test_format_orbit_status(phase, lap, target, expected_prefix):
 
 
 def test_field_orbit_check_constraints_geofence_and_safety():
-    from valiant.autonomy.field_orbit import FieldOrbitRunner
-    from valiant.autonomy.safety.monitor import SafetyAbort
+    from valiant.core.motion.field_orbit import FieldOrbitRunner
+    from valiant.core.safety.monitor import SafetyAbort
 
     master = MagicMock()
     cfg = {

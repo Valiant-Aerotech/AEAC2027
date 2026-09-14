@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from valiant.common.mavlink import send_land
+from valiant.core.mavlink import send_land
 
 
 class _FakeMav:

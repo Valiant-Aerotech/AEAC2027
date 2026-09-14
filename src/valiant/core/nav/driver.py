@@ -1,0 +1,104 @@
+"""Translate metric geometry into MAVLink velocity commands."""
+
+from __future__ import annotations
+
+from pymavlink import mavutil
+
+from valiant.core.nav.stream import VelocityStream
+from valiant.core.nav.visual_servo import VisualServo
+from valiant.perception.types import RangeFix
+
+
+class MavlinkDriver:
+    """Drive GUIDED velocity setpoints from a RangeFix."""
+
+    def __init__(self, master: mavutil.mavfile, cfg: dict):
+        self.master = master
+        self.servo = VisualServo(master, cfg)
+        self.cfg = cfg
+        self._gimbal_pitch = bool(cfg.get("gimbal", {}).get("enabled", False))
+        self._lateral_blend = float(cfg.get("auto_nav", {}).get("lateral_pixel_blend", 0.3))
+        self._vel_stream = VelocityStream(self.servo)
+
+    def start_velocity_stream(self) -> None:
+        self._vel_stream.start()
+
+    def stop_velocity_stream(self) -> None:
+        self._vel_stream.stop()
+
+    def move_toward_target(
+        self,
+        fix: RangeFix,
+        frame_w: int,
+        frame_h: int,
+        *,
+        approach_speed: float = 0.3,
+        camera_down: bool = True,
+        vz_ned: float = 0.0,
+    ) -> None:
+        self._vel_stream.start()
+        px, py = fix.servo_px
+        if self._gimbal_pitch:
+            py = fix.target_px[1]
+        vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
+        alpha = self._lateral_blend
+        vel_right = alpha * vel_right
+        if self._gimbal_pitch:
+            self.servo.send_velocity_body(approach_speed, vel_right, vz_ned)
+            return
+        if camera_down:
+            self.servo.send_velocity_body(-vel_vertical, vel_right, approach_speed + vz_ned)
+        else:
+            self.servo.send_velocity_body(approach_speed, vel_right, vel_vertical + vz_ned)
+
+    def hold_center(
+        self,
+        fix: RangeFix,
+        frame_w: int,
+        frame_h: int,
+        *,
+        camera_down: bool = True,
+        vz_ned: float = 0.0,
+    ) -> None:
+        px, py = fix.servo_px
+        if self._gimbal_pitch:
+            py = fix.target_px[1]
+        vel_right, vel_vertical = self.servo.compute_velocity(px, py, frame_w, frame_h)
+        vel_right *= self._lateral_blend
+        if self._gimbal_pitch:
+            self.servo.send_velocity_body(0.0, vel_right, vz_ned)
+            return
+        if camera_down:
+            self.servo.send_velocity_body(-vel_vertical, vel_right, vz_ned)
+        else:
+            self.servo.send_velocity_body(0.0, vel_right, vel_vertical + vz_ned)
+
+    def hold_position(self, *, vz_ned: float = 0.0) -> None:
+        """Keep streaming a zero horizontal velocity setpoint in GUIDED."""
+        self._vel_stream.start()
+        self.servo.send_velocity_body(0.0, 0.0, vz_ned)
+
+    def stop(self) -> None:
+        self._vel_stream.stop()
+        self.servo.stop()
+
+    def search_velocity(self, vx: float, vy: float, vz: float = 0.0) -> None:
+        self._vel_stream.start()
+        self.servo.send_velocity_body(vx, vy, vz)
+
+    def search_motion(
+        self,
+        vx: float,
+        vy: float,
+        vz: float = 0.0,
+        *,
+        yaw_rate: float | None = None,
+    ) -> None:
+        self._vel_stream.start()
+        if yaw_rate is not None and abs(yaw_rate) > 1e-4:
+            if abs(vx) + abs(vy) + abs(vz) > 1e-4:
+                self.servo.send_velocity_body(vx, vy, vz)
+            else:
+                self.servo.send_yaw_rate(yaw_rate)
+        else:
+            self.servo.send_velocity_body(vx, vy, vz)

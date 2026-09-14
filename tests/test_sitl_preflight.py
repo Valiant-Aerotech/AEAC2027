@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from valiant.autonomy.sitl_preflight import (
+from valiant.core.flight.preflight import (
     _ekf_flags_nav_ready,
     _is_sitl_nav_ready,
     _parse_ekf_statustext,

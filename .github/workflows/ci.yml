@@ -45,7 +45,7 @@ jobs:
           pip install -e ".[dev,cv]"
       - name: Import smoke
         run: |
-          python -c "from valiant.common.mavlink import connection_error_hints; from valiant.autonomy.flight.profile import mavlink_connection_for_gcs"
+          python -c "from valiant.core.mavlink import connection_error_hints; from valiant.core.flight.profile import mavlink_connection_for_gcs"
       - name: pytest
         run: |
           python -m pytest \
@@ -72,7 +72,7 @@ jobs:
           pip install -e ".[dev,cv]"
       - name: Import smoke
         run: |
-          python -c "from valiant.autonomy.auto_nav.planner import MotionPlanner; from valiant.common.sitl_physics import refresh_vehicle_pose"
+          python -c "from valiant.core.nav.approach import MotionPlanner; from valiant.sim.physics import refresh_vehicle_pose"
       - name: pytest
         run: |
           python -m pytest \
@@ -102,7 +102,7 @@ jobs:
           pip install -e ".[dev,cv]"
       - name: Import smoke
         run: |
-          python -c "from valiant.autonomy.cv import create_target_detector, draw_mission_overlay; from valiant.autonomy.metric_recon import create_metric_reconstructor; from valiant.autonomy.auto_nav import create_motion_planner; from valiant.autonomy.spray import is_aimed"
+          python -c "from valiant.perception.detect import create_target_detector, draw_mission_overlay; from valiant.perception.metric_recon import create_metric_reconstructor; from valiant.core.nav import create_motion_planner; from valiant.autonomy.spray import is_aimed"
       - name: pytest
         run: |
           python -m pytest \
@@ -129,7 +129,7 @@ jobs:
         run: python tools/bench/verify_env.py
       - name: Import smoke
         run: |
-          python -c "from valiant.autonomy.orchestrator import AutoExtinguisher; from valiant.common.config import load_config; load_config('rpas')"
+          python -c "from valiant.autonomy.orchestrator import AutoExtinguisher; from valiant.core.config import load_config; load_config('rpas')"
       - name: pytest
         run: |
           python -m pytest \

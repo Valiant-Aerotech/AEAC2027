@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from valiant.autonomy.cv.subframe_grid import (
+from valiant.perception.detect.subframe_grid import (
     convert_to_cropped_coords,
     crop_to_grid,
     get_spiral_order,

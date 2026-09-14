@@ -1,60 +1,108 @@
-"""Tests for multi-mission synthetic SITL camera."""
+"""Synthetic SITL cameras: world projection and scripted timelines."""
 
 from __future__ import annotations
 
-from valiant.common.synthetic_target_camera import SyntheticTargetCamera
+import math
+
+from valiant.core.kinematics import VehiclePose
+from valiant.perception.camera.factory import camera_synthetic_detections, resolve_backend
+from valiant.sim.cameras import SyntheticTimelineCamera, SyntheticWorldCamera
+
+WORLD = "tests/fixtures/sitl_survey_world.json"
+TIMELINE = "tests/fixtures/sitl_timeline.json"
 
 
-def test_synthetic_multi_has_world_scene():
-    cam = SyntheticTargetCamera("tests/fixtures/sitl_synthetic_multi.json")
-    assert cam.world_scene is not None
-    assert len(cam.world_scene.get("targets", [])) == 2
+def _overhead(north_m: float, east_m: float, alt_m: float) -> VehiclePose:
+    return VehiclePose(x=north_m, y=east_m, z=-alt_m, ok=True)
 
 
-def test_synthetic_multi_produces_target():
-    cam = SyntheticTargetCamera("tests/fixtures/sitl_synthetic_multi.json")
-    frame = cam.get_frame()
-    assert frame is not None
-    pkt = cam.get_synthetic_cv_packet()
-    assert pkt is not None and pkt.has_dry_target
+def test_world_camera_loads_the_scene():
+    cam = SyntheticWorldCamera(WORLD)
+    assert len(cam.world_scene["targets"]) == 7
 
 
-def test_synthetic_multi_extinguish_and_advance():
-    cam = SyntheticTargetCamera("tests/fixtures/sitl_synthetic_multi.json")
+def test_world_camera_sees_nothing_when_pointed_away():
+    cam = SyntheticWorldCamera(WORLD)
+    # Far south of every decoy, camera forward along +north but they are behind.
+    cam.set_vehicle_pose(_overhead(600.0, 0.0, 40.0))
     cam.get_frame()
-    cam.mark_extinguished_engaged()
-    assert cam.world_scene["targets"][0].get("extinguished")
-    assert cam.advance_to_next_mission()
-    pkt = cam.get_synthetic_cv_packet()
-    assert pkt is not None and pkt.has_dry_target
+    frame = cam.synthetic_detections()
+    assert frame is not None and not frame.detections
 
 
-def test_legacy_timeline_still_works():
-    cam = SyntheticTargetCamera("tests/fixtures/sitl_approach.json")
-    assert cam.world_scene is None
+def test_world_camera_detects_targets_ahead():
+    cam = SyntheticWorldCamera(WORLD)
+    cam.set_vehicle_pose(_overhead(120.0, -40.0, 40.0))
+    cam.get_frame()
+    frame = cam.synthetic_detections()
+    assert frame is not None and frame.detections
+    assert all(d.label == "deer" for d in frame.detections)
+
+
+def test_tag_text_only_appears_once_the_bbox_is_big_enough():
+    cam = SyntheticWorldCamera(WORLD)
+    # High and far: the decoy subtends few pixels, so the code is illegible.
+    cam.set_vehicle_pose(_overhead(60.0, -40.0, 90.0))
+    cam.get_frame()
+    far = cam.synthetic_detections()
+    assert far is not None and all(not d.text for d in far.detections)
+
+    # Close in: at least one code becomes readable.
+    cam.set_vehicle_pose(_overhead(175.0, -40.0, 4.0))
+    cam.get_frame()
+    near = cam.synthetic_detections()
+    assert near is not None
+    assert any(d.text for d in near.detections)
+
+
+def test_targets_grow_as_the_aircraft_descends():
+    cam = SyntheticWorldCamera(WORLD)
+    cam.set_gimbal_pwm(2000)  # look straight down
+
+    def area_overhead_of_d1(alt_m: float) -> int:
+        cam.set_vehicle_pose(_overhead(180.0, -40.0, alt_m))
+        cam.get_frame()
+        return max(d.area for d in cam.synthetic_detections().detections)
+
+    assert area_overhead_of_d1(20.0) > area_overhead_of_d1(90.0)
+
+
+def test_marking_done_removes_a_target_from_detections():
+    cam = SyntheticWorldCamera(WORLD)
+    cam.set_vehicle_pose(_overhead(120.0, -40.0, 40.0))
+    cam.get_frame()
+    before = len(cam.synthetic_detections().detections)
+    assert before > 0
+
+    cam.mark_done()
+    cam.get_frame()
+    assert len(cam.synthetic_detections().detections) == before - 1
+
+
+def test_world_camera_reports_depth():
+    cam = SyntheticWorldCamera(WORLD)
+    cam.set_vehicle_pose(_overhead(120.0, -40.0, 40.0))
+    cam.get_frame()
+    assert cam.depth_ok
+    assert math.isfinite(float(cam.depth_mm[0, 0]))
+
+
+def test_timeline_camera_produces_a_detection():
+    cam = SyntheticTimelineCamera(TIMELINE)
     assert cam.get_frame() is not None
+    frame = cam.synthetic_detections()
+    assert frame is not None and len(frame.detections) == 1
+    assert frame.detections[0].label == "deer"
 
 
-def test_synthetic_keyframes_follow_wall_range():
-    from valiant.common.sitl_physics import VehiclePose
+def test_factory_resolves_sim_backends_lazily_by_string():
+    # Perception must not statically import sim; the registry holds paths.
+    assert resolve_backend("synthetic_world") is SyntheticWorldCamera
+    assert resolve_backend("synthetic") is SyntheticTimelineCamera
 
-    cam = SyntheticTargetCamera("tests/fixtures/sitl_synthetic_multi.json")
-    cam.set_vehicle_pose(VehiclePose(x=0.0, y=0.0, z=-2.8, ok=True))
+
+def test_camera_synthetic_detections_helper():
+    cam = SyntheticTimelineCamera(TIMELINE)
     cam.get_frame()
-    far_depth = float(cam.depth_mm[0, 0]) / 1000.0
-    far_area = cam.get_synthetic_cv_packet().dry[0].area
-
-    cam.set_vehicle_pose(VehiclePose(x=3.85, y=0.3, z=-1.5, ok=True))
-    cam.get_frame()
-    close_depth = float(cam.depth_mm[0, 0]) / 1000.0
-    close_area = cam.get_synthetic_cv_packet().dry[0].area
-
-    assert far_depth > close_depth
-    assert close_area > far_area
-
-
-def test_synthetic_without_pose_defaults_to_far_keyframe():
-    cam = SyntheticTargetCamera("tests/fixtures/sitl_synthetic_multi.json")
-    cam.get_frame()
-    depth = float(cam.depth_mm[0, 0]) / 1000.0
-    assert depth >= 3.4
+    assert camera_synthetic_detections(cam) is not None
+    assert camera_synthetic_detections(object()) is None
