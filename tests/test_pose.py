@@ -48,7 +48,7 @@ def _ned_msg(x: float, y: float = 0.0, z: float = -10.0) -> _FakeMsg:
 def test_wait_vehicle_pose_updates_position_with_previous_ok(monkeypatch):
     """Regression: previous.ok must not skip draining new LOCAL_POSITION_NED."""
     monkeypatch.setattr(
-        "valiant.core.pose.request_sitl_telemetry_streams",
+        "valiant_mav.pose.request_sitl_telemetry_streams",
         lambda _master: None,
     )
     previous = VehiclePose(x=2.0, y=0.0, z=-10.0, ok=True)

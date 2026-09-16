@@ -9,24 +9,7 @@ from typing import Any
 
 import numpy as np
 
-
-@dataclass
-class VehiclePose:
-    """Latest vehicle state in LOCAL NED (metres, radians)."""
-
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
-    roll: float = 0.0
-    pitch: float = 0.0
-    yaw: float = 0.0
-    vx: float = 0.0
-    vy: float = 0.0
-    vz: float = 0.0
-    ok: bool = False
-    lat: float | None = None
-    lon: float | None = None
-    alt_agl_m: float | None = None
+from valiant_mav.kinematics import VehiclePose, alt_m_from_z
 
 
 class ApproachPhase(str, Enum):
@@ -41,11 +24,6 @@ class ApproachGoal:
 
     position_ned: np.ndarray
     phase: ApproachPhase = ApproachPhase.ALIGN
-
-
-def alt_m_from_z(z: float) -> float:
-    """Altitude above NED origin (metres); ArduPilot z is positive down."""
-    return -float(z)
 
 
 def z_from_alt_m(alt_m: float) -> float:

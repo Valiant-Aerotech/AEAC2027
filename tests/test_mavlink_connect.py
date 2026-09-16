@@ -13,16 +13,15 @@ from valiant.core.mavlink import (
 
 def test_hints_windows_dev_tty_suggests_com():
     cause = OSError(2, "The system cannot find the path specified.")
-    with patch("valiant.core.mavlink.sys.platform", "win32"):
+    with patch("valiant_mav.mavlink.sys.platform", "win32"):
         hints = connection_error_hints("/dev/ttyAMA0", cause)
     assert any("GCS laptop" in h for h in hints)
     assert any("COM5" in h for h in hints)
-    assert any("rpas.yaml" in h for h in hints)
 
 
 def test_hints_linux_missing_uart():
     cause = OSError(2, "No such file or directory")
-    with patch("valiant.core.mavlink.sys.platform", "linux"):
+    with patch("valiant_mav.mavlink.sys.platform", "linux"):
         hints = connection_error_hints("/dev/ttyAMA0", cause)
     assert any("raspi-config" in h for h in hints)
     assert not any("GCS laptop" in h for h in hints)
@@ -38,7 +37,7 @@ def test_hints_com_device_manager():
 def test_hints_tcp_refused_sitl():
     cause = ConnectionRefusedError(10061, "connection refused")
     hints = connection_error_hints("tcp:127.0.0.1:5760", cause)
-    assert any("launch_sitl" in h for h in hints)
+    assert any("sim_vehicle" in h for h in hints)
 
 
 def test_hints_udp_timeout_heartbeat():

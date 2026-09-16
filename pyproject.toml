@@ -13,6 +13,7 @@ dependencies = [
     "opencv-python>=4.8",
     "pymavlink>=2.4",
     "PyYAML>=6.0",
+    "valiant-mav @ file:../valiant-mav",
 ]
 
 [project.optional-dependencies]

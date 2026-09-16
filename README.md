@@ -2,6 +2,10 @@
 
 Valiant Aerotech competition software for AEAC 2027.
 
+The ArduCopter MAVLink / SITL library lives in the sibling repo
+[`valiant-mav`](https://github.com/Valiant-Aerotech/valiant-mav). Install that
+first (`pip install -e ../valiant-mav`), then this package.
+
 **Never run this before?** → **[START_HERE.md](START_HERE.md)** (read this first)
 
 **New team member?** → [WELCOME.md](WELCOME.md) → [ONBOARDING.md](ONBOARDING.md)

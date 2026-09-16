@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
-import time
+from valiant_mav.hud import (
+    HUD_PREFIX,
+    MAX_STATUSTEXT_LEN,
+    GcsHudReporter,
+    notify_crew,
+)
 
-from pymavlink import mavutil
-
-from valiant.core.errors import clip_crew_message
-from valiant.core.mavlink import GcsStatustextOptions, send_statustext_for_gcs
-
-HUD_PREFIX = "VA: "
-MAX_STATUSTEXT_LEN = 50
+__all__ = [
+    "GcsHudReporter",
+    "HUD_PREFIX",
+    "MAX_STATUSTEXT_LEN",
+    "ORBIT_PHASE_LABELS",
+    "STATE_HUD_LABELS",
+    "format_orbit_status",
+    "format_sitl_status_line",
+    "format_state_transition",
+    "human_state_label",
+    "notify_crew",
+]
 
 # Flight-line friendly labels (no sensor numbers). Keys cover both mission
 # runners; unknown states fall through to the raw state name.
@@ -90,69 +100,3 @@ def format_sitl_status_line(
         line = label
     return line[: MAX_STATUSTEXT_LEN - len(HUD_PREFIX.encode())]
 
-
-class GcsHudReporter:
-    """Send companion STATUSTEXT (max 50 chars) without flooding the GCS."""
-
-    def __init__(
-        self,
-        master: mavutil.mavfile,
-        *,
-        prefix: str = HUD_PREFIX,
-        interval_s: float = 3.0,
-        options: GcsStatustextOptions | None = None,
-    ):
-        self._master = master
-        self._prefix = prefix
-        self._interval_s = max(0.5, interval_s)
-        self._options = options or GcsStatustextOptions()
-        self._last_sent = 0.0
-        self._last_body = ""
-        self._mirror: mavutil.mavfile | None = None
-        mirror_url = self._options.sitl_mp_mirror
-        if mirror_url:
-            try:
-                self._mirror = mavutil.mavlink_connection(mirror_url)
-            except Exception as exc:
-                print(f"[GCS] WARN: sitl_mp_mirror connect failed ({mirror_url}): {exc}")
-
-    def close(self) -> None:
-        if self._mirror is not None:
-            try:
-                self._mirror.close()
-            except Exception:
-                pass
-            self._mirror = None
-
-    def send(self, message: str, *, force: bool = False) -> None:
-        body = message.strip()
-        if not body:
-            return
-        max_body = MAX_STATUSTEXT_LEN - len(self._prefix.encode("utf-8", errors="ignore"))
-        body = clip_crew_message(body, limit=max_body)
-        now = time.time()
-        if not force:
-            if body == self._last_body:
-                return
-            if now - self._last_sent < self._interval_s:
-                return
-        send_statustext_for_gcs(
-            self._master,
-            body,
-            prefix=self._prefix,
-            options=self._options,
-            mirror=self._mirror,
-        )
-        self._last_body = body
-        self._last_sent = now
-
-
-def notify_crew(hud: GcsHudReporter | None, message: str, *, force: bool = True) -> None:
-    """Print a crew message and send it to Mission Planner if a HUD exists.
-
-    Modules without a motion runner (param readback, perception) use this so
-    the crew still sees the warning on the same channel as everything else.
-    """
-    print(f"[Crew] {message}")
-    if hud is not None:
-        hud.send(message, force=force)
