@@ -3,6 +3,12 @@
 Each type is capped at five occurrences; the criterion floors at zero. The
 estimator exists so the crew can see which problems are still worth fixing
 mid-flight: once a type has fired five times it is free.
+
+A disconnect is one of those five occurrences. Inside that occurrence the
+penalty still grows: -5 at 30 s, then -1 per further 15 s, with no stop on
+length. That growth does not consume another occurrence. This is a CONOPS
+5.2.3 reading to confirm with the server. The other reading would count
+every 15 s tick toward the cap of five.
 """
 
 from __future__ import annotations
@@ -78,6 +84,12 @@ class PenaltyBook:
         self._counts[kind] = self.count(kind) + 1
         return event
 
+    def _grow(self, kind: PenaltyType, points: int, now: float, detail: str) -> PenaltyEvent:
+        """Add points inside an occurrence that is already open. Does not use the cap."""
+        event = PenaltyEvent(kind=kind, points=points, at_s=now, detail=detail)
+        self.events.append(event)
+        return event
+
     def _burst_ok(self, kind: PenaltyType, now: float) -> bool:
         last = self._last_burst.get(kind)
         if last is not None and now - last < BURST_WINDOW_S:
@@ -149,8 +161,10 @@ class PenaltyBook:
     def note_silence(self, now: float, last_packet_at: float | None, *, armed: bool) -> PenaltyEvent | None:
         """Call when the scheduler ticks and no packet was sent.
 
-        First occurrence at 30 s of silence while armed: -5. Each further
-        15 s: -1. Both count toward the five-occurrence cap on DISCONNECT.
+        First occurrence at 30 s of silence while armed: -5, and that is one
+        of the five capped disconnects. Each further 15 s: -1, with no stop
+        on length and no extra occurrence. CONOPS 5.2.3 reading to confirm
+        with the server.
         """
         if not armed or last_packet_at is None:
             return None
@@ -158,9 +172,17 @@ class PenaltyBook:
         if gap < DISCONNECT_FIRST_S:
             return None
         if self._disconnect_open_at is None:
+            event = self._record(PenaltyType.DISCONNECT, POINTS["disconnect"], now, "30s silence")
+            if event is None:
+                return None
             self._disconnect_open_at = last_packet_at + DISCONNECT_FIRST_S
-            return self._record(PenaltyType.DISCONNECT, POINTS["disconnect"], now, "30s silence")
+            return event
         if now - self._disconnect_open_at >= DISCONNECT_REPEAT_S:
             self._disconnect_open_at = now
-            return self._record(PenaltyType.DISCONNECT, POINTS["disconnect_tick"], now, "disconnect tick")
+            return self._grow(
+                PenaltyType.DISCONNECT,
+                POINTS["disconnect_tick"],
+                now,
+                "disconnect tick",
+            )
         return None

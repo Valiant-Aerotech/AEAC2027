@@ -1,7 +1,7 @@
 """Competition telemetry packet (CONOPS 5.2.3.3.b).
 
-Field names follow the CONOPS list. Extra keys are rejected so a future
-schema change cannot silently ship a field the server will not score.
+Python field names stay stable for logs and the penalty book. ``to_wire``
+is the camelCase payload the competition websocket accepts.
 
 Invalid-GPS rules match Comp Server Support (Waleed, 2026-09-27): no-fix is
 lat and lon both 0, or horizontal accuracy non-finite or <= 0. There is no
@@ -28,9 +28,20 @@ REQUIRED_FIELDS = (
     "link_quality",
 )
 
+FLIGHT_MODES = frozenset({"off", "idle", "link-lost", "failsafe", "armed-pilot", "armed-automatic"})
+ARMED_MODES = frozenset({"armed-pilot", "armed-automatic"})
+
 
 def _finite(value: float) -> bool:
     return math.isfinite(value)
+
+
+def _link_bit(value: float) -> int | None:
+    if value == 0 or value == 0.0:
+        return 0
+    if value == 1 or value == 1.0:
+        return 1
+    return None
 
 
 @dataclass(frozen=True)
@@ -44,7 +55,10 @@ class TelemetryPacket:
     battery_pct: float
     flight_mode: str
     link_quality: float
-    armed: bool = True
+
+    @property
+    def armed(self) -> bool:
+        return self.flight_mode in ARMED_MODES
 
     def validation_reject_reason(self) -> str | None:
         """Return a reject reason, or None if the packet may be scored.
@@ -67,6 +81,12 @@ class TelemetryPacket:
                 return f"non-finite {name}"
         if not (-90.0 <= self.lat <= 90.0 and -180.0 <= self.lon <= 180.0):
             return "lat/lon out of range"
+        if self.flight_mode not in FLIGHT_MODES:
+            return "flight mode"
+        if not 0.0 <= self.battery_pct <= 100.0:
+            return "battery"
+        if _link_bit(self.link_quality) is None:
+            return "link status"
         return None
 
     def gps_valid(self) -> bool:
@@ -96,8 +116,30 @@ class TelemetryPacket:
             "link_quality": self.link_quality,
         }
 
+    def to_wire(self, *, unix_time: float | None = None) -> dict[str, Any]:
+        """CamelCase payload for the competition websocket.
+
+        ``verticalPositionAccuracy`` copies horizontal accuracy.
+        ``rcLinkStatus`` copies the telemetry link bit. Both are 0 or 1.
+        """
+        link = _link_bit(self.link_quality)
+        bit = 0 if link is None else link
+        return {
+            "uavId": self.uav_id,
+            "unixTime": self.timestamp if unix_time is None else unix_time,
+            "latitude": self.lat,
+            "longitude": self.lon,
+            "altitudeAGL": self.alt_agl_m,
+            "horizontalPositionAccuracy": self.accuracy_m,
+            "verticalPositionAccuracy": self.accuracy_m,
+            "batteryPercentage": self.battery_pct,
+            "mode": self.flight_mode,
+            "telemetryLinkStatus": bit,
+            "rcLinkStatus": bit,
+        }
+
     @classmethod
-    def from_dict(cls, data: dict[str, Any], *, armed: bool = True) -> TelemetryPacket:
+    def from_dict(cls, data: dict[str, Any]) -> TelemetryPacket:
         missing = [name for name in REQUIRED_FIELDS if name not in data]
         extra = [key for key in data if key not in REQUIRED_FIELDS]
         if missing:
@@ -114,7 +156,6 @@ class TelemetryPacket:
             battery_pct=float(data["battery_pct"]),
             flight_mode=str(data["flight_mode"]),
             link_quality=float(data["link_quality"]),
-            armed=armed,
         )
 
     @classmethod
@@ -129,7 +170,6 @@ class TelemetryPacket:
         battery_pct: float,
         flight_mode: str,
         link_quality: float,
-        armed: bool = True,
         clock=time.time,
     ) -> TelemetryPacket:
         return cls(
@@ -142,5 +182,4 @@ class TelemetryPacket:
             battery_pct=battery_pct,
             flight_mode=flight_mode,
             link_quality=link_quality,
-            armed=armed,
         )
