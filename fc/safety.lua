@@ -1,12 +1,9 @@
 -- Independent kill switch, running on the flight controller itself.
 --
 -- Watches RC channel 8. When the switch goes high the aircraft is put into
--- LAND, and once it is no longer flying it is disarmed. This runs on the FC,
--- so it works with the companion computer powered off, crashed or unplugged -
--- which is the point. It is the last line of defence and must not depend on
--- anything we wrote in Python.
+-- LAND, and once it is no longer flying it is disarmed. 
 --
--- Bench-test the polarity before every field day: arm on the bench with props
+-- Bench-test the polarity before every time you wanna fly: arm on the bench with props
 -- off, flip the switch, confirm "kill switch ARMED" appears in the Mission
 -- Planner Messages tab, and confirm it does NOT appear at rest.
 

@@ -1,11 +1,11 @@
-Onboard workspace for the aircraft. ROS 2 Jazzy, on the existing Ubuntu 24.04 WSL distro.
+we're using ROS 2 Jazzy, on the Ubuntu 24.04
 
 ```bash
 source /opt/ros/jazzy/setup.bash
 colcon build
 ```
 
-Slots under `src/`:
+folders under `src/`:
 
 - `interfaces` — shared messages
 - `offboard` — setpoint stream
