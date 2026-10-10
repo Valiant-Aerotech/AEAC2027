@@ -1,0 +1,1092 @@
+AEAC 2027 Student Competition
+Concept of Operations (CONOPS) v1.0, 2026-09-08
+
+AERIAL EVOLUTION ASSOCIATION OF CANADA 2027 STUDENT COMPETITION CONCEPT OF OPERATION
+(CONOPS) DOCUMENT This CONOPS document is in the form of a Request for Proposal (RFP)
+from the Hooved Ecological Resources Division (HERD), a branch of a fictitious local
+conservation organization, for an aerial wildlife surveying system. Student teams will
+act as industry bidders to create concepts, design a Uncrewed Aerial System (UAS), write
+design papers in the format of proposal responses to the RFP, and compete in a sub-scale
+assessment of their designs. Note that references to ‘BVLOS’ in the document refer to
+the inability of the flight line crew to see the UAS; competition staff will act as on-
+site spotters such that actual BVLOS will not be performed. Refer any comments on this
+document to the Competition Chief Judge, Katrina Cecco, at
+katrina.cecco@aerialevolution.ca.
+
+RECORD OF AMENDMENTS Amendments are highlighted. Version # Date Comments/Changes
+
+1.0 2026-09-08 Initial issue
+
+Table of Contents
+
+1. Overview 4
+
+1.1. Background 4
+
+1.2. Assessment Format 4
+
+1.3. Phase 1: Proposal 4
+
+1.4. Phase 2: Flight Demonstration 4
+
+1.5. Phase 3: Mission Report 4
+
+2. Schedule and Deliverables 5
+
+2.1. CONOPS Published 2026-09-08 5
+
+2.2. Team Registration 2026-11-27 6
+
+2.3. Phase 1 Proposal 2027-01-15 1700 ET 6
+
+2.4. Flight Window Selection 2027-03-02 6
+
+2.5. Members Registration 2027-03-12 7
+
+2.6. FRR Documents 2027-04-28 7
+
+2.7. FRR Safety Demonstration before first flight window 7
+
+2.8. Phase 2 Flight Assessment 2027-05-14 to 2027-05-16 7
+
+2.9. Phase 3 Mission Report 2027-05-26 1700 ET 8
+
+3. Logistical Requirements 9
+
+3.1. Team Composition 9
+
+3.2. Team Size 9
+
+3.3. Registration Fees 9
+
+3.4. Phase 2 Accommodations and Travel 9
+
+3.5. Team Capacity 10
+
+3.6. Livestreaming and Posting 10
+
+3.7. Uncooperative Conduct 10
+
+4. Operational Requirements 11
+
+4.1. Statement on Regulatory and Safety Compliance 11
+
+4.2. Flight Safety 11
+
+4.3. Flight Crew 12
+
+4.4. Pilot and RPAS Licencing 12
+
+4.5. Flight Termination System 13
+
+4.6. Mission Requirements 13
+
+4.7. UAS Design Constraints 13
+
+4.8. FRR Documents 14
+
+4.9. FRR Safety Demonstration 15
+
+5. Assessments 16
+
+5.1. Phase 1 Proposal 16
+
+5.2. Phase 2 Flight Assessment 18
+
+5.2.1. Scenario and Site 18
+
+5.2.2. Bidder’s Presentation 19
+
+5.2.3. Task 1: Herd Survey 19
+
+5.2.4. Task 2: Tag, Track, and Sample 23
+
+5.2.5. Flight Preparation 26
+
+5.3. Phase 3 Mission Report 27
+
+Appendix A: Abbreviations 29
+
+Appendix B: Contact List 30
+
+Appendix C: Flight Boundary GPS Coordinates 31
+
+Appendix D: Sample Task 2 CSV File 32
+
+Appendix E: How to Maximize Your Success! 33 Planning 33 System Design 33 Preparation at
+Home 34 On the Flight Line 35 Papers and Presentations 35
+
+Appendix F: Teams Q&A 36
+
+1. Overview
+
+This is a competitive Call for Proposals for design, development, and assessment of a
+wildlife surveying UAS.
+
+1.1. Background
+
+The Hooved Ecological Resources Department (HERD) supports the well-being of wild
+ungulate populations in and around Medicine Hat, Alberta through various conservation
+initiatives including herd population surveys, animal tagging, and medical interventions
+for diseased or injured wildlife. HERD is appealing for a UAS that can assist
+conservationists with animal surveying, tagging, and tracking in remote areas. This
+technology will enable remote management of Alberta’s astounding variety of ecological
+regions including grasslands, parkland, and forests. Note: this mission will simulate
+encounters with wildlife through the use of animal decoys. No real animals will be part
+of the mission.
+
+1.2. Assessment Format
+
+The competition comprises three main deliverables: the Phase 1 Proposal, the Phase 2
+Flight Demonstration, and Phase 3 Mission Report. Details on each assessment can be
+found in Section 5: Assessments. There will be separate awards for each phase. All
+bidders must complete Phase 1 by submission of a Proposal to be eligible to participate
+in Phase
+
+2. Participation in Phase 2 is required to be eligible for participation in Phase
+
+3. The bidders placing top three in each phase will be eligible for monetary prizes.
+
+1.3. Phase 1: Proposal
+
+Bidders will submit a proposal in response to the RFP detailing the specifications of
+their system, their development process, and their proposed mission strategy. Phase 1
+will occur virtually.
+
+1.4. Phase 2: Flight Demonstration
+
+Bidders will participate in a simulated wildlife survey mission to demonstrate the
+capabilities of their subscale prototype. Phase 2 will take place 2027-05-14 to
+2027-05-16 at the Medicine Hat RC’ers Club at Len Young Memorial Airfield in Medicine
+Hat, Alberta, and will be hosted by Community Futures Entre-Corp. Eligibility for Phase
+2 is determined by the ranking achieved by bidders in Phase 1.
+
+1.5. Phase 3: Mission Report
+
+Following the flight demonstration, bidders will submit a mission report debriefing
+their system’s performance. Phase 3 will occur virtually.
+
+2. Schedule and Deliverables
+
+The competition requires the submission of multiple administrative and assessment
+deliverables; a deliverables summary is shown in Table
+
+1. Teams are encouraged to contact the competition organizers with any question
+regarding the deliverables – well in advance of the deadlines – to ensure correct and
+timely submissions. All deliverable deadlines are at 2359 in the Eastern time zone (ET)
+unless otherwise stated. It is each team’s responsibility to ensure they submit
+materials on time, including adjustments for their local time zone. Some of the
+deliverables include multiple steps. All components of each deliverable must be complete
+by the stated deadline. Upon expression of interest, teams will be provided with a
+shared Google Drive to upload their deliverables; all deliverables are to be uploaded to
+a team’s shared Google Drive unless otherwise stated. The time of upload reported on
+Google Drive will be taken as the submission time. It is critical that the
+administrative deadlines are met to ensure your team’s participation in the competition.
+Table 1: Schedule and Deliverables Summary Event Date CONOPS Published 2026-09-08 Team
+Registration 2026-11-27 Phase 1 Proposal 2027-01-15 1700 ET Flight Window Selection
+2027-03-02 Members Registration 2027-03-12 FRR Documents 2027-04-28 FRR Safety
+Demonstration before first flight window Phase 2 Flight Assessment 2027-05-14 to
+2027-05-16 Phase 3 Mission Report 2027-05-26 1700 ET
+
+2.1. CONOPS Published 2026-09-08
+
+The CONOPS may be updated at any time without notice. The latest version is available at
+https://www.aerialevolution.ca/2027-student- competition/. Registered teams or teams who
+have expressed interest will receive CONOPS update notifications through their team
+contact email.
+
+2.2. Team Registration 2026-11-27 First, teams must express their interest in
+participating in the competition by sending an email to competition@aerialevolution.ca
+with the following information: university/college name, team name, team contact email,
+and team Google Drive compatible email. A Google Drive compatible email is an email
+linked to a Google account. Google accounts can be created for free at
+https://accounts.google.com/signupwithoutgmail. Teams will be given access to a Google
+Drive folder for submission of the required deliverables. Second, teams must submit the
+following information and documents through their Google Drive folder: captain contact
+information (different from team contact), team description document, team logo, team
+photo, and estimated number of team members attending Phase
+
+2. It is strongly recommended that teams use a team email address instead of a member’s
+personal email as their team contact email. Lastly, teams must submit their team payment
+at https://www.aerialevolution.ca/join/#join. All the information above and the team
+payment must be submitted before the 2026-11-27 deadline.
+
+2.3. Phase 1 Proposal 2027-01-15 1700 ET
+
+The criteria for the proposal are outlined in Section 5.1: Phase 1 Proposal. Teams will
+be notified of the complete Phase 1 participant rankings by 2027-02-26. Phase 1
+submissions will be made publicly available to all competitors following the completion
+of Phase 2, and will be available to all future competitors in the following year.
+
+2.4. Flight Window Selection 2027-03-02
+
+The Phase 1 participant rankings determine the Phase 2 flight order. Teams will select
+their Phase 2 flight window one at a time, starting with the team that ranked first
+place in Phase 1, and ending with the team that ranked last in Phase
+
+1. The Phase 2 flight schedule will be divided into morning and afternoon time slots,
+see Section 2.8: Phase 2 Flight Assessment. Each team will select a flight window in the
+morning or the afternoon time slot, and their order within that time slot (e.g. 4th in
+the morning). The flight window selection process will start on 2027-03-02. Teams will
+receive instructions by email on how to choose their flight window. The flight schedule
+depends on the number of teams participating and will be communicated to teams before
+2027-03-02. The committee reserves the right to change the flight schedule; however,
+teams will be guaranteed to fly in the morning or afternoon time slot as per their
+selection. Judges will decide how to allocate flight windows to unresponsive teams on a
+case-by-case basis. In the event that a team chooses a Phase 2 flight window and later
+fails to meet the Phase 2 requirements, the flight window they chose will be forfeited.
+Other teams’ flight window selections will remain unchanged.
+
+2.5. Members Registration 2027-03-12 First, teams must submit the following information
+and documents: Phase 2 team list and insurance proof (see Section 4.9: FRR Documents).
+Second, teams must submit their per member payments. All the information above and the
+per member payments must be submitted before the 2027-03-12 deadline.
+
+2.6. FRR Documents 2027-04-28
+
+Teams must submit all the Flight Readiness Review (FRR) documents listed in Section 4.7:
+FRR Document. Following the deadline, judges will review all components of the FRR and
+may request amendments to ensure compliance. All aspects of the FRR must be completed
+and approved by judges before teams are permitted to fly at Phase 2.
+
+2.7. FRR Safety Demonstration before first flight window
+
+Teams must do all the FRR safety demonstration items listed in Section 4.10: FRR Safety
+Demonstration. It is each team’s responsibility to schedule and perform the FRR safety
+demonstration to a judge before their flight window. The preference will be given to
+teams in order of flight window.
+
+2.8. Phase 2 Flight Assessment 2027-05-14 to 2027-05-16
+
+The high-level schedule for Phase 2 is shown in Table
+
+2. A finalized detailed schedule will be provided to teams by email on Thursday evening
+for the entire event. Teams will do their presentations on Friday morning in the same
+order as their flight window, determined by the flight window selection process outlined
+in Section 2.4: Flight Window Selection. Teams will have one flight window for each of
+the two Tasks, each of which will be approximately 30 minutes. The actual amount of time
+allotted will be announced prior to the start of the assessment flights; the allocated
+time is subject to the number of registered bidders and uncontrollable factors such as
+weather. Expect that the window length may vary from this initial estimate. The flight
+order will be the same for Tasks 1 and 2, so that each team has a roughly 24-hour gap
+between their Task 1 and Task 2 flights. Task 1 will be flown on Friday afternoon and
+Saturday morning, and Task 2 will be flown on Saturday afternoon and Sunday morning.
+Table 2: Phase 2 Schedule Fri 2027-05-14 Sat 2027-05-15 Sun 2027-05-16 Morning Safety
+briefing, Bidder presentations, FRR Task 1 mission demonstration (10 slots) Task 2
+mission demonstration (10 slots) Afternoon Task 1 mission demonstration (10 slots), FRR
+(ongoing) Task 2 mission demonstration (10 slots) Site cleanup and team photo Evening
+Award banquet
+
+2.9. Phase 3 Mission Report 2027-05-26 1700 ET
+
+The criteria and submission information for the mission report is outlined in the Phase
+3 Mission Report section.
+
+3. Logistical Requirements
+
+Teams must meet the following requirements and the administrative deadlines to be
+eligible for participation. Teams will be accepted at the discretion of the Chief Judge.
+
+3.1. Team Composition
+
+All team members must be enrolled part-time or full-time at a Canadian college or
+university for the fall 2026 and/or the winter 2027 semesters. Teams may be organized
+internally at the discretion of their members and may include graduate and undergraduate
+students. There is no restriction on the number of teams from any one institution;
+however, no individual member may be on more than one team, and proposals from different
+teams at the same institution must be substantially different. Joint teams consisting of
+students from more than one institution are permitted; for example, a joint university-
+college team is allowed.
+
+3.2. Team Size
+
+There is no minimum or maximum team size, any number of members may contribute. The
+maximum team size for on-site participation at Phase 2 is capped at 10 members due to
+logistical constraints.
+
+3.3. Registration Fees
+
+A single non-refundable team registration fee of approximately $650+HST (TBC) must be
+paid to participate in Phase
+
+1. The team registration fee is due 2026-11-27. To pay the team registration fee, select
+“AEAC Student UAS Competition Teams Registration” at
+https://www.aerialevolution.ca/join/#join. A per-member non-refundable registration fee
+of approximately $330+GST (TBC) must be paid to participate in Phase
+
+2. The per-member fee is due 2027-03-12. There is no additional fee to participate in
+Phase 3.
+
+3.4. Phase 2 Accommodations and Travel
+
+The Phase 2 member registration fee includes the following onsite accommodations for all
+participants from Thursday 2027-05-13 to Monday 2027-05-17 inclusively: - Lodging from
+Thursday to Monday - Breakfast and lunch from Friday to Sunday - Sunday awards banquet
+access, including dinner If team members have specific accommodation needs or requests
+(accessibility, allergies, rooming preference—single-gender or other) please let us know
+along with your team list. Teams are responsible for their own costs, including travel
+to and from the Phase 2 site, and the meals not included (Friday and Saturday dinner).
+Teams are responsible for their transportation between the airport, accommodations,
+award banquet, flight line and workspace. Phase 2 ends at about 2200 after the awards
+banquet on Sunday night. Departing immediately following the banquet is not endorsed by
+AEAC; teams should plan to leave on Monday to ensure safe travels home.
+
+3.5. Team Capacity
+
+There is no maximum number of teams that may participate in Phase
+
+1. A maximum of 20 teams may participate in Phase 2 due to logistical constraints. Only
+the top 20 Phase 1 ranked teams will be eligible to participate in Phase
+
+2. Teams ranked 21st and below for Phase 1 will be placed on the Phase 2 participation
+waitlist. If a spot opens up, teams on the waitlist will be contacted in order by email
+until the spot is filled.
+
+3.6. Livestreaming and Posting Participants who wish to post, stream, or otherwise make
+publicly available any information about the flight task setup or their perceived
+performance on flight tasks must wait until all competition flight windows are finished
+before doing so, unless permission has explicitly been given by the Chief Judge.
+
+3.7. Uncooperative Conduct Conduct deemed uncooperative to the safety or fairness of the
+event will not be tolerated and will result in the termination of your team’s
+participation. Examples of uncooperative conduct include, but are not limited to:
+- Arguing with judges or disobeying judges’ calls.
+- Cheating, including seeking prior knowledge about flight task setup before
+  attempting the task or falsifying data.
+- Sharing information about a flight task setup with another team who has not yet
+  attempted the task, including livestreaming or posting not in accordance with
+
+3.6 Livestreaming and Posting.
+
+4. Operational Requirements
+
+Teams must meet the following operational requirements to be eligible to fly at Phase
+
+2. Teams will be accepted at the discretion of the Chief Judge.
+
+4.1. Statement on Regulatory and Safety Compliance
+
+All flying, including flight testing at local test sites and at the Phase 2 venue, is to
+be performed under the Canadian Aviation Regulations (CARs) Part IX regulations for
+Remotely Piloted Aerial Systems (RPAS). Participants are responsible for maintaining
+operational compliance with the CARs at all times. Judges will never request an action
+from the flight crew that is not compliant with the CARs. Furthermore, it is imperative
+that participants follow all operational requirements outlined in this document. All
+requirements have been carefully selected to ensure safe operation. Judges reserve the
+right to make judgement calls on the safety of the operation, which may result in
+pausing or terminating the flight window. Participants must obey the Range Safety
+Officer (RSO) and Air Program Director’s commands, even if it means the termination of
+their UAV and/or the loss of their flight window.
+
+4.2. Flight Safety
+
+All flight missions being launched at the Medicine Hat RC’ers Club at Len Young Memorial
+Airfield will be under the control and direction of the Foremost UAS Test Range RSO
+staff. For airfield safety, all personnel inside the airfield and prescribed airspace,
+including pilot-in-command (PIC), ground crew, AEAC staff, and volunteers, shall adhere
+to the instructions of the RSO at all times. The PIC shall request permission to launch
+from the RSO prior to each take-off. During flight, a ground control station (GCS) must
+always show the aircraft’s real-time location and the competition flight area. Each UAV
+must have its own GCS display with the above information. All UAVs must remain inside
+the flight boundaries at all times and in all modes (manual, autonomous, return to home,
+etc.). Flight boundaries will be given as waypoints that form a polygon which may be
+non-convex. If the aircraft leaves the soft flight boundary (including altitude
+boundary), the operator will be required to bring it back within the boundary. If the
+operator is unable to do so, they will be ordered to activate the flight termination
+system. If the aircraft leaves the hard boundary, it must be terminated immediately. All
+anomalies with respect to the Global Positioning System (GPS), data link, radio control
+(RC) and flight boundaries must be reported to the Air Program Director. Teams may turn
+on transmitters at the start of their flight window. Teams must turn their transmitters
+OFF after their flight window has elapsed. No C2 transmissions are allowed outside the
+flight window. The sole exception to this will be when judges have given teams
+authorization to transmit during their FRR; teams must await the judges’ instructions
+before they begin any wireless transmissions as part of the FRR. No real animals will be
+part of the mission scenario. Should any wildlife (including birds) enter the flight
+area, the UAS must maintain appropriate separation from the wildlife at all times
+according to Canadian Aviation Regulations.
+
+4.3. Flight Crew
+
+Bidders will designate a ‘flight crew’ consisting of maximum five members. Only the
+flight crew may be present on the flight line during the flight window. The flight crew
+members may not communicate with other team members during their flight window. Each
+individual vehicle must have a separate pilot while being flown or moved, i.e.,
+concurrent operation of vehicles requires separate pilots. All members of the flight
+crew must remain at the flight line for the duration of the tasks and may not access the
+flight area unless given permission by the Range Safety Officer.
+
+4.4. Pilot and RPAS Licencing
+
+Each pilot (not each team member, only pilots) must hold an Advanced RPAS Pilot
+Certificate. To be clear, the Basic operator certificate is not sufficient. It is
+recommended to initiate this process as soon as possible, as a relatively difficult
+online exam, in addition to a flight review at a UAV training school, must be passed
+successfully to obtain the Advanced Operator Certificate. A copy of the Advanced RPAS
+Pilot Certificate for each pilot must be provided to the Air Program Director as part of
+the FRR and must meet the recency requirements of the Canadian Aviation Regulations.
+Each RPAS must be registered in accordance with Part IX regulations. It is best if
+registration is done under the name of a Canadian citizen, through the Transport Canada
+portal. For each RPAS to be flown, the registration certificate must be provided to the
+Air Program Director as part of the flight readiness review. All pilots and UAVs must
+conform to Part IX. AEAC will independently apply for a Special Aviation Event
+Certificate; no action is required from the teams. No Special Flight Operation
+Certificate (SFOC) is required by teams with Canadian citizen pilots. Pilots who are not
+Canadian citizens are also no longer required to apply for an SFOC, provided the RPAS is
+registered under the name of a Canadian citizen. If your team is concerned that you will
+be unable to register the RPAS under the name of a Canadian citizen, contact
+competition@aerialevolution.ca as soon as possible since processing an SFOC can take
+several months. If you need any assistance with regulatory approval, please contact
+competition@aerialevolution.ca as soon as possible.
+
+4.5. Flight Termination System
+
+All UAVs must be equipped with a safety flight termination system that can be activated
+either automatically or remotely (kill switch). For fixed-wing flight, this consists of
+shutting down the engine and performing aerodynamic termination, which corresponds to
+full aileron, elevator up, full rudder and no motor. Circling down is not acceptable.
+For rotary-wing (vertical) flight, a quick vertical descent of a minimum of 2 m/s and
+touchdown must be performed. The flight termination mechanism must be operational at all
+times. If the flight termination method is not working, the aircraft must terminate the
+flight itself automatically and rapidly. In other words, if unable to terminate the
+aircraft, the aircraft should have already terminated itself. Under no possible
+situation should the UAV be in flight with the crew unable to activate a flight
+termination mechanism. This is valid for all flight modes. For instance, losing the
+command and control (C2) link while in auto mode should cause the aircraft to terminate
+itself. Aircraft must be in termination mode within 5 seconds of the termination
+function being activated. If an aircraft crosses the flight boundary, its flight
+termination system should activate automatically. The flight termination mechanism will
+be validated during the FRR check for each aircraft, including loss of C2 link and
+geofence-based automatic flight termination. Rehearsal flights are not permitted on-site
+unless specifically authorized by the judges. Test flights are not included in the event
+schedule.
+
+4.6. Mission Requirements
+
+There will be one flight window per task for each bidder, as detailed in Section 2.8:
+Phase 2 Flight Assessment. Within each flight window, bidders may choose to restart the
+current task as many times as they want, forfeiting accumulated points in the previous
+attempt. Task 1 will be conducted during the bidder’s first flight window, and Task 2
+during the second. The UAS design may include any desired combination of aircraft
+capabilities (e.g., rotary wing, fixed wing, hybrid, or other); different vehicles may
+be used for Task 1 and Task
+
+2. Only one UAV is permitted for Task 1, and only one UAV is permitted for Task
+
+2. UAVs may be different or the same design, but each individual aircraft must meet the
+design and safety requirements.
+
+4.7. UAS Design Constraints
+
+All UAS are subject to the following design constraints: a. Each UAV must have a maximum
+takeoff weight of 15 kg including payload. b. There is no size restriction. c. Only
+electric propulsion may be used (including solar cells and batteries). d. Equipped with
+a flight termination system as defined in Section 4.9: Flight Termination System. e.
+Parachutes are not permitted for any aircraft type. f. UAVs will be weighed with a
+spring scale and therefore must have some kind of loop- shaped attachment point. g. Data
+links can be by radio, infrared, acoustic or other means so long as no tethers are
+employed. h. UAS may operate in any combination of autonomously, semi-autonomously, or
+under manual control at the discretion of the bidders. i. The mission will not be paused
+for weather conditions within visual meteorological conditions (VMC). The UAS should be
+able to operate under VMC, including precipitation. j. Radio frequency usage in Canada
+is defined by Innovation, Science and Economic Development Canada (ISED). If a licensed
+band is used, the licence must be obtained and provided to the judges before being
+allowed to fly. k. This is an Unmanned Aerial System design competition: using
+completely off the shelf UAVs (e.g. DJI Phantom) is not allowed. Individual off-the-
+shelf components may be used; this includes airframe kits only if they do not include
+non-structural components such as motors, wiring, etc. l. Aircraft must have an
+electrical or mechanical way of preventing propellers from accidentally spinning when
+the aircraft is not in takeoff position and ready for takeoff (i.e. when working on the
+aircraft).
+
+4.8. FRR Documents
+
+The FRR includes the following documents/proofs of completion: a. RPAS Safety Assurance
+Declaration for each model of aircraft (check
+
+922.04 Operations in Controlled Airspace); b. RPAS Registration Certificate for each
+aircraft, done under the name of a Canadian citizen. The model name on the Registration
+Certificate must correspond to an RPAS Safety Assurance Declaration made by the team; c.
+RPAS Pilot Certificate for each participating pilot, including proof of recency
+requirements if they have had their licence for more than 24 months; d. ISED radio
+licence as applicable, if licenced frequency bands are intended to be used; e. Proof of
+general and aviation liability insurance; f. Proof-of-flight video; and g. Flight
+checklists that will be used in the flight operations, including regular operations and
+emergency procedures. The proof-of-flight video must include the following, for each
+aircraft to be flown in the competition: a. Takeoff; b. Fly by, circle, and (if
+applicable) hover to demonstrate the stability of the aircraft; c. Flight at the
+aircraft’s designed cruising speed; d. Approach; and e. Full-stop landing. Insurance
+requirements are to be determined. Registered teams will receive a link to the full
+insurance requirements documentation. Teams are also advised to check with their post-
+secondary institution to ensure compliance with any of their internal insurance
+requirements.
+
+4.9. FRR Safety Demonstration
+
+The FRR includes the following safety demonstration items: a. Each aircraft intended to
+be flown must weigh under 15kg with maximum payload for the task it is intended to be
+flown for; b. The flight termination system is functional at all times and in all flight
+modes. Propellers should have been removed already. Make the motor(s) spin, and show
+that at all times, it is possible to terminate the aircraft in all flight modes. Also
+show this flight termination mechanism has already been activated if the datalink for
+the switch is lost (this is often the RC controller, based on previous years) and if it
+crosses a pre-programmed geofence boundary; c. All participating pilots have signed
+AEAC’s SFOC; and d. The RPAS registration number is present on each aircraft and
+compliant with regulation. The team performing the FRR safety demonstration will be
+temporarily allowed to turn on their transmitters for the purpose of demonstrating the
+flight termination system.
+
+5. Assessments
+
+The competition is scored with three assessments. Each assessment is scored and awarded
+separately.
+
+5.1. Phase 1 Proposal
+
+The objective of Phase 1 is for bidders to document the technical and operational design
+of their UAS to the judging team. Proposals may be submitted in English or French. Phase
+1 submissions will be made public following the conclusion of Phase
+
+2. Proposals are due 2027-01-15 1700 ET. They must be uploaded to your team’s Google
+Drive folder in PDF format. 10% will be deducted from the score for each day late or
+portion thereof. Proposals are limited to 15 pages total, including any appendices,
+title page, table of contents, list of figures, etc. Only references are not counted in
+the page limit. Pages above the 15-page limit will be ignored in the scoring. The
+Proposal will be evaluated according to the criteria in Table
+
+3. Each criterion is awarded either 0, 4, 7 or 10 points, and each category of criteria
+is weighted as shown, for a maximum score of 150 points. To streamline the evaluation
+process, bidders are required to adhere to a specified document structure. The English
+and French versions of the required top-level headings are listed below. Any information
+outside of these top-level headings will receive zero points. Within these headings,
+information may be organized at the bidders’ discretion.
+- Introduction / Introduction
+- Aircraft Design / Conception d’aéronef
+- Payload Design / Conception de charge utile
+- Mission Strategy / Stratégie de mission
+- System Testing / Tests de système
+- Project Management / Gestion de projet Table 3: Phase 1 Proposal Scoring Criteria
+  Criteria Score Introduction 5 Introduction: Provide an outline of your report and
+  the main information the client needs to know about your system and your team. 5
+  Aircraft Design / Conception d’aeronef 20 Airframe Design: Configuration and
+  expected performance of your selected aircraft frame. UAS Subsystem Design: Design
+  features of auxiliary aircraft systems including flight control, power systems,
+  communications, and propulsion. 10 10 Payload Design / Conception de charge utile
+  30 Wildlife Survey System: Describe the design and operation of your wildlife
+  survey system, including how it will provide the required survey information.
+  Sampling System: Describe the design and operation of the biological sampling
+  system. How will different kinds of samples be loaded, secured, and released from
+  the aircraft? How will the quality of samples be ensured? Tracker Tag System:
+  Describe the design and operation of your wildlife tracker tag, including how it
+  attaches to the animal and the tracking capability. 10 10 10 Mission Strategy /
+  Stratégie de mission 20 Approach to Mission Requirements: Explain your overall
+  strategy for accomplishment of the Tasks, and the individual strategy for each
+  Task. How is your strategy optimal and reliable compared to alternatives?
+  Environmental Sensitivity: How does your flight strategy preserve the well-being
+  of wildlife and its environment? 15 5 System Testing / Tests de système 20
+  Component Level Testing: What are some key tests that you will do throughout the
+  development of your UAS to ensure each component works as intended? Mission &
+  System Level Testing: How will you check that systems work together when
+  integrated? How will you test that your UAS satisfies the mission requirements? 10
+  10 Project Management / Gestion de projet 20 Risk Management Plan: Identify some
+  technical, safety, and programmatic risks, including severity, likelihood, and
+  overall risk level. How will you mitigate and respond to these risks? Project
+  Schedule: Gantt chart of all significant activities in UAS development , testing,
+  and administrative planning for the Phase 2 Assessment. Proposed Budget: Funding
+  revenues and expenses, including logistics expenses. 10 5 5 Technical Context
+  (Graded Throughout Report) 20 Justification: How well are technical and flight
+  strategy choices justified? Are comparisons made to viable alternatives? Use of
+  Technical References: Provide some! They may be technical, operational, etc … as
+  long as they are reputable and relevant. Canadian Content and IP: What content
+  (hardware, software, components, etc.) were sourced or designed in Canada? How
+  will the production of this UAS in Canada provide local employment opportunities
+  and promote technological development? 10 5 5 Quality of Communication (Graded
+  Throughout Report) 15 Spelling and Grammar: Error-free, formal writing in the
+  chosen official language. 5 Use of Figures and Charts: Visuals are appropriately
+  labelled, referenced from the text, of sufficient size/resolution, and enhance the
+  reader’s understanding. Quality of Presentation/Client Confidence: Information is
+  presented in a clear, professional manner. Do you describe the mission in a
+  realistic manner (i.e. without referring to points scored)? Would HERD be
+  confident in your solution? 5 5 Total Possible Score 150
+
+5.2. Phase 2 Flight Assessment
+
+5.2.1. Scenario and Site
+
+The Phase 2 Flight Assessment will include two Tasks: a. Task 1 – Wildlife Survey b.
+Task 2 – Tag, Track, and Sample Both Tasks will be conducted at the Medicine Hat RC’ers
+club site shown on the map in Figure
+
+1. The flight boundary is shown in red and the flight line in yellow. Coordinates for
+this outline are given in
+
+Appendix C: Flight Boundary GPS Coordinates and accessible at:
+https://www.google.com/maps/d/u/1/edit?mid=1aTufQOVNHUY-LeLHg5wJdMuT8jB0Spg&usp=sharing.
+Figure 1: Flight Boundary, Medicine Hat RC’ers Club Site at Len Young Memorial Field and
+Adjacent Field The altitude limit will be 100m AGL. Bidders are required to have their
+flight termination system automatically activate if the UAV goes outside the flight
+boundary. Expect the possibility of high winds, such as 10kts with gusts to 20kts, and
+precipitation.
+
+5.2.2. Bidder’s Presentation
+
+Bidders will make a sales pitch and engineering assessment to all other bidders and the
+assessment judges. Presentations should include: a. Expertise of the bidder team; b. UAS
+Design, including: i. How it evolved to become the final design; ii. Details of the
+final design; and c. How each Task will be executed. The length of this presentation
+should not exceed 6 minutes. This time limit will be strictly enforced. You may give
+your presentation in English or French; whichever language is chosen, there must be at
+least one slide presented in the other language. Presentations are to be uploaded to the
+provided Google Drive link by 2027-05-13 2359 (Thursday night). The format should be
+either Powerpoint or PDF. Google Slides are not permitted. Presentations will be scored
+on the criteria in Table
+
+4. Table 4: Bidder’s Presentation Scoring Bidder’s Presentation Score Presentation is
+well organized; both official languages are used. The presentation is clear and
+understandable, with limited jargon or technical terms; good speaking quality. 10 The
+evolution of the design from proposal to final is logical and well-explained. 15 The
+task execution is logical, well-explained, and seems to offer likely success. 10 HERD
+would be convinced this is the right team and UAS design. 5 Total Possible Score 40
+
+5.2.3. Task 1: Herd Survey
+
+HERD has received eye-witness reports of unusual deer activity close to a public
+campground and is concerned that the herd is getting too comfortable near humans. In
+Task 1, bidders will coordinate with other UAVs to detect the deer within a defined
+search area. The points will be allocated as shown in Table 5.
+
+1. By 2027-05-13 2359 (Thursday night), bidders will be given the following information:
+a. A series of waypoints that define an enclosed search area. b. A series of waypoints
+that define a course around which to fly laps to travel to the search area, including
+altitude above ground level (AGL); as well as the number of laps required.
+
+2. During this task, the UAS is required to transmit telemetry information to the
+competition telemetry server whenever it is armed. To access the competition server
+visit aeac.mylonics.com. Documentation to acquire a connection token and connect to the
+server can be found there, as well as server specifications, functionality and testing.
+Server related questions can be addressed to comp-server@aerialevolution.ca.
+
+3. Bidders must report the following information using the
+
+Competition Server: a. The UAS is required to transmit telemetry packets at 1 Hz. b.
+Telemetry packets must contain the following information: i. A UAV identifier, string
+defined by bidder ii. Timestamp, in unix time iii. Latitude and longitude, in decimal
+degrees iv. Altitude AGL, in metres v. Horizontal and vertical position accuracy, in
+metres vi. Battery percentage, 0-100 vii. Flight mode: one of 'off' | 'idle' | 'link-
+lost' | 'failsafe' | 'armed-pilot' | 'armed-automatic' viii. RC link status and
+telemetry link status, float 0-1 defined by the bidder with 1 representing best link
+quality.
+
+4. The survey mission will be undertaken by multiple
+
+HERD UAVs (simulated – multiple UAVs will not be flown concurrently). Throughout the
+flight, bidders must perform airspace deconfliction by reacting to information provided
+by the Competition Server: a. The server provides coordinates and altitude data for all
+currently flying UAVs, including UAVS simulated by the Competition Server, at a rate of
+1 Hz. b. All simulated UAVs have an exclusion zone: a cylinder defined by a radial
+(horizontal) and vertical keepaway distance, centered on the UAV. No UAV may enter
+another UAV’s exclusion zone. c. Bidders are responsible for keeping their UAV out of
+other UAVs’ exclusion zones. d. Bidders are not responsible for producing a horizontal
+and vertical keepaway for their own aircraft.
+
+5. The UAV should fly to the survey area by performing the specified number of laps of
+the fixed-length waypoint course. The total course length will be between 3km and 5km.
+
+6. The
+
+Bidders should reach the survey area as fast as possible using the prescribed course.
+The time to reach the survey area will be measured starting when the UAV takes off and
+ending when the UAV reaches the boundary of the search area.
+
+7. The survey area will be populated with fake deer represented by plastic deer decoys
+(example here; exact model may vary; expect deer with and without antlers). Some deer
+will have a tag on their ear. Each tag has a unique 2-digit alphanumeric code of font
+size 85pt (~3cm) or greater. The same code will be printed on both faces of the tag.
+Tags will be laminated paper. Two example tags are shown in Figure 2: Figure 2: Example
+tags
+
+8. Bidders must detect and report back the following information about all deer within
+the survey area: a. Number of deer in total. b. Number of deer in each cluster; with 10m
+radius per cluster. Deer that are alone in a 10m radius are considered to be a cluster
+of one. c. Provide the 2-character capitalized alphanumeric ID codes on each deer tag.
+d. Brief plain language description of any deer interacting anomalously with human
+artifacts, e.g. “deer wearing hat.”
+
+9. The above information must be submitted in a .txt file to your team Google Drive
+folder under Phase 2 Deliverables with the file name “<your_team_name>_task1_survey.txt”
+and must be uploaded no later than 15 minutes after the end of the flight window. Plain
+text labels must be used to clearly label each piece of information, e.g. “8 deer total
+in clusters of 2, 2, 3, and
+
+1. ID tags: H7, K4, and 3P. One deer is wearing a hat.”
+
+10. Batteries may not be swapped during this task.
+
+11. Only one UAV is permitted for this task. Table 5: Wildlife Survey (Task 1) Scoring
+Criteria Score Flight Speed to Survey Area:
+- Fastest time to end of course = 30 pts
+- Slowest time to end of course = 15 pts
+- Other points allocated linearly in proportion to ranking relative to other
+  bidders. Note: Time count begins when the UAV takes off and ends when the UAV
+  reaches the boundary of the search area. Bidders that do not complete the full
+  course will not be included in the linear scale. 30 Simulated Airspace
+  Deconfliction: Bidders must send telemetry data whenever in an armed state. Once
+  bidders send at least 300s of telemetry data in an armed state, they will receive
+  25 pts. Points then may be taken away according to the following penalties:
+- UAV enters traffic keepout zone: -5pts per occurrence
+- Telemetry Disconnect: -5 pts baseline at 30s missing with -1 pts per additional
+  15s missing, no cap on penalized length of a single disconnect
+- Startup Armed: -2 pts per occurrence
+- Invalid GPS while Armed: -2 pts per occurrence (rate-limited to 1 deduction per
+  15s burst)
+- Telemetry Latency (>15s timestamp delta between packets): -2 pts per occurrence
+  (rate-limited to 1 deduction per 15s window)
+- Slow Telemetry Rate (>1.1s delta between packets): -1 pt per packet (rate-limited
+  to 1 deduction per 15s)
+- Fast Telemetry Rate (<0.4s delt between packetsa): -1 pt per packet (rate-limited
+  to 1 deduction per 15s) Note: Each of the above penalty types will only be applied
+  up to five occurrences of that type. The sixth and further occurrences of a
+  penalty type will yield no further penalties. Overall score for this criterion
+  cannot go below zero. 25 Deer detection and description (nominally worth up to 40
+  pts):
+- Total number of deer correct = 5pts
+- Number of deer in each 10m cluster correct = 10pts total ○ Each cluster nominally
+  worth 10pts/# of clusters
+- Correct alphanumeric IDs from deer tags = 20pts total ○ Each correct ID is
+  nominally worth 20pts/# of tags
+- Description of anomalous deer = 5pts A multiplier based on the speed of report
+  submission is then applied to the above (nominally worth up to 20 pts):
+- x150% for finishing 5min before the end of the flight window or earlier 60
+- x100% for finishing 15min after the end of the flight window
+- Other multipliers allocated linearly between x100% and x150% in proportion to the
+  time taken to submit the report between 5min before the end of the flight window,
+  and 15min after the end of the flight window.
+- x0% for finishing more than 15min after the end of the flight window Safe Landing
+  at Flight line:
+- All UAVs are landed safely at flight line at the end of the flight window with no
+  part of the UAS left in the flight area = 5pts 5 Total Possible Score 120
+
+5.2.4. Task 2: Tag, Track, and Sample
+
+In Task 2, bidders will track a target animal through a field using a custom-designed
+tracking tag, as well as collecting biological samples from the ground. The points will
+be allocated as shown in Table 7.
+
+1. By 2027-05-13 2359 (Thursday night), bidders will be given the following information:
+a. The GPS coordinate at the center of the search area for the target animal; with
+radius 25m. b. The GPS coordinate at the center of the search area for the biological
+samples; with radius 15m.
+
+2. The target animal will be identified with a brightly-coloured band on each of its
+four legs. Only the target animal will be prepared to receive the tracker.
+
+3. Bidders will design a custom tracker. The tracker must meet the following
+requirements: a. Total mass must be less than 250 g. b. Size must not exceed 8 cm in any
+axis. c. The tracker must be a standalone item; a physical tether to the UAS cannot be
+used.
+
+4. The UAS will attach their custom tracker to the target animal. a. There will be two
+options for attachment: the UAS may either stick the tracker to the animal with hook-
+and-loop fastener; or drop the tracker in a rectangular box. b. The hook-and-loop
+fastener will be applied to the side of the target animal, which will be the same
+plastic deer decoys as in Task
+
+1. The loop side (soft side) will be on the animal. c. The box will be placed on the
+ground within 2m of the animal, with an open top of at least 30cm x 30cm. d. Multiple
+trackers are permitted to be carried by the UAS, however only one tracker is permitted
+to be attached to the animal using one of the methods described above.
+
+5. After attaching the tracker to the animal, bidders are required to move their UAV at
+least 100m horizontally away from the target animal. The target animal will then “move”
+through the flight area (a volunteer will take the attached tracker through the flight
+area). Bidders are required to maintain the 100m horizontal offset from the target
+animal for the rest of the flight window.
+
+6. Bidders must submit the tracking data of the target animal in a CSV format with
+columns: timestamp (any ISO8601 compliant date & time format), latitude, and longitude
+in decimal degrees format.
+
+Appendix D contains a sample submission. a. There is no minimum or maximum amount of
+timestamped locations, or required frequency. However, higher frequency updates are
+expected to better capture the path of the target animal. Linear interpolation will be
+used to reconstruct the animal’s path from the submitted timestamped locations. b. The
+maximum speed of the target animal is 5m/s. c. This type of animal tends to travel in
+bursts of no more than 5 minutes. The tracker should be able to track the animal for a
+trajectory of 5 minutes starting from the moment the UAV reaches the safe horizontal
+offset after tagging the animal. d. The animal will stop moving at the end of its 5
+minute trajectory, or the end of the flight window, whichever is sooner. e. The CSV file
+must be submitted before the end of the flight window.
+
+7. Bidders will also find and collect biological samples from material placed on the
+ground within the biological sample search area. The sample types and criteria for
+successful sampling are described in Table 6. a. Multiple of each sample type will be
+available within the search area. Multiple attempts to collect and deliver the payload
+are permitted. b. The samples will be on flat, grassy terrain. c. Landing to collect
+samples is permitted, but not required. d. There are no limitations on damage to the
+rest of the biological material (e.g., Extracting a successful dung sample may result in
+squishing part of the pile). Table
+
+6. Biological Sample Types Sample Type Appearance Criteria for a Successful Sample Egg
+Will be simulated by a large chicken egg. One egg delivered without cracking. Dung >=10
+cm wide, >=10 cm tall pile of simulated scat. The outer 1 cm shell will be pink; the
+interior will be green. The consistency will be squishy like dough. One core sample of
+cylindrical shape with diameter between 1 to 4 cm, any length; must be at least 75%
+green. Cylindrical shape must be preserved upon delivery. This sample may be delivered
+in a clear container. Droppings Small spheres of simulated scat, <= 3cm diameter, blue.
+The consistency will be hard/solid. At least 4 individual spheres collected and returned
+without being squished.
+
+8. Bidders must return successful samples to a drop-off area at the flight line before
+the end of the flight window. The drop-off area will be marked with a blue landing pad
+of 32 inches diameter. Samples must be delivered to the landing pad without damage (as
+noted in Table 6). Samples may be manually or automatically unloaded from the UAV.
+
+9. Only one UAV is permitted for this task. Table 7: Tag, Track, and Sample (Task 2)
+Scoring Criteria Score Tracker Attachment (only one of the following):
+- Tracker is attached using hook and loop fastener = 10 pts
+- Tracker is dropped in the box = 0 pts
+- Multiple trackers attached or no tracked attached = 0 pts 10 Tracking accuracy:
+- Accuracy maintained within 5m radius of the deer’s true path for the entire
+  5-minute trajectory = 30 pts
+- Portions of the 5-minute trajectory for which accuracy is maintained between 5m
+  and 15m will receive 50% points for the duration.
+- Portions of the 5-minute trajectory that have accuracy worse than 15m radius will
+  receive 0% points for the duration.
+- Portions of the 5-minute trajectory that are not included within the timestamp
+  range reported by bidders will receive 0% points for the duration missing. 30
+  Samples returned to landing pad:
+- Egg sample successfully returned = 20pts
+- Dung sample successfully returned = 15pts 45
+- Droppings sample successfully returned =10pts Note: One successful return of each
+  sample type will earn full points for that type. Failed attempts (including
+  damaged samples) will not incur any penalties. Flight autonomy:
+- Autonomous takeoff from flight line = 5 pts
+- Autonomous successful sample collection (all sample manipulation including
+  pickup/extraction, flight to dropoff area, and depositing to the landing pad must
+  be done without operator intervention): ○ Egg = 10 pts ○ Dung = 5 pts ○ Droppings
+  = 5 pts
+- Autonomous landing at flight line = 5 pts Note: A single successful demonstration
+  will be sufficient to earn points for that criterion. 30 Safe Landing at Flight
+  line:
+- UAV is landed safely at flight line at the end of the flight window with no part
+  of the UAS left in the flight area (except for one tracker that is attached to the
+  target animal) = 10 pts 10 Total Possible Score 125
+
+5.2.5. Flight Preparation
+
+Teams will be scored on their preparation according to the criteria in Table
+
+8. Teams will be assessed on the criteria separately for each flight window. For each
+criterion, the minimum score of the two attempts will be taken. Table 8: Flight
+Preparation Scoring Criteria Score Team is on the flight line with all required
+equipment 30 minutes before their flight window, and ready to fly at the start of the
+flight window. 10 Team is well organized, with an obvious and effective leader, obvious
+tasks for team members, good cooperation between team members, and good problem solving.
+- All characteristics observed = 10 pts
+- Some disorganization, lack of leadership or cooperation = 5 pts
+- Disorganized, no real leader, arguing, poor problem solving = 0 pts 10 UAS is
+  designed for easy set-up, with easily assembled components, use of switches rather
+  than connectors at flight line, logical and efficient set-up/initialization
+  procedures, etc.
+- All characteristics observed = 10 pts 10
+- Some flaws in design for easy set up, but overall well designed = 5 pts
+- Easy set up clearly not part of the design = 0 pts Checklists are used for flight
+  preparation:
+- Effective and organized use of checklists = 10 pts
+- Ad-hoc semi-use of checklists = 5 pts
+- No checklists = 0 pts 10 Total Possible Score 40 To summarize, the total score
+  available for Phase 2 is shown in Table 9: Table 9: Overall Phase 2 Scoring
+  Criteria Score Presentation 40 Task 1 – Herd Survey 120 Task 2 – Tag, Track, and
+  Sample 125 Flight Preparation 40 Total Possible Score 325
+
+5.3. Phase 3 Mission Report Phase 3 provides an opportunity for bidders to summarize
+their performance in Phase 2 and reflect on lessons learned. The Mission Report is due
+2027-05-26 1700 ET, after the completion of Phase
+
+2. Submit the Mission Report to your team’s Google Drive folder. Note: Bidders will not
+be scored on their flight performance in this report; only on the quality of their
+analysis. The report is limited to 5 pages and may be submitted in French or English. A
+title page and/or table of contents may be included, but are not required. The page
+count will begin with the page where the report body starts (so put the table of
+contents, if including one, on a separate page or else it will be counted towards the 5
+pages). Any contents past 5 pages will not be read. Teams will also be required to
+include a statement attesting that at least 50% of their Phase 2 participants have
+filled the event feedback survey. The survey will be released at the end of Phase
+
+2. A link will be sent to team captains, who will then be responsible for sharing it
+with their team members. The survey will be anonymous and will include questions about
+the flight mission and student experience. It is recommended to have members fill the
+survey while travelling home from Phase
+
+2. Points will be allocated as shown in Table 9: Table 9: Mission Report Scoring Mission
+Report Score Mission Performance: Summarize the events of your team’s attempts at the
+flight tasks. What went according to plan? Did your system and strategy perform as
+intended? 20 Lessons Learned: How did you address any problems that arose, and how would
+you mitigate them in the future? How could your UAS and/or operational approach be
+improved? 25 Spelling and Grammar Clarity of Organization Attestation that at least 50%
+of team’s Phase 2 participants have filled the feedback survey. 5 Total Possible Score
+50
+
+Appendix A: Abbreviations Abbreviation Definition AEAC Aerial Evolution Association of
+Canada AGL Above ground level BVLOS Beyond visual line of sight CARs Canadian Aviation
+Regulations CONOPS Concept of operations C2 Command and control ET Eastern time (zone)
+HERD Hooved Ecological Resources Division ISED Innovation, Science and Economic
+Development Canada FRR Flight readiness review GCS Ground control station GPS Global
+Positioning System PIC Pilot-in-command RC Radio control RFP Request for proposal RPAS
+Remotely piloted aircraft system RSO Range Safety Officer RTM RPAS traffic management
+SOP(s) Standard operating procedure(s) SFOC Special flight operation certificate UAS
+Uncrewed aerial system UAV Uncrewed aerial vehicle
+
+Appendix B: Contact List Purpose Contact Administrative questions Sue Chapman, Process
+Manager sue.chapman@aerialevolution.ca Alexandre Panneton, Student Coordinator
+alexandre.panneton@aerialevolution.ca CONOPS and rules Katrina Cecco, Chief Judge
+katrina.cecco@aerialevolution.ca Telemetry server inquiries Rijesh Augustine and Waleed
+Sherwani, comp-server@aerialevolution.ca All other inquiries
+competition@aerialevolution.ca
+
+Appendix C: Flight Boundary GPS Coordinates The flight boundaries for Task 1 and Task 2
+are the same. GPS coordinates for the soft flight boundary are provided in Table C1 and
+GPS coordinates for the hard flight boundary are provided in Table C2. Table C1: Hard
+Flight Boundary GPS Coordinates Lat Long
+
+50.0970884 -110.7328077
+
+50.1061216 -110.7327756
+
+50.1061482 -110.7437887
+
+50.1035232 -110.7437798
+
+50.0988785 -110.7382540
+
+50.0971194 -110.7382533
+
+Appendix D: Sample Task 2 CSV File
+
+1. The following is the content of a sample CSV file submission for Task
+
+2. It is properly formatted and can be opened with software such as Excel.
+
+2. The first line must be column headers, and can be any text. The first column contains
+timestamps in any ISO 8601 date time format, with any precision. The second and third
+columns are GPS coordinates, in decimal degrees format. Timestamped locations must be in
+chronological order. timestamp,latitude,longitude
+2026-07-31T22:33:02.000Z,50.0970884,-110.7328077
+2026-07-31T22:33:03.123Z,50.1061216,-110.7327756
+2026-07-31T22:33:04.555Z,50.1061482,-110.7437887
+2026-07-31T22:33:08.612Z,50.1035232,-110.7437798 timestamp latitude longitude
+2026-07-31T22:33:02.000Z
+
+50.0970884 -110.7328077 2026-07-31T22:33:03.123Z
+
+50.1061216 -110.7327756 2026-07-31T22:33:04.555Z
+
+50.1061482 -110.7437887 2026-07-31T22:33:08.612Z
+
+50.1035232 -110.7437798
+
+Appendix E: How to Maximize Your Success! This section includes some (non-binding) tips
+based on teams’ past experiences. Winning a competition is like doing well on an exam;
+the results reflect the effort that was spent preparing for the event. By the time the
+teams arrive at the competition site, development work should be complete and systems
+tested and backed up. The actual competition should be an extension of the ongoing proof
+of your system design. Teams must apply proven project management techniques and
+procedures that will allow them to manage both time and resources effectively. The
+following are comments based on experience from previous competitions; ignore them at
+your peril! Planning The first and most important suggestion: Read the CONOPS!
+Understand exactly what you must accomplish and how much each component of each Task is
+worth! Deliver the results that are asked for! Monitor Key Dates closely for timely
+submission. Set up your team’s workflow to ensure everyone is comfortable in their task
+with clear expectations and timelines. Complete all documentation accurately and on
+time. Allow more time than you planned on, particularly where personal information is
+involved. Don’t hesitate to contact Sue Chapman: sue.chapman@aerialevolution.ca Now
+would be a good time to develop a schedule with clearly identified milestones that will
+serve as go/no-go points. Regularly review the schedule and adjust the timelines. This
+will allow the team to change direction before additional effort is expended working on
+a suboptimal solution and ensure effort will not be concentrated at the end of the
+academic year. Implement a sound risk management process. As a first step, create a risk
+register that will serve as a basis for the initial risk assessment, evaluating risks
+based on probability and impact. Revisit the risk analysis to reassess items and
+identify new risks. Many of the failures observed at the competition could have been
+avoided had the team used a more disciplined project management approach during their
+system development process. System Design Create a design that is simple to prepare and
+operate. Have access panels that are easy to operate … and then have them completely
+closed before the flight window. In previous competitions, it was amazing how much time
+was wasted by teams, either in the tent or on the runway, hooking things up, soldering,
+and taping panels, etc., during their flight window! Make sure your design makes it easy
+to swap key components, like, say, batteries! Think about the flow for setting up and
+conducting the flight, and how your design can minimize the time required once the
+flight starts. You should have everything ready to go and tested well before your flight
+window, such that when your flight window opens and you’re able to transmit, you can
+quickly check to confirm things you already know are working are still working … then
+get airborne. Consider off-the-shelf components, where possible, in the design. For
+example, teams may consider the use of a carbon fibre frame kit as the basic airframe
+with custom propulsion and avionics, or they may choose to use a small-scale commercial
+autopilot in a custom designed airframe. Remember that using fully off-the-shelf UAVs is
+prohibited. Preparation at Home As the competition date approaches, conduct a risk
+management process specific to the venue and event. This is critical because there are
+certain risks – high winds, for example – that could easily make requirements other than
+UAV performance the deciding factor in winning the competition. Prepare contingency
+plans. Prepare PRINTED procedures and checklists, and PRACTICE using them. Make sure you
+have a leader … who can orchestrate all activities in a calm manner according to
+procedures you’ve planned … and who understands the systems and people to make calm
+decisions when things don’t go according to plan. Consider potential failure modes and
+crash breakage and create a ‘medical kit’ of extra parts and supplies to enable you to
+get back in the air as soon as possible. Conduct extensive testing of all aircraft and
+other systems, including all integrated together. Be ready to fly in all weather/wind
+conditions! One year, the entire weekend had howling winds and most teams crashed at
+least once. Look up and understand ‘dynamic rollover’ – in high winds you need to
+transition the UAV from solidly on the ground to away from the ground quickly … and the
+reverse on landing. Conduct actual flight trials simulating the entire competition from
+start to finish, including set up and initiation of systems within the flight window.
+Make sure every member of the team knows exactly what they are supposed to do and when
+they’re supposed to do it. Make sure the required technical and flight procedures are
+known by EVERY member of the team. Just a suggestion: Skydivers practice ‘dirt diving’,
+where a jump is rehearsed on the ground so everyone is clear on the sequence of the
+formations, the grips they need to take, etc. Use the Dirt Dive concept to prepare for
+the competition; get your whole team together and mentally run through the entire
+scenario, from arrival at the set-up site to completion of the mission, including every
+action that every member of the team must take, talking through it in as close to real
+time as possible. On the Flight Line Arrive on the flight line no later than 60 minutes
+before your flight time. Use your checklists to make sure everything gets done in the
+proper sequence! Use cables to test all telemetry/RC if possible, as you cannot transmit
+outside your window. Have all equipment ready to fly at least 10 minutes before your
+flight window. Move the aircraft to a location where it can be immediately moved onto
+the field at the start of your flight window. Many teams in previous years did final
+checks in the tent and then wasted time moving the system out to the field. At the start
+of your flight window, establishing wireless communications between components and
+confirmation that they all work should take no more than a minute. There should be no
+hooking up of connectors at this point! If you must connect, assemble, close or tape
+anything during your flight window, you screwed up your system design or your pre-flight
+preparations. Papers and Presentations When the judges are scoring your Phase 1 Papers,
+they are looking for the requirements outlined in this document... the easier it is for
+them to find the requirements in your paper, the better! The Pre-Flight Presentation is
+intended for an audience of clients … they’re not interested in a lot of technical
+detail. They need to be told exactly how you’re going to accomplish their mission and
+how you’re going to meet their requirements. The presentation should not mention the
+competition! In essence, play the game – it’s important to embrace your role as the
+service provider of a drone solution and pretend that you’re actually conducting the
+briefing to a client. The Mission Report should include an analysis of your team’s
+performance in the flight tasks and/or preparation throughout the year, as appropriate.
+Judges are looking not just for a summary of what happened, but a critical evaluation of
+your team’s organization/design/flight strategy/effort, as well as some lessons learned.
+
+Appendix F: Teams Q&A To be updated as teams submit questions.
+
+Organizer clarifications
+These answers are from AEAC competition staff. They are not in CONOPS v1.0.
+
+Task 2 operations
+
+Battery swaps are permitted for Task 2.
+
+A team may modify or swap attachments on the UAV during the flight window, as long as a single UAV is used. That includes swapping parts between sample deliveries.
+
+The tracker does not have to be mounted at the start of the flight. There is no constraint on when it is mounted.
+
+The deer are not expected to be pegged to the ground. Organizers are waiting on the exact model and expect them to be heavy enough that they will not be secured.
+
+Competition server telemetry (Waleed, Comp Server Support, 2026-09-27)
+
+Invalid GPS, while the UAV is armed, is recorded if either latitude and longitude are both 0 (no-fix), or horizontalPositionAccuracy is non-finite or less than or equal to 0. There is no upper accuracy threshold. A large but positive horizontal accuracy does not score invalid_gps. Non-finite numeric telemetry fields are rejected during message validation. They are not accepted and then scored as an invalid-GPS infraction.
+
+A packet whose unixTime is more than 30 seconds behind the server receive time is scored as a disconnect, not a latency infraction. A new broadcast session is the gap between this packet's unixTime and the previous telemetry packet's unixTime. If that gap is greater than 30 seconds, the packet is the first of a new session and gets the startup check instead of the slow-rate check. A packet that is more than 30 seconds old does not by itself start a new session. If its timestamp is still within 30 seconds of the previous telemetry timestamp, the session continues, and the stale packet can still score a disconnect.

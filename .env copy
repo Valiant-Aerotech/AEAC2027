@@ -1,0 +1,11 @@
+# Connection token from https://aeac.mylonics.com
+AEAC_COMP_TOKEN=
+
+# Server origin. Add a path later if the spec names one (e.g. /telemetry).
+AEAC_COMP_URL=https://aeac.mylonics.com
+
+# UAV id the server expects in each 1 Hz packet
+AEAC_COMP_UAV_ID=valiant-1
+
+# 0 = loopback (default). 1 = actually POST to AEAC_COMP_URL.
+AEAC_COMP_LIVE=0
