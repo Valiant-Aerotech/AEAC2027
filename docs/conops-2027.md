@@ -66,6 +66,24 @@ When the server spec is confirmed, capture here:
 - Exact POST path (client currently uses `{url}/telemetry` and `{url}/traffic`)
 - Auth header (currently `Authorization: Bearer <token>`)
 - Traffic-feed JSON shape and keepaway cylinder sizes
+- Wire field name for horizontal accuracy (`accuracy_m` in our packet until the live schema is confirmed; organizers call it `horizontalPositionAccuracy`)
+
+### Answered — Waleed / Comp Server Support (2026-09-27)
+
+Invalid GPS while armed (either condition):
+
+- latitude and longitude are both 0 (no-fix), or
+- `horizontalPositionAccuracy` is non-finite or less than or equal to 0
+
+There is no upper accuracy threshold. A large but positive horizontal accuracy does not score `invalid_gps`. Non-finite numeric telemetry fields are rejected during message validation; they are not accepted and then scored as invalid GPS.
+
+Stale sample vs new session:
+
+- A packet whose `unixTime` is more than 30 seconds behind **server receive time** scores as a disconnect, not a latency infraction.
+- A new broadcast session is the gap between this packet's `unixTime` and the previous telemetry packet's `unixTime`. If that gap is greater than 30 seconds, the packet is the first of a new session and gets the startup check instead of the slow-rate check.
+- Receiving a packet that is more than 30 seconds old does not by itself start a new session. If its timestamp is still within 30 seconds of the previous telemetry timestamp, the session continues, but the stale packet can still score a disconnect.
+
+Our client cannot see server receive time on loopback. It estimates age with the local wall clock at send (`wall_now - packet.timestamp`). CONOPS still lists a 15 s timestamp-latency band; ages in `(15, 30]` stay on that estimator, and ages over 30 s follow the disconnect bucket above.
 
 
 ## How we map the rules (no parser)

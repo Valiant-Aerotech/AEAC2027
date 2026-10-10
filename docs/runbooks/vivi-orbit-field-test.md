@@ -4,7 +4,7 @@ Outdoor validation for **Vivi + Pi companion**: pilot arms and climbs manually, 
 
 For the full two-run hardware day (orbit + CV mission), see [vivi-outdoor-field-day.md](vivi-outdoor-field-day.md). Fresh Pi setup: [pi-fresh-install.md](pi-fresh-install.md).
 
-This is **not** the CV orchestrator (`run_mission.py`). No auto-arm, takeoff, spray, or target search.
+This is **not** the survey/tagtrack scoring loop. No auto-arm, takeoff, or target search — motion only.
 
 ## How to run
 
@@ -41,7 +41,7 @@ Pick the step that matches where you are. Run from the **repo root** with the ve
 3. Reboot FC; confirm `safety: kill monitor loaded (RC8)` in Messages
 4. Run `python tools\valiant.py gcs verify-safety` from GCS laptop (telemetry radio) or Pi UART
 
-Field orbit and `run_mission.py` **block automatically** if `SCR_ENABLE` is off or `safety.lua` is missing (`safety.require_lua_safety: true` in config). SITL skips this check.
+Field orbit **blocks automatically** if `SCR_ENABLE` is off or `safety.lua` is missing (`safety.require_lua_safety: true` in config). SITL skips this check.
 
 **What you should see:** Mission Planner **Messages** shows `T2:` lines (`Climbing to 10 m`, `Lap 2/5`, `Loiter - manual control`). UDP monitor shows phase and lap if `--gcs-ip` is set.
 

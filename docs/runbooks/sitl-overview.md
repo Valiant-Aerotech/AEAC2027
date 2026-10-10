@@ -1,178 +1,60 @@
-# SITL overview - virtual drone + environment
+# SITL overview — virtual drone + motion
 
-Software-in-the-loop (SITL) lets you run the **full Task 2 autonomy pipeline** on a laptop: state machine, MAVLink motion, CV, metric recon, spray gating, upload - **without a physical drone or radio**.
+Software-in-the-loop (SITL) runs ArduPilot on your laptop so you can exercise
+**GUIDED hold**, pattern, orbit, and mission dry-runs **without a physical aircraft**.
 
 ## What is simulated?
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Windows - AEAC orchestrator (Python)                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
-│  │ Camera sim   │  │ CV + metric  │  │ Auto-nav + motion stack│ │
-│  │ (see below)  │→ │ recon        │→ │ → pymavlink velocities │ │
-│  └──────────────┘  └──────────────┘  └───────────┬────────────┘ │
-│         ▲                           dashboard    │ tcp:5760      │
-│         │ pose-linked modes only                 ▼               │
-│  ┌──────┴───────┐                    ┌────────────────────────┐ │
-│  │ World JSON   │                    │ WSL - ArduPilot SITL     │ │
-│  │ wall/targets │                    │ (virtual FC + dynamics)│ │
-│  └──────────────┘                    └────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
 | Layer | Real hardware | SITL substitute |
 |-------|---------------|-----------------|
-| Flight controller | Pixhawk on drone | **ArduPilot SITL** in WSL (`sim_vehicle.py`) |
-| Radio | COM / SiK telemetry | **TCP `127.0.0.1:5760`** |
-| Camera | Phone → scrcpy | **Synthetic timeline**, **physics camera**, or **video file** |
-| Targets / wall | Physical venue | **`tests/fixtures/sitl_*.json`** world + optional satellite map |
-| Spray | SERVO15 | Disabled (`spray.method: none`) - jumps to CAPTURE for proof photo |
+| Flight controller | Pixhawk | ArduPilot SITL in WSL (`sim_vehicle.py`) |
+| Radio | COM / SiK | TCP `127.0.0.1:5760` (legacy) or **5762** (MAVProxy path) |
+| Companion motion | `valiant-mav` Vehicle / guided | Same Python against TCP |
+| Scoring math | Survey / tagtrack | Offline `--dry-run` (no FC required) |
 
-No COM port, no props, no phone required for the default sim profile.
+Perception worlds under `tests/fixtures/sitl_*.json` remain available for camera/geometry unit tests. Full CV-in-the-loop survey is not required for the motion gate.
 
-## Two-terminal workflow (daily driver)
+## Preferred path (valiant-mav)
 
-> **New to SITL?** Complete [START_HERE.md](../../START_HERE.md) setup first (`.\start.ps1`).
+**Terminal 1** (WSL):
 
-**Terminal 1 - virtual flight controller (WSL):**
-
-```powershell
-cd A:\Code\Valiant-Aerotech\AEAC2027
-.\tools\launch_sitl.ps1
+```bash
+cd ~/ardupilot && ./Tools/autotest/sim_vehicle.py -v ArduCopter --console --map
 ```
 
-Wait until ArduCopter shows `SERIAL0 on TCP port 5760`.
+Companion default: **tcp:127.0.0.1:5762**.
 
-**Optional - Mission Planner:** TCP connect to `127.0.0.1:5762` (Valiant mission stays on 5760). See [sitl-wsl.md](sitl-wsl.md#mission-planner-as-gcs-viewer-optional).
-
-**Terminal 2 - mission (Windows):**
-
-```powershell
-cd A:\Code\Valiant-Aerotech\AEAC2027
-python tools\valiant.py sitl mission
-```
-
-Equivalent: `.\tools\run_sitl_mission.ps1`
-
-**Custom YAML mission** (geofence, speeds, scenario in one file):
-
-```powershell
-python tools\valiant.py sitl run config\sitl_missions\example_wall.yaml
-```
-
-**GUIDED box pattern** (no CV, motion + turns + LOITER):
+**Terminal 2** (Windows repo):
 
 ```powershell
 python tools\valiant.py sitl pattern
+python tools\valiant.py sitl orbit --laps 1
+python tools\valiant.py survey --dry-run
+python tools\valiant.py tagtrack --dry-run
 ```
 
-Equivalent: `.\tools\run_sitl_pattern.ps1`. Reference config: `config/sitl_missions/pattern_box.yaml`.
-
-Copy and edit `config/sitl_missions/example_wall.yaml` for fire-mission experiments.
-
-This runs `missions/task2_vion_auto_extinguish.py --sitl --profile sitl` with:
-
-- Preflight: EKF wait → GUIDED → arm → takeoff (~5 m)
-- **Valiant SITL** OpenCV dashboard (FOV + wall side + top-down)
-- Single-target suppress → upload → brief hold → COMPLETE
-
-**Warm repeat** (SITL still running, already airborne):
+## Legacy Windows wrapper (tcp:5760)
 
 ```powershell
-.\tools\run_sitl_mission.ps1 -SkipPreflight
+.\tools\launch_sitl.ps1          # terminal 1
+python tools\valiant.py sitl pattern   # terminal 2
 ```
 
-Setup details and troubleshooting: [sitl-wsl.md](sitl-wsl.md).
+Optional Mission Planner map: TCP `127.0.0.1:5762` when using MAVProxy. STATUSTEXT check: `python tools\valiant.py gcs verify-statustext`.
 
-## Camera / environment modes
-
-Configured in `config/vion.yaml` under `flight_profiles`:
-
-| Profile | Command | Camera | Environment | Best for |
-|---------|---------|--------|-------------|----------|
-| **`sitl`** (default) | `run_sitl_mission.ps1` | Timeline synthetic + world scene | JSON keyframes **linked to mavlink pose** | Fast mission logic, dashboard, single-target default |
-| **`sitl_physics`** | `run_sitl_mission.ps1 -Physics` | Pose + gimbal projection | `sitl_physics_wall.json` | Geometry, approach tuning, harder CV |
-| **Pattern only** | `valiant sitl pattern` | None | N/A | GUIDED forward/turn box, LOITER; no CV |
-| **Orbit only** | `valiant sitl orbit` | None | N/A | GUIDED orbit (field geometry), LOITER; no CV |
-| **Video replay** | `-Video path\to\clip.mp4` | Recorded footage | N/A | Regression from bench recordings |
-| **Field** | `task2_vion_auto_extinguish.py` (no `--sitl`) | scrcpy | Real world | Competition |
-
-Dashboard label: **`SIM`** = timeline synthetic, **`PHYSICS`** = pose-linked camera.
-
-### Scenario files
+## Config overlays
 
 | File | Role |
 |------|------|
-| `tests/fixtures/sitl_synthetic_multi.json` | Default world (2 targets in fixture; launcher uses `--max-targets 1`) |
-| `tests/fixtures/sitl_physics_wall.json` | Single wall + targets for physics camera |
-| `tests/fixtures/sitl_home.json` | SITL GPS home (map anchor) |
-| `tests/fixtures/sitl_map/manifest.json` | Optional satellite top-down (`python tools/valiant.py sitl map download`) |
+| `config/sitl_missions/orbit.yaml` | Field-orbit geometry for SITL |
+| `config/sitl_missions/pattern_box.yaml` | Box pattern speeds / altitudes |
 
-Override only when needed: `-Scenario tests\fixtures\sitl_approach_hard.json`
+These are motion overlays, not fire-mission scenario YAMLs.
 
-## Code map (SITL-specific)
+## Safety contract (same as field)
 
-```
-src/valiant/autonomy/
-  orchestrator.py          # --sitl, preflight, dashboard, state machine
-  sitl_motion.py           # Backoff → Follow → Search → Hold → Reposition (3D NED)
-  sitl_preflight.py        # EKF wait, GUIDED, arm, takeoff, ensure_sitl_guided
-  sitl_pattern.py          # Guided box pattern + LOITER (no CV)
-  sitl_search.py           # 3D search creep, approach speed, altitude
-  gcs_hud.py               # T2: STATUSTEXT for Mission Planner
+- Companion **never** terminates. Soft boundary → hold + STATUSTEXT.
+- Software holds use **GUIDED hold**, not LOITER.
+- Uncaught faults → `hold_after_fault`.
 
-src/valiant/common/
-  ned_kinematics.py        # Rotation matrices, 3D velocity planning, VehiclePose
-  sitl_physics.py          # Pose drain, target projection
-  synthetic_target_camera.py   # Timeline + pose-linked keyframes
-  physics_synthetic_camera.py  # Full pose-linked renderer
-  sitl_map_asset.py        # Satellite crop for top-down
-
-tools/
-  valiant.py               # Unified CLI (bench, gcs, sitl, calibrate, conops)
-  README.md                # Task -> command index
-  setup.ps1, setup_wsl.ps1, launch_sitl.ps1
-  run_sitl_mission.ps1     # Default SITL mission
-  run_sitl_mission_file.ps1  # YAML mission (valiant sitl run)
-  run_sitl_pattern.ps1     # GUIDED box pattern (valiant sitl pattern)
-  bench/                   # verify_env, diagnose, CV/metric benches
-  gcs/                     # monitor, verify-statustext, heartbeat, bringup_gcs.ps1
-  sitl/                    # WSL bash, run_sitl_tests.ps1, map download
-  bringup/, calibrate/, deploy/, dev/
-
-config/sitl_missions/      # YAML geofence + scenario experiments
-
-tests/sitl/                # Integration tests (need SITL running)
-tests/fixtures/sitl_*      # Worlds and timelines
-```
-
-Shared with field flight: `auto_nav/`, `metric_recon/`, `spray/`, `planner.py`, `approach_motion.py`.
-
-Standalone CV training scripts live in `src/valiant/cv/` (merged from `feature/CV`).
-
-## Orchestrator flags
-
-| Flag | MAVLink | Motion | Camera |
-|------|---------|--------|--------|
-| *(default)* | Hardware COM/UDP | On | scrcpy |
-| `--sitl` | `tcp:127.0.0.1:5760` | On | Profile (`sitl` / `sitl_physics`) |
-| `--sim` | Optional | **Off** | As configured |
-| `--hand-test` | Hardware | **Off** | scrcpy; gimbal + CV only |
-| `--mission-file` | SITL | On | YAML overlays from `config/sitl_missions/` |
-| `--skip-sitl-preflight` | SITL | On | Skips arm/takeoff if already airborne |
-
-## Tests
-
-```powershell
-python tools\valiant.py sitl test
-# or: .\tools\sitl\run_sitl_tests.ps1
-
-# 3D kinematics + metric geometry (no SITL)
-python -m pytest tests/test_ned_kinematics.py tests/test_metric_geometry_3d.py -q
-```
-
-## Next improvements (optional)
-
-- Hybrid profile: `--sitl` + scrcpy/YOLO for real CV against sim FC
-- Ring-target HSV tuning from field photos in scenario colours
-- Field validation on Vivi bench: confirm 3D metric recon vs tape measure on hardware
+WSL install details: [sitl-wsl.md](sitl-wsl.md). Sibling docs: `../valiant-mav/docs/sitl.md`.

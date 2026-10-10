@@ -14,8 +14,14 @@ OCCURRENCE_CAP = 5
 BURST_WINDOW_S = 15.0
 DISCONNECT_FIRST_S = 30.0
 DISCONNECT_REPEAT_S = 15.0
+# Packet unixTime more than this far behind receive/wall time scores as a
+# disconnect, not latency (Comp Server Support, 2026-09-27).
+DISCONNECT_STALE_S = 30.0
+# Gap between successive packet unixTimes that opens a new broadcast session.
+SESSION_GAP_S = 30.0
 SLOW_RATE_S = 1.1
 FAST_RATE_S = 0.4
+# CONOPS latency band. Ages above DISCONNECT_STALE_S are disconnects instead.
 LATENCY_LIMIT_S = 15.0
 
 POINTS = {
@@ -85,13 +91,23 @@ class PenaltyBook:
     def startup_armed(self, now: float) -> PenaltyEvent | None:
         return self._record(PenaltyType.STARTUP_ARMED, POINTS["startup_armed"], now, "armed before telemetry")
 
+    def session_startup(self, now: float) -> PenaltyEvent | None:
+        """First packet of a new broadcast session (unixTime gap > 30 s)."""
+        return self._record(
+            PenaltyType.STARTUP_ARMED,
+            POINTS["startup_armed"],
+            now,
+            "new broadcast session",
+        )
+
     def invalid_gps(self, now: float) -> PenaltyEvent | None:
         if not self._burst_ok(PenaltyType.INVALID_GPS, now):
             return None
         return self._record(PenaltyType.INVALID_GPS, POINTS["invalid_gps"], now, "invalid GPS while armed")
 
     def timestamp_latency(self, now: float, delta_s: float) -> PenaltyEvent | None:
-        if delta_s <= LATENCY_LIMIT_S:
+        """Score only the (15 s, 30 s] band. Older clocks are disconnects."""
+        if delta_s <= LATENCY_LIMIT_S or delta_s > DISCONNECT_STALE_S:
             return None
         if not self._burst_ok(PenaltyType.TIMESTAMP_LATENCY, now):
             return None
@@ -100,6 +116,19 @@ class PenaltyBook:
             POINTS["timestamp_latency"],
             now,
             f"timestamp delta {delta_s:.1f}s",
+        )
+
+    def stale_disconnect(self, now: float, age_s: float) -> PenaltyEvent | None:
+        """Packet unixTime more than 30 s behind wall/receive time."""
+        if age_s <= DISCONNECT_STALE_S:
+            return None
+        if not self._burst_ok(PenaltyType.DISCONNECT, now):
+            return None
+        return self._record(
+            PenaltyType.DISCONNECT,
+            POINTS["disconnect"],
+            now,
+            f"stale {age_s:.1f}s behind wall",
         )
 
     def rate(self, now: float, interval_s: float) -> PenaltyEvent | None:

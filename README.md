@@ -1,77 +1,65 @@
 # AEAC2027
 
-Valiant Aerotech competition software for AEAC 2027.
+Valiant Aerotech competition software for AEAC 2027 (wildlife survey + tag & track).
 
-The ArduCopter MAVLink / SITL library lives in the sibling repo
-[`valiant-mav`](https://github.com/Valiant-Aerotech/valiant-mav). Install that
-first (`pip install -e ../valiant-mav`), then this package.
+Flight I/O lives in the sibling repo
+[`valiant-mav`](https://github.com/Valiant-Aerotech/valiant-mav). **Install that first**, then this package.
 
-**Never run this before?** → **[START_HERE.md](START_HERE.md)** (read this first)
+**Never run this before?** → **[START_HERE.md](START_HERE.md)**
 
 **New team member?** → [WELCOME.md](WELCOME.md) → [ONBOARDING.md](ONBOARDING.md)
 
 ## Fleet
 
-| Drone | Role | Mission |
-|-------|------|---------|
-| **Vulcan 2** | Heavy lifter (carries Vivi) | Hardware docs only - `hardware/vulcan2/` |
-| **Vion** | Fire suppression (Pi + Pixhawk) | Task 2 - `hardware/vion/rpi/run_mission.py` |
-| **Vivi** | Surveying drone | Task 1 - `missions/task1_vivi_survey.py` |
+| Aircraft | Role | Software |
+|----------|------|----------|
+| **Vivi** | Task 1 survey | `python tools/valiant.py survey` |
+| **Vion** | Task 2 tag & track | `python tools/valiant.py tagtrack` |
+| **Vulcan 2** | Heavy lifter | Hardware docs in `hardware/vulcan2/` |
 
 ## Quick start (new laptop)
 
 ```powershell
 git clone https://github.com/Valiant-Aerotech/AEAC2027.git
 cd AEAC2027
+pip install -e ..\valiant-mav
 .\start.ps1
-notepad config\rpas.yaml    # set telemetry COM port when you have a radio
 python tools\valiant.py guide
 ```
+
+Copy `.env.example` to `.env` only if you need a competition token. Leave `AEAC_COMP_LIVE=0` (loopback) until a scored window.
 
 ## What to test
 
 | Goal | Command |
 |------|---------|
-| Check install works | `python tools\valiant.py quickstart` |
-| Test CV on webcam | `python tools\valiant.py bench cv --camera 0` |
-| Run unit tests (same as CI) | See [docs/branches.md](docs/branches.md#continuous-integration-github-actions) — five jobs (lint, mavlink, motion, CV, config) |
-| Virtual drone mission | `.\tools\setup_wsl.ps1` once, then `launch_sitl.ps1` + `valiant sitl mission` |
+| Check install | `python tools\valiant.py quickstart` |
+| Survey math (offline) | `python -m pytest tests/test_survey_math.py -q` |
+| SITL motion (pattern / orbit) | `sim_vehicle` or `.\tools\launch_sitl.ps1`, then `valiant sitl pattern` / `sitl orbit` |
+| Survey dry-run | `python tools\valiant.py survey --dry-run` |
+| Tagtrack dry-run | `python tools\valiant.py tagtrack --dry-run` |
 | First connect to drone | `python tools\valiant.py bringup phase1` |
-| Fly on Pi (competition indoor) | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
-| Vivi field orbit (outdoor) | `bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <ip> --laps 1` |
-| GCS telemetry HUD | `python tools\valiant.py gcs monitor` |
-
-Full table: [START_HERE.md](START_HERE.md)
-
-## First connect (hardware day)
-
-| Machine | Run first |
-|---------|-----------|
-| GCS laptop | `python tools\valiant.py bringup phase1` |
-| Raspberry Pi (SSH) | `bash hardware/vion/rpi/pi_field_ready.sh --first-time` |
-
-Checklists: [docs/runbooks/pi-fresh-install.md](docs/runbooks/pi-fresh-install.md) · [docs/runbooks/vion-bringup.md](docs/runbooks/vion-bringup.md) · [hardware/vivi/WIRING.md](hardware/vivi/WIRING.md)
+| Field orbit (no CV) | `python tools\valiant.py field orbit --gcs-ip <ip> --laps 1` |
+| GCS HUD | `python tools\valiant.py gcs monitor` |
 
 ## Repo layout
 
 ```
-START_HERE.md      <- read first
-missions/          <- GCS dev / manual entry points
-hardware/vion/rpi/ <- Pi competition flight entry
-src/valiant/       <- library code
-config/            <- vion.yaml, conops, calibration
-tools/valiant.py   <- one CLI for bench, SITL, bringup
-docs/runbooks/     <- bringup, field test, SITL
-models/            <- dry.onnx / best.onnx (gitignored; copy locally)
+START_HERE.md              <- read first
+src/valiant/missions/      <- Task 1 survey + Task 2 tagtrack (scoring lives here)
+src/valiant/perception/    <- YOLO, ToF, geometry (no scoring clocks)
+src/valiant/comms/         <- competition 1 Hz + GCS HUD
+src/valiant/core/          <- re-exports valiant-mav + advisory safety
+config/                    <- defaults.yaml, boundary poly, SITL overlays
+tools/valiant.py           <- one CLI
+docs/conops-2027.md        <- competition rules map
+reference/                 <- inert 2026 study copies (not flown)
 ```
 
 ## More docs
 
-- Architecture: [docs/architecture.md](docs/architecture.md)
-- SITL sim: [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
-- Before hardware: [docs/runbooks/whats-left-before-hardware.md](docs/runbooks/whats-left-before-hardware.md)
-- **Fresh Pi + field day:** [docs/runbooks/pi-fresh-install.md](docs/runbooks/pi-fresh-install.md)
+- Competition rules: [docs/conops-2027.md](docs/conops-2027.md)
+- Lessons: [docs/lessons-learned.md](docs/lessons-learned.md)
+- SITL: [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md) · [sitl-wsl.md](docs/runbooks/sitl-wsl.md)
+- Pi / bringup: [docs/runbooks/pi-fresh-install.md](docs/runbooks/pi-fresh-install.md) · [vion-bringup.md](docs/runbooks/vion-bringup.md)
 - Branches and CI: [docs/branches.md](docs/branches.md)
-- Competition rules: [docs/conops.md](docs/conops.md)
-
-**CI:** Pull requests into `main` run five GitHub Actions jobs (lint, mavlink, motion, CV, config). Field-orbit tests are local-only. See [docs/branches.md](docs/branches.md#continuous-integration-github-actions).

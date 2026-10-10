@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify Python environment and optional external tools."""
+"""Verify Python environment and 2027 repo layout."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TOOLS = REPO_ROOT / "tools"
 
 REQUIRED_IMPORTS = [
     ("numpy", "numpy"),
@@ -23,6 +22,7 @@ OPTIONAL_IMPORTS = [
     ("pygetwindow", "pygetwindow"),
     ("onnxruntime", "onnxruntime"),
     ("ultralytics", "ultralytics"),
+    ("valiant_mav", "valiant-mav (pip install -e ../valiant-mav)"),
 ]
 
 EXTERNAL_TOOLS = [
@@ -60,32 +60,26 @@ def check_structure() -> None:
         "start.ps1",
         "tools/valiant.py",
         "tools/lib/guide_text.py",
-        "tools/lib/cli_diag.py",
-        "tools/lib/script_paths.ps1",
-        "missions/task2_vion_auto_extinguish.py",
-        "hardware/vion/rpi/run_mission.py",
-        "hardware/vion/rpi/first_connect.sh",
-        "hardware/vion/rpi/run_bringup_tests.sh",
-        "tools/lib/diagnostics.ps1",
+        "tools/bench/verify_env.py",
         "tools/bench/diagnose.py",
-        "tools/sitl/common.sh",
-        "tools/lib/wsl_distro.ps1",
-        "tools/setup_wsl.ps1",
-        "tools/sitl/setup_wsl.sh",
-        "tools/dev/verify_ps1.ps1",
-        "tools/bringup/phase1_bringup.ps1",
-        "hardware/vion/rpi/phase1_bringup.sh",
-        "hardware/vion/rpi/preflight_indoor.sh",
-        "src/valiant/autonomy/orchestrator.py",
-        "config/rpas.yaml",
-        "config/rpas_calibration.yaml.example",
-        "docs/runbooks/vion-bringup.md",
-        "hardware/vion/mission-planner/002-pi-telem-params.md",
-        "tools/gcs/bringup_gcs.ps1",
-        "tools/gcs/check_mavlink_gcs.py",
-        "tools/gcs/test_spray_gcs.py",
-        "tools/calibrate/run_calibration_pipeline.ps1",
-        "config/sitl_missions/example_wall.yaml",
+        "tools/sitl/launch_sitl.sh",
+        "tools/sitl/sitl_orbit_flight.py",
+        "tools/sitl/sitl_pattern_flight.py",
+        "tools/field/run_field_orbit.py",
+        "config/defaults.yaml",
+        "config/aeac2027_boundary.poly",
+        "config/sitl_missions/orbit.yaml",
+        "config/sitl_missions/pattern_box.yaml",
+        "src/valiant/missions/survey/course.py",
+        "src/valiant/missions/survey/cluster.py",
+        "src/valiant/missions/tagtrack/__init__.py",
+        "src/valiant/comms/competition/client.py",
+        "src/valiant/core/safety/boundary.py",
+        "hardware/vion/lua/safety.lua",
+        "docs/conops-2027.md",
+        "docs/lessons-learned.md",
+        "reference/topics.md",
+        ".env.example",
     ]
     for rel in expected:
         path = REPO_ROOT / rel
@@ -94,7 +88,7 @@ def check_structure() -> None:
 
 
 def main() -> int:
-    print("=== Valiant Aerotech Environment Check ===\n")
+    print("=== Valiant Aerotech Environment Check (AEAC 2027) ===\n")
 
     print(f"Python: {sys.version}")
     print(f"Executable: {sys.executable}\n")
@@ -115,18 +109,24 @@ def main() -> int:
     try:
         import valiant
 
-        print(f"valiant package: OK (version {valiant.__version__})")
+        print(f"valiant package: OK (version {getattr(valiant, '__version__', '?')})")
     except ImportError:
-        print("valiant package: FAIL - run .\\tools\\setup.ps1")
-        failures.append("valiant (pip install -e .)")
+        print("valiant package: FAIL - run .\\tools\\setup.ps1 or pip install -e .")
+        failures.append("aeac2027")
 
+    mav_root = REPO_ROOT.parent / "valiant-mav"
+    if mav_root.is_dir():
+        print(f"valiant-mav sibling: OK ({mav_root})")
+    else:
+        print(f"valiant-mav sibling: WARN not found at {mav_root}")
+
+    print()
     if failures:
-        print("\nFAILED - install missing packages and re-run setup.ps1")
+        print(f"FAILED: install {', '.join(failures)}")
         return 1
-
-    print("\nPASSED - environment ready")
+    print("Environment check passed.")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

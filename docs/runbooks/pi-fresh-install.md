@@ -16,7 +16,7 @@ See also: [vion-bringup.md](vion-bringup.md), [vivi-outdoor-field-day.md](vivi-o
 | Drone | Kakute FC, GPS (HERE4), Pi UART → FC TELEM, Pi camera, props, batteries |
 | Laptop | Windows, Mission Planner, telemetry radio USB, repo cloned |
 | Network | Pi on WiFi (same LAN as laptop or phone hotspot) |
-| Optional Run 2 | Purple target, pole, spray bottle to wet target after servo fires |
+| Optional Run 2 | Purple target, pole, ear-tag printout to wet target after servo fires |
 
 **Two MAVLink links (never share one port):**
 
@@ -133,7 +133,7 @@ cd A:\Code\Valiant-Aerotech\AEAC2027
 .\start.ps1
 ```
 
-Set GCS radio COM in `config/rpas.yaml`:
+Set GCS radio COM in `config/defaults.yaml`:
 
 ```yaml
 mavlink:
@@ -282,7 +282,7 @@ Detail: [vivi-orbit-field-test.md](vivi-orbit-field-test.md)
 ### Prep
 
 1. Mount **purple dry target** (5–30 cm) on pole/post, ~1–3 m height
-2. Spray bottle ready — wet target within **8 s** of FIRING (HSV blue verify)
+2. Spray bottle ready — wet target within **8 s** of ATTACHING (HSV blue verify)
 3. Confirm `models/dry.onnx` or `models/best.onnx` on Pi
 
 ### Pi (start BEFORE arming)
@@ -291,7 +291,7 @@ Detail: [vivi-orbit-field-test.md](vivi-orbit-field-test.md)
 bash hardware/vion/rpi/pi_field_ready.sh --mission --gcs-ip <LAPTOP_IP> --max-targets 1
 ```
 
-Uses profile `vivi_outdoor_mission` (GUIDED, spray SERVO, GUIDED standby, retreat, LOITER).
+Uses profile `vivi_outdoor_mission` (GUIDED, tracker/sample servo, GUIDED standby, retreat, LOITER).
 
 **Do not use `--profile vivi` alone** — that disables spray.
 
@@ -301,8 +301,8 @@ Uses profile `vivi_outdoor_mission` (GUIDED, spray SERVO, GUIDED standby, retrea
 2. Arm, climb toward pole in manual modes
 3. Flip **GUIDED** at ~8 m (no autonomous motion until purple seen)
 4. Fly toward pole until target is in camera view
-5. Watch states: `SEARCHING` → `APPROACHING` → `AIMING` → `FIRING` → `VERIFYING` → `CAPTURING` → `UPLOADING` → `RETREAT` → `COMPLETE`
-6. When **FIRING** (SERVO15 pulses): wet the target with spray bottle
+5. Watch states: `SEARCHING` → `APPROACHING` → `AIMING` → `ATTACHING` → `VERIFYING` → `CAPTURING` → `UPLOADING` → `RETREAT` → `COMPLETE`
+6. When **ATTACHING** (SERVO15 pulses): wet the target with ear-tag printout
 7. Drone backs away and climbs slightly → **LOITER**
 8. Flip off GUIDED, fly home
 9. Photo on Pi: `task2_photos/Task_2_<team>_target_1.jpg`
@@ -334,7 +334,7 @@ Detail: [vivi-outdoor-field-day.md](vivi-outdoor-field-day.md)
 | No motion in GUIDED | Wrong mode or disarmed | Pilot must select GUIDED; arm and climb first |
 | Orbit does nothing | GPS no fix | Wait outdoors for 3D lock |
 | Stuck SEARCHING (Run 2) | No model / wrong color | Deploy `dry.onnx`; check purple target lighting |
-| VERIFYING timeout | Target not wet in time | Spray bottle within 8 s of FIRING |
+| VERIFYING timeout | Target not wet in time | Spray bottle within 8 s of ATTACHING |
 | No LOITER at end | Stale Pi code | Re-run `deploy_to_pi.ps1` |
 | GCS monitor empty | Wrong `--gcs-ip` or firewall | Use laptop WiFi IP; allow UDP 14560 |
 
@@ -357,7 +357,7 @@ Detail: [vivi-outdoor-field-day.md](vivi-outdoor-field-day.md)
 
 - [ ] `python -m pytest tests/ -q` passes on laptop
 - [ ] `models/dry.onnx` or `best.onnx` on laptop; deploy to Pi
-- [ ] `config/rpas.yaml` COM port correct
+- [ ] `config/defaults.yaml` COM port correct
 - [ ] Pi: picamera2, UART, repo, `pi_field_ready.sh --first-time` done
 - [ ] FC: safety.lua, GUIDED on mode switch, Pi TELEM params
 - [ ] Optional SITL: `python tools\valiant.py sitl orbit --laps 1`

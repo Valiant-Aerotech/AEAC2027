@@ -1,140 +1,70 @@
-# Vion First-Time Bringup (Drone + Pi)
+# Vion / Vivi first-time bringup (drone + Pi)
 
-**Fresh Raspberry Pi OS from scratch:** [pi-fresh-install.md](pi-fresh-install.md) (recommended starting point).
+**Fresh Raspberry Pi OS:** [pi-fresh-install.md](pi-fresh-install.md).
 
 Two independent MAVLink links. Do not put GCS radio and Pi on the same Pixhawk serial port.
 
 | Link | Path | Role |
 |------|------|------|
-| GCS telemetry radio | COM port -> Pixhawk | Mission Planner, params, spray test, H-Flow bench |
-| Pi companion | `/dev/ttyAMA0` @ 57600 -> TELEM | Autonomous mission control |
-| GCS WiFi monitor | Pi UDP -> laptop | Read-only `python tools\valiant.py gcs monitor` |
+| GCS telemetry radio | COM port → Pixhawk | Mission Planner, params, advisory readback |
+| Pi companion | `/dev/ttyAMA0` @ 57600 → TELEM | Survey / tagtrack / field orbit |
+| GCS WiFi monitor | Pi UDP → laptop | Read-only `python tools\valiant.py gcs monitor` |
 
-Script map by phase:
+## Script map
 
 | Phase | GCS (PowerShell) | Pi (bash) |
 |-------|------------------|-----------|
-| B - GCS connect | `.\tools\gcs\bringup_gcs.ps1` | - |
-| B - MAVLink | `python tools\valiant.py gcs heartbeat` | - |
-| B - Spray test | `python tools\valiant.py gcs spray` | - |
-| B - FC params | `.\tools\bringup\print_fc_params.ps1` | - |
-| C - First SSH | `.\tools\deploy\deploy_to_pi.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/pi_field_ready.sh --first-time` |
-| C - Sensors | - | `bash hardware/vion/rpi/pi_field_ready.sh --check` |
-| C - Calibration | `.\tools\calibrate\run_calibration_pipeline.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/capture_all_calibration.sh` |
-| C/D - Sim/tether/monitor | `python tools\valiant.py gcs monitor` | `GCS_IP=<ip> bash hardware/vion/rpi/run_bringup_tests.sh` |
-| E - Preflight | - | `bash hardware/vion/rpi/preflight_indoor.sh` |
-| E - Flight (indoor) | `python tools\valiant.py gcs monitor` | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
-| E - Field orbit (Vivi) | `python tools\valiant.py gcs monitor` | `bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <ip> --laps 1` |
-| E - Field mission (Vivi) | `python tools\valiant.py gcs monitor` | `bash hardware/vion/rpi/pi_field_ready.sh --mission --gcs-ip <ip> --max-targets 1` |
+| B - GCS connect | `.\tools\gcs\bringup_gcs.ps1` | — |
+| B - MAVLink | `python tools\valiant.py gcs heartbeat` | — |
+| B - FC params (advisory) | `python tools\valiant.py gcs params` | — |
+| C - First SSH | `.\tools\deploy\deploy_to_pi.ps1 -PiHost user@ip` | `bash hardware/vion/rpi/first_connect.sh` |
+| C - Sensors | — | `bash hardware/vion/rpi/pi_field_ready.sh --check` |
+| C - Calibration | `.\tools\calibrate\run_calibration_pipeline.ps1` | `bash hardware/vion/rpi/capture_all_calibration.sh` |
+| D - Monitor | `python tools\valiant.py gcs monitor` | — |
+| E - Field orbit | `python tools\valiant.py gcs monitor` | `bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <ip> --laps 1` |
+| E - Survey / tagtrack | dry-run on laptop first | `python tools/valiant.py survey` / `tagtrack` when wired on Pi |
 
-**Before hardware day:** [whats-left-before-hardware.md](whats-left-before-hardware.md)
+Props off until tethered checks pass. Safety: load `hardware/vion/lua/safety.lua`, confirm with `gcs verify-safety` if available.
 
-Props off until tethered tests pass.
+## GCS laptop
 
----
-
-## Run first: GCS laptop (connect to drone)
-
-### 1. Mission Planner (manual)
-
-1. Plug telemetry radio USB; note COM port (Device Manager)
-2. Mission Planner -> Connect @ **57600**
-3. Confirm heartbeat, battery, HERE4/GPS status
-4. `.\tools\bringup\print_fc_params.ps1` then set params in MP (see [002-pi-telem-params.md](../../hardware/vion/mission-planner/002-pi-telem-params.md))
-5. Confirm DroneCAN sees H-Flow
-6. `python tools\valiant.py gcs spray` (SERVO15, props off)
-7. Enable Lua scripting and load kill-switch script (see [001-parameters.md](../../hardware/vion/mission-planner/001-parameters.md#scripting))
-8. `python tools\valiant.py gcs verify-safety` (must pass before field flight)
-9. Test emergency RC switch (flip kill → LAND in Messages)
-
-### 2. GCS repo scripts
+1. Plug telemetry radio; note COM port.
+2. Mission Planner → Connect @ **57600**.
+3. Confirm heartbeat, battery, GPS.
+4. Set fence / `LAND_SPEED` per [docs/conops-2027.md](../conops-2027.md) (FC owns FTS).
+5. Enable Lua scripting; load kill-switch `safety.lua`.
+6. `python tools\valiant.py gcs heartbeat` and `gcs params`.
 
 ```powershell
-cd A:\Code\Valiant-Aerotech\AEAC2027
+cd <repo>
 .\tools\gcs\bringup_gcs.ps1
 ```
 
----
-
-## Run first: Raspberry Pi (first SSH session)
+## Raspberry Pi
 
 ```bash
 ssh <user>@<pi-ip>
-cd ~
-git clone https://github.com/Valiant-Aerotech/AEAC2027.git
-cd AEAC2027
-bash hardware/vion/rpi/pi_field_ready.sh --first-time
-```
-
-From GCS laptop:
-
-```powershell
-.\tools\deploy\deploy_to_pi.ps1 -PiHost <user>@<pi-ip>
-```
-
-### UART (if bootstrap warns)
-
-See [hardware/vivi/WIRING.md](../../hardware/vivi/WIRING.md) and [002-pi-telem-params.md](../../hardware/vion/mission-planner/002-pi-telem-params.md).
-
-### Every session
-
-```bash
+cd ~/AEAC2027   # or clone fresh
+bash hardware/vion/rpi/first_connect.sh
 bash hardware/vion/rpi/pi_field_ready.sh --check
 ```
 
-### Calibration
+Install sibling `valiant-mav` on the Pi the same way as the laptop (`pip install -e ../valiant-mav`).
+
+### Field orbit (no CV)
 
 ```bash
-bash hardware/vion/rpi/capture_all_calibration.sh
+bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <laptop-ip> --laps 1
 ```
 
-```powershell
-.\tools\calibrate\run_calibration_pipeline.ps1 -PiHost <user>@<pi-ip>
-```
+See [vivi-orbit-field-test.md](vivi-orbit-field-test.md).
 
-### Sim, tethered, monitor
+## Physical checks
 
-```bash
-GCS_IP=<laptop-ip> bash hardware/vion/rpi/run_bringup_tests.sh
-```
-
-```powershell
-python tools\valiant.py gcs monitor
-```
-
-### Props-on preflight
-
-```bash
-bash hardware/vion/rpi/preflight_indoor.sh
-```
-
-Includes automated `check_sensors.py --once` (RGB, MAVLink heartbeat, **safety.lua** / `SCR_ENABLE` when connected).
-
-```bash
-python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1
-```
-
----
-
-## Phase A - Physical checks
-
-- [ ] H-Flow rigid, facing down, DroneCAN with HERE4
-- [ ] Pi UART on dedicated TELEM port (not GCS radio port)
-- [ ] AI camera + ArduCam ToF on Pi
-- [ ] GCS laptop on same WiFi as Pi
+- [ ] Optical flow / GPS rigid and facing down as designed
+- [ ] Pi UART on a dedicated TELEM port (not the GCS radio port)
+- [ ] Camera + ToF on Pi (ToF is **not** used for Task 1 ground range — GPS + projection)
+- [ ] GCS laptop on same WiFi as Pi for UDP monitor
 - [ ] Props off until tethered tests pass
 
-**Note:** ArduCam ToF requires SDK install on Pi (`install_arducam_tof.sh`). Until then depth shows `n/a` and FOV fallback applies.
-
----
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---------|-----|
-| Pi no heartbeat | Enable UART; check `/dev/ttyAMA0`; `SERIALx_PROTOCOL=2` on FC |
-| MP + Pi conflict | Use different FC serial ports |
-| `opt_qua` low | H-Flow mount, fly 0.5-3 m AGL, venue-like floor |
-| `depth: n/a` | ArduCam driver pending; FOV fallback active |
-| Monitor LOST | Firewall; `--gcs-connection udpout:<LAPTOP_IP>:14550` |
-| No YOLO hits | Dry ONNX on Pi (`models/dry.onnx` or `best.onnx`); lighting; purple target in frame |
+Companion never terminates the aircraft. Soft boundary → hold + STATUSTEXT only.

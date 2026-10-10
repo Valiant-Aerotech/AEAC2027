@@ -19,12 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Checkout valiant-mav sibling
+        uses: actions/checkout@v7
+        with:
+          repository: Valiant-Aerotech/valiant-mav
+          path: _deps/valiant-mav
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install dependencies
+      - name: Link valiant-mav sibling + install
         run: |
+          ln -sfn "$GITHUB_WORKSPACE/_deps/valiant-mav" "$(dirname "$GITHUB_WORKSPACE")/valiant-mav"
           python -m pip install --upgrade pip
           pip install -e ".[dev,cv]"
       - name: Ruff (syntax and undefined names)
@@ -35,12 +42,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Checkout valiant-mav sibling
+        uses: actions/checkout@v7
+        with:
+          repository: Valiant-Aerotech/valiant-mav
+          path: _deps/valiant-mav
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install dependencies
+      - name: Link valiant-mav sibling + install
         run: |
+          ln -sfn "$GITHUB_WORKSPACE/_deps/valiant-mav" "$(dirname "$GITHUB_WORKSPACE")/valiant-mav"
           python -m pip install --upgrade pip
           pip install -e ".[dev,cv]"
       - name: Import smoke
@@ -55,6 +69,8 @@ jobs:
             tests/test_profile_connection.py \
             tests/test_fc_safety.py \
             tests/test_sitl_preflight.py \
+            tests/test_errors.py \
+            tests/test_boundary.py \
             -q --tb=short
 
   motion:
@@ -62,29 +78,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Checkout valiant-mav sibling
+        uses: actions/checkout@v7
+        with:
+          repository: Valiant-Aerotech/valiant-mav
+          path: _deps/valiant-mav
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install dependencies
+      - name: Link valiant-mav sibling + install
         run: |
+          ln -sfn "$GITHUB_WORKSPACE/_deps/valiant-mav" "$(dirname "$GITHUB_WORKSPACE")/valiant-mav"
           python -m pip install --upgrade pip
           pip install -e ".[dev,cv]"
       - name: Import smoke
         run: |
-          python -c "from valiant.core.nav.approach import MotionPlanner; from valiant.sim.physics import refresh_vehicle_pose"
+          python -c "from valiant.core.motion.hold import hold_position; from valiant.core.pose import drain_vehicle_pose"
       - name: pytest
         run: |
           python -m pytest \
-            tests/test_motion_planner.py \
+            tests/test_motion_hold.py \
             tests/test_ned_kinematics.py \
             tests/test_visual_servo_guided.py \
             tests/test_pilot_override.py \
             tests/test_gcs_hud.py \
-            tests/test_sitl_motion.py \
-            tests/test_sitl_search.py \
+            tests/test_field_orbit.py \
+            tests/test_guided_forward.py \
             tests/test_sitl_pattern.py \
-            tests/test_sitl_physics_pose.py \
+            tests/test_pose.py \
             -q --tb=short
 
   cv-metric:
@@ -92,17 +115,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Checkout valiant-mav sibling
+        uses: actions/checkout@v7
+        with:
+          repository: Valiant-Aerotech/valiant-mav
+          path: _deps/valiant-mav
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install dependencies
+      - name: Link valiant-mav sibling + install
         run: |
+          ln -sfn "$GITHUB_WORKSPACE/_deps/valiant-mav" "$(dirname "$GITHUB_WORKSPACE")/valiant-mav"
           python -m pip install --upgrade pip
           pip install -e ".[dev,cv]"
       - name: Import smoke
         run: |
-          python -c "from valiant.perception.detect import create_target_detector, draw_mission_overlay; from valiant.perception.metric_recon import create_metric_reconstructor; from valiant.core.nav import create_motion_planner; from valiant.autonomy.spray import is_aimed"
+          python -c "from valiant.perception.detect import create_detector; from valiant.perception.metric_recon import create_metric_reconstructor"
       - name: pytest
         run: |
           python -m pytest \
@@ -110,6 +140,7 @@ jobs:
             tests/test_metric_geometry_3d.py \
             tests/test_synthetic_camera.py \
             tests/test_sitl_physics.py \
+            tests/test_subframe_grid.py \
             -q --tb=short
 
   config:
@@ -117,26 +148,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Checkout valiant-mav sibling
+        uses: actions/checkout@v7
+        with:
+          repository: Valiant-Aerotech/valiant-mav
+          path: _deps/valiant-mav
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install dependencies
+      - name: Link valiant-mav sibling + install
         run: |
+          ln -sfn "$GITHUB_WORKSPACE/_deps/valiant-mav" "$(dirname "$GITHUB_WORKSPACE")/valiant-mav"
           python -m pip install --upgrade pip
           pip install -e ".[dev,cv]"
       - name: Verify environment
         run: python tools/bench/verify_env.py
       - name: Import smoke
         run: |
-          python -c "from valiant.autonomy.orchestrator import AutoExtinguisher; from valiant.core.config import load_config; load_config('rpas')"
+          python -c "from valiant.core.config import load_config; load_config(); from valiant.missions.survey import CourseTimer, cluster_fixes"
       - name: pytest
         run: |
           python -m pytest \
-            tests/test_rpas_config.py \
-            tests/test_flight_profiles.py \
             tests/test_tools_layout.py \
-            tests/test_upload_drive.py \
             tests/test_sitl_mission_loader.py \
-            tests/test_config_smoke.py \
+            tests/test_survey_math.py \
+            tests/test_survey_runner.py \
+            tests/test_tagtrack.py \
+            tests/test_competition_telem.py \
             -q --tb=short

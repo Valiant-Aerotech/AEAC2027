@@ -2,10 +2,16 @@
 
 Field names follow the CONOPS list. Extra keys are rejected so a future
 schema change cannot silently ship a field the server will not score.
+
+Invalid-GPS rules match Comp Server Support (Waleed, 2026-09-27): no-fix is
+lat and lon both 0, or horizontal accuracy non-finite or <= 0. There is no
+upper accuracy ceiling. Non-finite numerics and out-of-range lat/lon are
+validation rejects, not invalid-GPS scores — see ``validation_reject_reason``.
 """
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -22,8 +28,9 @@ REQUIRED_FIELDS = (
     "link_quality",
 )
 
-# Horizontal GPS accuracy worse than this is treated as invalid-GPS for scoring.
-INVALID_GPS_ACCURACY_M = 50.0
+
+def _finite(value: float) -> bool:
+    return math.isfinite(value)
 
 
 @dataclass(frozen=True)
@@ -39,12 +46,42 @@ class TelemetryPacket:
     link_quality: float
     armed: bool = True
 
-    def gps_valid(self) -> bool:
-        if abs(self.lat) < 1e-8 and abs(self.lon) < 1e-8:
-            return False
+    def validation_reject_reason(self) -> str | None:
+        """Return a reject reason, or None if the packet may be scored.
+
+        Non-finite numerics and lat/lon outside WGS84 bounds are rejected
+        before invalid-GPS scoring (organizer rule: validation, not
+        ``invalid_gps``).
+        """
+        numeric = {
+            "timestamp": self.timestamp,
+            "lat": self.lat,
+            "lon": self.lon,
+            "alt_agl_m": self.alt_agl_m,
+            "accuracy_m": self.accuracy_m,
+            "battery_pct": self.battery_pct,
+            "link_quality": self.link_quality,
+        }
+        for name, value in numeric.items():
+            if not _finite(value):
+                return f"non-finite {name}"
         if not (-90.0 <= self.lat <= 90.0 and -180.0 <= self.lon <= 180.0):
+            return "lat/lon out of range"
+        return None
+
+    def gps_valid(self) -> bool:
+        """True unless no-fix (0, 0) or horizontal accuracy is unusable.
+
+        Call only after ``validation_reject_reason`` is None. A large positive
+        accuracy is valid. Non-finite accuracy is also treated as invalid so a
+        direct call cannot slip through, but the client rejects non-finite
+        fields first and does not score them as invalid GPS.
+        """
+        if self.lat == 0.0 and self.lon == 0.0:
             return False
-        return self.accuracy_m <= INVALID_GPS_ACCURACY_M
+        if not _finite(self.accuracy_m) or self.accuracy_m <= 0.0:
+            return False
+        return True
 
     def as_dict(self) -> dict[str, Any]:
         return {

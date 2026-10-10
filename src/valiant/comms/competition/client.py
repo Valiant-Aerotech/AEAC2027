@@ -18,7 +18,13 @@ from pathlib import Path
 from typing import Protocol
 
 from valiant.comms.competition.packet import TelemetryPacket
-from valiant.comms.competition.penalties import PenaltyBook, PenaltyEvent
+from valiant.comms.competition.penalties import (
+    DISCONNECT_STALE_S,
+    LATENCY_LIMIT_S,
+    SESSION_GAP_S,
+    PenaltyBook,
+    PenaltyEvent,
+)
 from valiant.comms.competition.traffic import TrafficAircraft, parse_traffic
 from valiant.core.errors import clip_crew_message
 from valiant.core.secrets import CompetitionSecrets, competition_secrets
@@ -132,6 +138,7 @@ class CompetitionClient:
     period_s: float = TARGET_PERIOD_S
     _last_send_mono: float | None = None
     _last_send_wall: float | None = None
+    _last_packet_unix: float | None = None
     _armed_since: float | None = None
     _saw_packet_before_arm: bool = False
     status: ClientStatus = field(default_factory=ClientStatus)
@@ -191,15 +198,35 @@ class CompetitionClient:
         if self._last_send_mono is not None and mono - self._last_send_mono < self.period_s * 0.85:
             return False
 
+        reject = packet.validation_reject_reason()
+        if reject is not None:
+            self.status.last_error = reject
+            self.status.streaming = False
+            self.penalties.note_silence(mono, self._last_send_mono, armed=True)
+            return False
+
         if not packet.gps_valid():
             self._record(self.penalties.invalid_gps(mono))
             self.penalties.note_silence(mono, self._last_send_mono, armed=True)
             return False
 
-        if self._last_send_mono is not None:
+        # Behind-only age. A clock slightly ahead is not "stale vs server".
+        age_s = wall_now - packet.timestamp
+        if age_s > DISCONNECT_STALE_S:
+            self._record(self.penalties.stale_disconnect(mono, age_s))
+        elif age_s > LATENCY_LIMIT_S:
+            self._record(self.penalties.timestamp_latency(mono, age_s))
+
+        # Session follows packet unixTime, not wall age. A stale clock does
+        # not open a new session by itself.
+        new_session = (
+            self._last_packet_unix is not None
+            and packet.timestamp - self._last_packet_unix > SESSION_GAP_S
+        )
+        if new_session:
+            self._record(self.penalties.session_startup(mono))
+        elif self._last_send_mono is not None:
             self._record(self.penalties.rate(mono, mono - self._last_send_mono))
-        latency = abs(wall_now - packet.timestamp)
-        self._record(self.penalties.timestamp_latency(mono, latency))
 
         try:
             self.transport.send(packet)
@@ -214,6 +241,7 @@ class CompetitionClient:
         self.penalties.note_packet(mono)
         self._last_send_mono = mono
         self._last_send_wall = wall_now
+        self._last_packet_unix = packet.timestamp
         self.status.packets_sent += 1
         self.status.streaming = True
         self.status.last_error = None

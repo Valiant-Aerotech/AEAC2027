@@ -1,4 +1,4 @@
-"""Tests for SITL mission YAML loader."""
+"""Tests for SITL mission YAML loader (inline world / scenario fixtures)."""
 
 from __future__ import annotations
 
@@ -8,20 +8,20 @@ from pathlib import Path
 import pytest
 import yaml
 
+from valiant.core.config import load_config, repo_root
 from valiant.sim.mission import (
     SitlMissionError,
     apply_sitl_mission,
     load_sitl_mission,
     materialize_scenario,
 )
-from valiant.core.config import load_config, repo_root
 
 
-def test_load_example_mission_file():
-    path = repo_root() / "config" / "sitl_missions" / "example_wall.yaml"
-    mission = load_sitl_mission(path)
-    assert mission["name"] == "example_wall"
-    assert mission["profile"] == "sitl"
+def test_load_orbit_overlay_is_not_a_scenario_mission():
+    """orbit.yaml is a field_orbit overlay, not a sitl mission scenario file."""
+    path = repo_root() / "config" / "sitl_missions" / "orbit.yaml"
+    with pytest.raises(SitlMissionError, match="name|scenario"):
+        load_sitl_mission(path)
 
 
 def test_geofence_merges_into_sitl_block():
@@ -29,13 +29,13 @@ def test_geofence_merges_into_sitl_block():
     mission = {
         "name": "t",
         "profile": "sitl",
-        "scenario": "tests/fixtures/sitl_synthetic_multi.json",
+        "scenario": "tests/fixtures/sitl_survey_world.json",
         "geofence": {"max_north_m": 4.5, "max_east_m": 1.0},
     }
     merged, scenario, max_targets = apply_sitl_mission(cfg, mission)
     assert merged["sitl"]["max_north_m"] == 4.5
     assert merged["sitl"]["max_east_m"] == 1.0
-    assert "sitl_synthetic_multi.json" in scenario
+    assert "sitl_survey_world.json" in scenario
     assert max_targets is None
 
 
@@ -62,26 +62,20 @@ def test_inline_world_materializes_json(tmp_path: Path):
     assert data["world"]["wall"]["x_m"] == 4.0
 
 
-def test_sitl_physics_sets_camera_source():
+def test_survey_fixture_as_scenario():
     cfg = load_config()
     mission = {
-        "name": "phys",
-        "profile": "sitl_physics",
-        "scenario": "tests/fixtures/sitl_physics_wall.json",
+        "name": "survey",
+        "profile": "sitl",
+        "scenario": "tests/fixtures/sitl_survey_world.json",
     }
-    merged, _, _ = apply_sitl_mission(cfg, mission)
-    assert merged["camera"]["source"] == "synthetic_physics"
+    merged, scenario, _ = apply_sitl_mission(cfg, mission)
+    assert "sitl_survey_world.json" in scenario
+    assert merged["camera"]["source"] == "synthetic"
 
 
-def test_requires_scenario_or_world():
+def test_requires_scenario_or_world(tmp_path: Path):
+    path = tmp_path / "bad.yaml"
+    path.write_text(yaml.safe_dump({"name": "x", "profile": "sitl"}), encoding="utf-8")
     with pytest.raises(SitlMissionError, match="scenario"):
-        load_sitl_mission_from_dict({"name": "x", "profile": "sitl"})
-
-
-def load_sitl_mission_from_dict(data: dict):
-    path = repo_root() / "config" / "sitl_missions" / "_test_tmp.yaml"
-    path.write_text(yaml.safe_dump(data), encoding="utf-8")
-    try:
-        return load_sitl_mission(path)
-    finally:
-        path.unlink(missing_ok=True)
+        load_sitl_mission(path)

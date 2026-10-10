@@ -18,6 +18,7 @@ config/competition_token.txt
 !.env.example
 
 # Runtime output
+artifacts/
 task2_photos/
 logs/
 data/training/

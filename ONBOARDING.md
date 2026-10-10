@@ -23,25 +23,18 @@ Details: [docs/branches.md](docs/branches.md).
 | Tool | Purpose |
 |------|---------|
 | Python 3.10+ | Mission software |
+| Sibling [`valiant-mav`](https://github.com/Valiant-Aerotech/valiant-mav) | Flight I/O (`pip install -e ../valiant-mav`) |
 | Git | Clone repo |
 | Mission Planner | MAVLink to Pixhawk (hardware days) |
-| scrcpy | Optional - GCS phone-camera dev path only |
 
 ## Setup (one time per laptop)
 
 ```powershell
+pip install -e ..\valiant-mav
 .\start.ps1
 ```
 
-Or manually: `.\tools\setup.ps1` then `python tools\valiant.py quickstart`.
-
-## Configure this machine
-
-```powershell
-notepad config\rpas.yaml
-```
-
-Set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). Airframe tuning lives in `config/vion.yaml` (inherited by RPAS). Skip until you connect a radio if you are only doing SITL/bench work.
+Or: `.\tools\setup.ps1` then `python tools\valiant.py quickstart`.
 
 ## What to run (by scenario)
 
@@ -49,49 +42,25 @@ Set `mavlink.connection` to your telemetry COM port (e.g. `COM5`). Airframe tuni
 |----------|---------|
 | **Forgot what to run** | `python tools\valiant.py guide` |
 | **Health check** | `python tools\valiant.py quickstart` |
-| **Webcam CV** | `python tools\valiant.py bench cv --camera 0` |
-| **Virtual mission (SITL)** | [sitl-overview.md](docs/runbooks/sitl-overview.md) |
+| **Survey math** | `python -m pytest tests/test_survey_math.py -q` |
+| **Survey / tagtrack dry-run** | `python tools\valiant.py survey --dry-run` / `tagtrack --dry-run` |
+| **SITL motion** | [sitl-overview.md](docs/runbooks/sitl-overview.md) → `sitl pattern` / `sitl orbit` |
 | **GCS + drone first connect** | `python tools\valiant.py bringup phase1` |
-| **Pi first SSH / field day** | `bash hardware/vion/rpi/pi_field_ready.sh --first-time` — [pi-fresh-install.md](docs/runbooks/pi-fresh-install.md) |
-| **Competition flight (Pi indoor)** | `python hardware/vion/rpi/run_mission.py --profile indoor --max-targets 1` |
-| **Vivi field orbit** | `bash hardware/vion/rpi/pi_field_ready.sh --orbit --gcs-ip <ip> --laps 1` |
-| **Vivi outdoor mission** | `bash hardware/vion/rpi/pi_field_ready.sh --mission --gcs-ip <ip> --max-targets 1` |
+| **Pi first SSH** | `bash hardware/vion/rpi/first_connect.sh` — [pi-fresh-install.md](docs/runbooks/pi-fresh-install.md) |
+| **Field orbit** | `python tools\valiant.py field orbit --gcs-ip <ip> --laps 1` |
 | **GCS monitor** | `python tools\valiant.py gcs monitor` |
 
-### GCS dev missions (legacy / bench)
+## Layering (do not blur)
 
-| Mission | Command |
-|---------|---------|
-| Task 2 auto (sim) | `python missions\task2_vion_auto_extinguish.py --sim --source webcam --camera 0` |
-| Task 2 manual photo | `python missions\task2_vion_manual_photo.py --camera 0` |
-| Task 1 survey | `python missions\task1_vivi_survey.py` |
+| Package | Owns |
+|---------|------|
+| `missions/survey`, `missions/tagtrack` | Scoring clocks, 10 m clusters, reports, track CSV |
+| `perception/` | Labels, boxes, optional `Detection.text` |
+| `comms/competition/` | 1 Hz HTTP + penalty counters |
+| `valiant-mav` | Connect, GUIDED hold, orbit, waypoints |
 
-**Competition autonomous runs on the Pi**, not these GCS scripts.
+`reference/` is inert 2026 code for study only.
 
-## Repo navigation
+## Competition
 
-| Question | Where |
-|----------|-------|
-| What should I run? | `START_HERE.md` or `valiant guide` |
-| Change tuning? | `config/rpas.yaml` (GCS) / `config/vion.yaml` (airframe) |
-| Pipeline design? | `docs/architecture.md` |
-| FC params / Lua? | `hardware/vion/` |
-| Debug MAVLink? | `python tools\valiant.py gcs listen` |
-| All tool commands? | [tools/README.md](tools/README.md) |
-
-## Common issues
-
-| Problem | Fix |
-|---------|-----|
-| Import errors | Re-run `.\start.ps1` |
-| No COM port | Device Manager → update `config/rpas.yaml` |
-| SITL won't connect | Run `launch_sitl.ps1` first; wait for port 5760 |
-| Wrong entry point | Pi flight = `hardware/vion/rpi/run_mission.py` |
-
-## Next steps
-
-1. `python tools\valiant.py quickstart`
-2. SITL mission - [docs/runbooks/sitl-overview.md](docs/runbooks/sitl-overview.md)
-3. Pick a GitHub issue - [WELCOME.md](WELCOME.md)
-
-Tune CV in `config/vion.yaml` under `cv.hsv_dry` / `cv.hsv_shot`. Nav gains under `auto_nav`.
+Rules map: [docs/conops-2027.md](docs/conops-2027.md). Leave `AEAC_COMP_LIVE=0` until a scored window.

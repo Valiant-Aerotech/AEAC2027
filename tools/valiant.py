@@ -164,31 +164,12 @@ def cmd_sitl_map_download(args: argparse.Namespace) -> int:
     return _run("sitl/download_sitl_map.py", args.extra)
 
 
-def cmd_bench_cv(args: argparse.Namespace) -> int:
-    argv = list(args.extra or [])
-    if args.regression:
-        argv = ["--regression", *argv]
-    return _run("bench/cv_bench_test.py", argv)
-
-
-def cmd_bench_metric(args: argparse.Namespace) -> int:
-    return _run("bench/metric_bench_test.py", args.extra)
-
-
 def cmd_bench_safety(_: argparse.Namespace) -> int:
     return _run("bench/safety_bench_test.py")
 
 
 def cmd_calibrate_tune(args: argparse.Namespace) -> int:
     return _run("calibrate/calibrate_depth_rgb.py", args.extra)
-
-
-def cmd_calibrate_validate(args: argparse.Namespace) -> int:
-    return _run("calibrate/validate_calibration.py", args.extra)
-
-
-def cmd_calibrate_replay(args: argparse.Namespace) -> int:
-    return _run("calibrate/replay_rpi_recording.py", args.extra)
 
 
 def cmd_bringup_phase1(args: argparse.Namespace) -> int:
@@ -225,37 +206,7 @@ def cmd_sitl_test(_: argparse.Namespace) -> int:
             cwd=str(ROOT),
         )
     return subprocess.call(
-        [sys.executable, "-m", "pytest", "tests/sitl", "tests/test_sitl_motion.py", "-q"],
-        cwd=str(ROOT),
-    )
-
-
-def cmd_sitl_mission(args: argparse.Namespace) -> int:
-    ps1 = TOOLS / "run_sitl_mission.ps1"
-    extra = args.extra or []
-    if ps1.exists() and not extra:
-        return subprocess.call(
-            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1)],
-            cwd=str(ROOT),
-        )
-    return subprocess.call(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1), *extra],
-        cwd=str(ROOT),
-    )
-
-
-def cmd_sitl_run(args: argparse.Namespace) -> int:
-    ps1 = TOOLS / "run_sitl_mission_file.ps1"
-    mission = args.mission_file
-    extra: list[str] = ["-Mission", mission]
-    if args.headless:
-        extra.append("-Headless")
-    if args.skip_preflight:
-        extra.append("-SkipPreflight")
-    if args.no_monitor:
-        extra.append("-NoMonitor")
-    return subprocess.call(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1), *extra],
+        [sys.executable, "-m", "pytest", "tests/sitl", "-q"],
         cwd=str(ROOT),
     )
 
@@ -311,6 +262,32 @@ def cmd_field_orbit(args: argparse.Namespace) -> int:
     if args.laps is not None:
         argv.extend(["--laps", str(args.laps)])
     return _run("field/run_field_orbit.py", argv)
+
+
+def cmd_survey(args: argparse.Namespace) -> int:
+    argv: list[str] = []
+    if args.dry_run:
+        argv.append("--dry-run")
+    if args.connection:
+        argv.extend(["--connection", args.connection])
+    if args.report:
+        argv.extend(["--report", args.report])
+    if args.ocr:
+        argv.append("--ocr")
+    argv.extend(args.extra or [])
+    return _run("survey/run_survey.py", argv)
+
+
+def cmd_tagtrack(args: argparse.Namespace) -> int:
+    argv: list[str] = []
+    if args.dry_run:
+        argv.append("--dry-run")
+    if args.connection:
+        argv.extend(["--connection", args.connection])
+    if args.log:
+        argv.extend(["--log", args.log])
+    argv.extend(args.extra or [])
+    return _run("tagtrack/run_tagtrack.py", argv)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -375,21 +352,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_sitl_setup_wsl)
     sp = s.add_parser("test", help="Run SITL pytest suite")
     sp.set_defaults(func=cmd_sitl_test)
-    sp = s.add_parser("mission", help="Run Task 2 SITL mission")
-    sp.add_argument("extra", nargs=argparse.REMAINDER)
-    sp.set_defaults(func=cmd_sitl_mission)
-    sp = s.add_parser("run", help="Run SITL mission from YAML config file")
-    sp.add_argument("mission_file", help="Path to config/sitl_missions/*.yaml")
-    sp.add_argument("--headless", action="store_true")
-    sp.add_argument("--skip-preflight", action="store_true")
-    sp.add_argument("--no-monitor", action="store_true")
-    sp.set_defaults(func=cmd_sitl_run)
-    sp = s.add_parser("pattern", help="Guided box pattern then LOITER (no CV mission)")
+    sp = s.add_parser("pattern", help="Guided box pattern then GUIDED hold")
     sp.add_argument("--skip-preflight", action="store_true")
     sp.add_argument("--no-monitor", action="store_true")
     sp.add_argument("extra", nargs=argparse.REMAINDER)
     sp.set_defaults(func=cmd_sitl_pattern)
-    sp = s.add_parser("orbit", help="Guided orbit then LOITER (field geometry, SITL first)")
+    sp = s.add_parser("orbit", help="Guided orbit then GUIDED hold (field geometry, SITL first)")
     sp.add_argument("--skip-preflight", action="store_true")
     sp.add_argument("--no-monitor", action="store_true")
     sp.add_argument("--laps", type=int, default=None, help="Override lap count")
@@ -403,32 +371,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("bench", help="Bench and regression tests")
     s = p.add_subparsers(dest="sub", required=True)
-    sp = s.add_parser("cv", help="CV detection bench")
-    sp.add_argument("--regression", action="store_true")
-    sp.add_argument("extra", nargs=argparse.REMAINDER)
-    sp.set_defaults(func=cmd_bench_cv)
-    sp = s.add_parser("metric", help="CV + metric recon bench")
-    sp.add_argument("extra", nargs=argparse.REMAINDER)
-    sp.set_defaults(func=cmd_bench_metric)
     sp = s.add_parser("safety", help="Safety monitor unit tests")
     sp.set_defaults(func=cmd_bench_safety)
-    sp = s.add_parser("smoke", help="Same as quickstart (env + CONOPS + safety)")
+    sp = s.add_parser("smoke", help="Same as quickstart (env + boundary + safety)")
     sp.set_defaults(func=cmd_bench_smoke)
 
     p = sub.add_parser("calibrate", help="RGB/depth calibration")
     s = p.add_subparsers(dest="sub", required=True)
-    for name, fn in (
-        ("tune", cmd_calibrate_tune),
-        ("validate", cmd_calibrate_validate),
-        ("replay", cmd_calibrate_replay),
-    ):
-        sp = s.add_parser(name)
-        sp.add_argument("extra", nargs=argparse.REMAINDER)
-        sp.set_defaults(func=fn)
+    sp = s.add_parser("tune")
+    sp.add_argument("extra", nargs=argparse.REMAINDER)
+    sp.set_defaults(func=cmd_calibrate_tune)
 
     p = sub.add_parser("bringup", help="Hardware bringup checklists")
     s = p.add_subparsers(dest="sub", required=True)
-    sp = s.add_parser("phase1", help="Phase 1 GCS checks (field-test-plan)")
+    sp = s.add_parser("phase1", help="Phase 1 GCS checks")
     sp.add_argument(
         "--skip-mavlink",
         action="store_true",
@@ -438,7 +394,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp = s.add_parser("phase1-pi", help="Phase 1 Pi checks (run on companion)")
     sp.set_defaults(func=cmd_bringup_phase1_pi)
 
-    p = sub.add_parser("field", help="Field flight scripts (no CV orchestrator)")
+    p = sub.add_parser("field", help="Field flight scripts")
     s = p.add_subparsers(dest="sub", required=True)
     sp = s.add_parser("orbit", help="GUIDED-triggered orbit on Pi UART")
     sp.add_argument("--profile", default="vivi_orbit")
@@ -447,6 +403,21 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--laps", type=int, default=None, help="Override lap count")
     sp.add_argument("extra", nargs=argparse.REMAINDER)
     sp.set_defaults(func=cmd_field_orbit)
+
+    sp = sub.add_parser("survey", help="Task 1 wildlife survey runner")
+    sp.add_argument("--dry-run", action="store_true", help="Offline timers + report")
+    sp.add_argument("--connection", default=None)
+    sp.add_argument("--report", default=None, help="Submission report path")
+    sp.add_argument("--ocr", action="store_true", help="Enable optional ear-tag OCR")
+    sp.add_argument("extra", nargs=argparse.REMAINDER)
+    sp.set_defaults(func=cmd_survey)
+
+    sp = sub.add_parser("tagtrack", help="Task 2 tag-and-track runner")
+    sp.add_argument("--dry-run", action="store_true", help="Offline phase walk + CSV")
+    sp.add_argument("--connection", default=None)
+    sp.add_argument("--log", default=None, help="Appendix D track CSV path")
+    sp.add_argument("extra", nargs=argparse.REMAINDER)
+    sp.set_defaults(func=cmd_tagtrack)
 
     return parser
 
