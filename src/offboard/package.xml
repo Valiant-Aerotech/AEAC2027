@@ -3,9 +3,12 @@
 <package format="3">
   <name>offboard</name>
   <version>0.0.0</version>
-  <description>Setpoint stream. Empty until the aircraft needs offboard control.</description>
+  <description>PX4 position-hold setpoint stream. Does not arm or change mode.</description>
   <maintainer email="54031999+devanshhdalal@users.noreply.github.com">Devansh</maintainer>
   <license>Proprietary</license>
+  <depend>rclpy</depend>
+  <depend>px4_msgs</depend>
+  <depend>std_msgs</depend>
   <export>
     <build_type>ament_python</build_type>
   </export>

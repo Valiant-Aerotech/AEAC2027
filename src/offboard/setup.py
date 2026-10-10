@@ -14,6 +14,11 @@ setup(
     zip_safe=True,
     maintainer="Devansh",
     maintainer_email="54031999+devanshhdalal@users.noreply.github.com",
-    description="Setpoint stream. Empty until the aircraft needs offboard control.",
+    description="PX4 position-hold setpoint stream. Does not arm or change mode.",
     license="Proprietary",
+    entry_points={
+        "console_scripts": [
+            "hold = offboard.hold:main",
+        ],
+    },
 )

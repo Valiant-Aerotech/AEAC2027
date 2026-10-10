@@ -154,18 +154,24 @@ class CompetitionClient:
         return self.status.packets_sent > 0
 
     def _say(self, message: str) -> None:
-        text = clip_crew_message(message)
-        print(f"[Comp] {text}")
-        hud = self.hud
-        if hud is not None and hasattr(hud, "send"):
-            hud.send(text, force=True)
+        try:
+            text = clip_crew_message(message)
+            print(f"[Comp] {text}")
+            hud = self.hud
+            if hud is not None and hasattr(hud, "send"):
+                hud.send(text, force=True)
+        except Exception as exc:
+            self._hook_error = f"status: {exc}"
 
     def _log(self, packet: TelemetryPacket) -> None:
         if self.log_path is None:
             return
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.log_path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(packet.as_dict()) + "\n")
+        try:
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+            with self.log_path.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(packet.as_dict()) + "\n")
+        except Exception as exc:
+            self._hook_error = f"log: {exc}"
 
     def _record(self, event: PenaltyEvent | None) -> None:
         if event is None:
@@ -185,6 +191,7 @@ class CompetitionClient:
         Safe to call faster than 1 Hz: extra calls are no-ops until the period
         elapses. Call with ``packet.armed=False`` to idle without transmitting.
         """
+        self._hook_error = None
         mono = time.monotonic() if now is None else now
         wall_now = time.time() if wall is None else wall
 
@@ -239,6 +246,8 @@ class CompetitionClient:
             self.status.last_error = str(exc)
             self.status.streaming = False
             self._say("Telemetry reconnecting")
+            if self._hook_error is not None:
+                self.status.last_error = self._hook_error
             self.penalties.note_silence(mono, self._last_send_mono, armed=True)
             return False
 
@@ -249,7 +258,7 @@ class CompetitionClient:
         self._last_packet_unix = packet.timestamp
         self.status.packets_sent += 1
         self.status.streaming = True
-        self.status.last_error = None
+        self.status.last_error = self._hook_error
         self._saw_packet_before_arm = True
         try:
             self.traffic = parse_traffic(self.transport.poll_traffic())
