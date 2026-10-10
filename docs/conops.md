@@ -1,0 +1,86 @@
+# AEAC 2027 CONOPS notes
+
+Working notes against CONOPS v1.0 (2026-09-08). Not a rules engine. The PDF
+stays out of the software; numbers that code needs live as constants next to
+the code they govern.
+
+## Outstanding questions (emails to send)
+
+### 1. Chief Judge — Appendix C Table C2
+
+Appendix C prose says the **soft** boundary is Table C1 and the **hard**
+boundary is Table C2. The only printed table is labelled **Table C1: Hard
+Flight Boundary GPS Coordinates**, and there is no Table C2. So one boundary
+is missing and the other is labelled both ways.
+
+Until this is answered we treat the six printed coordinates as the **hard**
+boundary (loaded into Mission Planner as an inclusion fence, `FENCE_ACTION=2`)
+and derive the soft boundary as a 15 m inset. That inset is our invention.
+
+Draft:
+
+> Subject: AEAC 2027 CONOPS v1.0 Appendix C — Table C1 / C2 labelling
+>
+> Appendix C (p.31) states that Table C1 is the soft flight boundary and
+> Table C2 is the hard flight boundary. The document contains a single table,
+> labelled "Table C1: Hard Flight Boundary GPS Coordinates", and no Table C2.
+>
+> Please confirm:
+> 1. Are the six printed coordinates the hard boundary, the soft boundary, or both?
+> 2. If a second table exists, can it be issued as an errata?
+> 3. If only one polygon will be published, what offset (if any) should teams
+>    use for the soft boundary in CONOPS 4.2?
+>
+> We will load whichever polygon you designate as hard into the autopilot as
+> an inclusion fence with Always Land.
+
+### 2. comp-server@aerialevolution.ca — connection token / registration
+
+Telemetry to aeac.mylonics.com needs a connection token. Team registration
+is listed as 2026-11-27. If the token is gated on registration, the earliest
+the live client can be finished is that date.
+
+Draft:
+
+> Subject: AEAC 2027 competition server — token before team registration?
+>
+> CONOPS 5.2.3 requires 1 Hz telemetry to the competition server whenever the
+> aircraft is armed. Can a connection token and the current server
+> specification be issued before team registration on 2026-11-27, so we can
+> exercise the test facility over cable / loopback (CONOPS 4.2 / Appendix E:
+> no wireless outside the flight window)?
+>
+> If the token requires a registered team, we will ship a loopback transport
+> now and swap in the live client after 2026-11-27.
+
+## Competition server
+
+**Token:** paste into `.env` as `AEAC_COMP_TOKEN`. The file is gitignored.
+Leave `AEAC_COMP_LIVE=0` while building — loopback still exercises the 1 Hz
+client, packet log and penalties without transmitting. Flip to `1` only on a
+cable to the test facility or inside a scored window, then reset the token
+on aeac.mylonics.com when the build pass is done.
+
+When the server spec is confirmed, capture here:
+
+- Exact POST path (client currently uses `{url}/telemetry` and `{url}/traffic`)
+- Auth header (currently `Authorization: Bearer <token>`)
+- Traffic-feed JSON shape and keepaway cylinder sizes
+- Wire field name for horizontal accuracy (`accuracy_m` in our packet until the live schema is confirmed; organizers call it `horizontalPositionAccuracy`)
+
+### Answered — Waleed / Comp Server Support (2026-09-27)
+
+Invalid GPS while armed (either condition):
+
+- latitude and longitude are both 0 (no-fix), or
+- `horizontalPositionAccuracy` is non-finite or less than or equal to 0
+
+There is no upper accuracy threshold. A large but positive horizontal accuracy does not score `invalid_gps`. Non-finite numeric telemetry fields are rejected during message validation; they are not accepted and then scored as invalid GPS.
+
+Stale sample vs new session:
+
+- A packet whose `unixTime` is more than 30 seconds behind **server receive time** scores as a disconnect, not a latency infraction.
+- A new broadcast session is the gap between this packet's `unixTime` and the previous telemetry packet's `unixTime`. If that gap is greater than 30 seconds, the packet is the first of a new session and gets the startup check instead of the slow-rate check.
+- Receiving a packet that is more than 30 seconds old does not by itself start a new session. If its timestamp is still within 30 seconds of the previous telemetry timestamp, the session continues, but the stale packet can still score a disconnect.
+
+Our client cannot see server receive time on loopback. It estimates age with the local wall clock at send (`wall_now - packet.timestamp`). CONOPS still lists a 15 s timestamp-latency band; ages in `(15, 30]` stay on that estimator, and ages over 30 s follow the disconnect bucket above.
