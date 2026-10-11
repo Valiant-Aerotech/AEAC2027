@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cases:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: logic cases
+        run: |
+          python tests/telemetry/packet_cases.py
+          python tests/telemetry/client_cases.py
+          python tests/telemetry/disconnect_cases.py
+          python tests/telemetry/fc_state_cases.py
+          python tests/mission/deconflict_cases.py
+          python tests/offboard/hold_logic_cases.py
