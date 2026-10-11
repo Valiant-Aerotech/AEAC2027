@@ -1,5 +1,5 @@
 we're using ROS 2 Jazzy, on the Ubuntu 24.04
-
+after installing ros, use these cmds
 ```bash
 source /opt/ros/jazzy/setup.bash
 colcon build
