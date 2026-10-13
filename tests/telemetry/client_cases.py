@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import threading
+import time
 from dataclasses import replace
 from pathlib import Path
 
@@ -14,8 +15,10 @@ from telemetry.client import (
     HOLD_FIX_S,
     SEND_FLOOR_S,
     SEND_PERIOD_S,
+    WRITE_TIMEOUT_S,
     CompetitionClient,
     LiveSession,
+    format_infraction,
     make_client,
     send_due,
 )
@@ -31,12 +34,14 @@ class FakeSocket:
         self.sent: list[str] = []
         self._inbox = [json.dumps({"event": "telemetry_ack", "mode": "armed-automatic"})]
         self.timeouts: list[float] = []
+        self.timeout_at_send: list[float] = []
 
     def settimeout(self, value: float) -> None:
         self.timeouts.append(value)
 
     def send(self, data: str) -> None:
         self.sent.append(data)
+        self.timeout_at_send.append(self.timeouts[-1])
 
     def recv(self) -> str:
         if not self._inbox:
@@ -166,6 +171,95 @@ def test_traffic_payload_shape() -> None:
     assert traffic[0].uav_id == "0"
     assert traffic[0].alt_agl_m == 40
     assert traffic[0].heading_deg == 180
+    assert traffic[0].keepout_radius_m == 30.0
+    assert traffic[0].keepout_height_m == 30.0
+
+
+def test_server_keepaway_overrides_placeholder() -> None:
+    traffic = parse_traffic(
+        {
+            "event": "traffic",
+            "payload": {
+                "traffic": [
+                    {
+                        "aircraftIndex": 1,
+                        "horizontalKeepAway": 80,
+                        "verticalKeepAway": 25,
+                        "position": {"lat": 50.1, "lon": -110.7, "altitude": 40},
+                    }
+                ]
+            },
+        }
+    )
+    assert traffic[0].keepout_radius_m == 80.0
+    assert traffic[0].keepout_height_m == 25.0
+
+
+def test_write_timeout_follows_a_read() -> None:
+    sock = FakeSocket()
+    client = CompetitionClient(uav_id="valiant-1", _clock=lambda: WALL)
+    session = LiveSession(client, lambda: sock)
+    client._live = session
+    client.tick(packet(timestamp=1.0))
+    session.pump_once()
+    assert sock.timeout_at_send[-1] == WRITE_TIMEOUT_S
+    client._last_send_mono = time.monotonic() - SEND_PERIOD_S
+    client._last_attempt_mono = time.monotonic() - SEND_PERIOD_S
+    session.pump_once()
+    assert sock.timeout_at_send[-1] == WRITE_TIMEOUT_S
+    assert sock.timeouts[-2] != WRITE_TIMEOUT_S
+
+
+def test_empty_frame_waits_before_reconnect() -> None:
+    sock = FakeSocket()
+    sock._inbox = [""]
+    client = CompetitionClient(uav_id="valiant-1", _clock=lambda: WALL)
+    connects: list[int] = []
+
+    def connect():
+        connects.append(1)
+        return sock
+
+    session = LiveSession(client, connect)
+    session._ws = sock
+    client._live = session
+    client.tick(packet(timestamp=1.0))
+    session.pump_once()
+    assert session._ws is None
+    assert connects == []
+    assert client.status.streaming is False
+
+
+def test_infraction_does_not_drop_the_socket() -> None:
+    sock = FakeSocket()
+    sock._inbox = [
+        json.dumps(
+            {
+                "event": "infraction",
+                "last_infraction": "slow_telem",
+                "score": 24,
+                "armed_seconds": "not-a-number",
+                "slow_telem": 1,
+            }
+        )
+    ]
+    client = CompetitionClient(uav_id="valiant-1", _clock=lambda: WALL)
+    session = LiveSession(client, lambda: sock)
+    session._ws = sock
+    client._live = session
+    session.pump_once()
+    assert session._ws is sock
+    assert client.status.last_error is None
+    line = format_infraction(
+        {
+            "last_infraction": "slow_telem",
+            "score": 24,
+            "armed_seconds": "not-a-number",
+            "slow_telem": 1,
+        }
+    )
+    assert "slow_telem" in line
+    assert "armed_s=0.0" in line
 
 
 if __name__ == "__main__":
@@ -176,4 +270,8 @@ if __name__ == "__main__":
     test_live_hold_stops_after_five_seconds()
     test_bad_clock_stays_on_loopback()
     test_traffic_payload_shape()
+    test_server_keepaway_overrides_placeholder()
+    test_write_timeout_follows_a_read()
+    test_empty_frame_waits_before_reconnect()
+    test_infraction_does_not_drop_the_socket()
     print("client cases ok")

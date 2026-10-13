@@ -1,8 +1,8 @@
 """Airspace traffic from the competition server.
 
-Keepaway distance is a placeholder until the server spec is read
-(see docs/conops.md). Horizontal distance uses an equirectangular
-approximation; good enough inside the Medicine Hat site.
+The server sends ``horizontalKeepAway`` and ``verticalKeepAway`` on each
+traffic row. Those are stored when present. A row that omits them uses the
+30 m placeholder. Horizontal distance uses an equirectangular approximation.
 """
 
 from __future__ import annotations
@@ -73,11 +73,20 @@ def _row_position(item: dict) -> dict:
     return item
 
 
+def _keepaway_m(item: dict, *keys: str, default: float) -> float:
+    """First present keep-away, otherwise the 30 m placeholder."""
+    for key in keys:
+        if key in item and item[key] is not None:
+            return float(item[key])
+    return default
+
+
 def parse_traffic(payload: object) -> tuple[TrafficAircraft, ...]:
     """Read a traffic event, ``{"traffic": [...]}``, or a list of rows.
 
     Live rows use ``aircraftIndex`` and ``position.lat/lon/altitude/direction``.
-    ``direction`` is stored and not used for avoidance in this pass.
+    ``horizontalKeepAway`` and ``verticalKeepAway`` override the 30 m
+    placeholder. ``direction`` is stored and not used for avoidance.
     """
     out = []
     for item in _traffic_rows(payload):
@@ -95,8 +104,18 @@ def parse_traffic(payload: object) -> tuple[TrafficAircraft, ...]:
                 lat=float(position["lat"]),
                 lon=float(position["lon"]),
                 alt_agl_m=float(altitude or 0.0),
-                keepout_radius_m=float(item.get("keepout_radius_m", DEFAULT_KEEPOUT_RADIUS_M)),
-                keepout_height_m=float(item.get("keepout_height_m", DEFAULT_KEEPOUT_HEIGHT_M)),
+                keepout_radius_m=_keepaway_m(
+                    item,
+                    "horizontalKeepAway",
+                    "keepout_radius_m",
+                    default=DEFAULT_KEEPOUT_RADIUS_M,
+                ),
+                keepout_height_m=_keepaway_m(
+                    item,
+                    "verticalKeepAway",
+                    "keepout_height_m",
+                    default=DEFAULT_KEEPOUT_HEIGHT_M,
+                ),
                 heading_deg=None if direction is None else float(direction),
             )
         )

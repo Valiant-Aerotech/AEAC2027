@@ -35,8 +35,19 @@ TARGET_PERIOD_S = 0.9
 SEND_PERIOD_S = 0.9
 SEND_FLOOR_S = 0.5
 WRITE_TIMEOUT_S = 0.3
+READ_TIMEOUT_S = 0.05
 RECONNECT_WAIT_S = 0.2
 HOLD_FIX_S = 5.0
+INFRACTION_KEYS = (
+    "uav_in_traffic",
+    "slow_telem",
+    "fast_telem",
+    "latency",
+    "disconnect",
+    "startup",
+    "invalid_gps",
+    "uav_left_boundary",
+)
 
 
 def clip_crew_message(message: str) -> str:
@@ -73,6 +84,25 @@ def log_host(url: str) -> str:
 
 def _is_timeout(exc: BaseException) -> bool:
     return isinstance(exc, TimeoutError) or "Timeout" in type(exc).__name__
+
+
+def _socket_timeout(ws: object, seconds: float) -> None:
+    settimeout = getattr(ws, "settimeout", None)
+    if settimeout is not None:
+        settimeout(seconds)
+
+
+def format_infraction(message: dict) -> str:
+    """One line for a server infraction event. Missing fields stay blank."""
+    counts = {key: message[key] for key in INFRACTION_KEYS if message.get(key)}
+    try:
+        armed_s = float(message.get("armed_seconds") or 0)
+    except (TypeError, ValueError):
+        armed_s = 0.0
+    return (
+        f"infraction last={message.get('last_infraction')} "
+        f"score={message.get('score')} armed_s={armed_s:.1f} {counts}"
+    )
 
 
 class LoopbackTransport:
@@ -124,6 +154,7 @@ class LiveSession:
             self._read_available()
             self._maybe_send()
         except Exception as exc:
+            self._schedule_reconnect()
             self._client._fail_live(str(exc))
 
     def _loop(self) -> None:
@@ -140,35 +171,38 @@ class LiveSession:
             except Exception:
                 pass
 
-    def _ensure_socket(self) -> None:
+    def _schedule_reconnect(self) -> None:
+        self._drop_socket()
+        self._next_connect_mono = time.monotonic() + RECONNECT_WAIT_S
+
+    def _ensure_socket(self) -> bool:
+        """Open the socket when the reconnect wait has elapsed. False means wait."""
         if self._ws is not None:
-            return
-        now = time.monotonic()
-        if now < self._next_connect_mono:
-            raise ConnectionError("reconnect wait")
+            return True
+        if time.monotonic() < self._next_connect_mono:
+            return False
         self.connect_calls += 1
         self._ws = self._connect()
-        settimeout = getattr(self._ws, "settimeout", None)
-        if settimeout is not None:
-            settimeout(WRITE_TIMEOUT_S)
+        _socket_timeout(self._ws, WRITE_TIMEOUT_S)
         self._reconnect_announced = False
+        return True
 
     def _read_available(self) -> None:
         ws = self._ws
         if ws is None:
             return
-        settimeout = getattr(ws, "settimeout", None)
-        if settimeout is not None:
-            settimeout(0.05)
+        _socket_timeout(ws, READ_TIMEOUT_S)
         try:
             raw = ws.recv()
         except Exception as exc:
             if _is_timeout(exc):
                 return
-            self._drop_socket()
+            self._schedule_reconnect()
             self._client._fail_live(str(exc))
             return
         if not raw:
+            self._schedule_reconnect()
+            self._client._fail_live("socket closed")
             return
         try:
             message = json.loads(raw)
@@ -186,10 +220,17 @@ class LiveSession:
                     client.traffic = parse_traffic(message)
                 except Exception as exc:
                     client.status.last_error = f"traffic: {exc}"
+            elif event == "infraction":
+                try:
+                    print(f"[Comp] {format_infraction(message)}")
+                except Exception as exc:
+                    client.status.last_error = f"infraction: {exc}"
             elif event == "error":
                 client._say(str(message.get("message") or "server error"))
 
     def _maybe_send(self) -> None:
+        if self._ws is None and time.monotonic() < self._next_connect_mono:
+            return
         client = self._client
         mono = time.monotonic()
         wall = client._stamp()
@@ -201,12 +242,13 @@ class LiveSession:
                 return
             client._last_attempt_mono = mono
         try:
-            self._ensure_socket()
+            if not self._ensure_socket():
+                return
+            _socket_timeout(self._ws, WRITE_TIMEOUT_S)
             payload = json.dumps({"action": "telemetry", "data": packet.to_wire()})
             self._ws.send(payload)
         except Exception as exc:
-            self._drop_socket()
-            self._next_connect_mono = time.monotonic() + RECONNECT_WAIT_S
+            self._schedule_reconnect()
             client._fail_live(str(exc), mono=mono)
             return
         client._mark_sent(packet, mono, wall)
