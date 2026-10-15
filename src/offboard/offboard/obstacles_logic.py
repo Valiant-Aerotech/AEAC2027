@@ -20,12 +20,22 @@ class EscapeAction:
     heartbeat: bool
     north_m: float
     east_m: float
-    mode: str | None
+    up_m: float = 0.0
+    mode: str | None = None
 
 
 class EscapeGate:
     def __init__(self) -> None:
         self._holding = False
+        self._north_m = 0.0
+        self._east_m = 0.0
+        self._up_m = 0.0
+
+    def remembered(self) -> tuple[float, float, float] | None:
+        """Step from the last cycle, while the sticks stay centered."""
+        if not self._holding:
+            return None
+        return (self._north_m, self._east_m, self._up_m)
 
     def update(
         self,
@@ -35,6 +45,7 @@ class EscapeGate:
         roll: float | None,
         north_m: float,
         east_m: float,
+        up_m: float = 0.0,
     ) -> EscapeAction:
         centered = (
             pitch is not None
@@ -44,11 +55,17 @@ class EscapeGate:
             and abs(pitch) <= STICK_DEADBAND
             and abs(roll) <= STICK_DEADBAND
         )
-        want = armed and centered and math.hypot(north_m, east_m) >= MOVE_M
+        want = armed and centered and (math.hypot(north_m, east_m) >= MOVE_M or abs(up_m) >= MOVE_M)
         if want:
             self._holding = True
-            return EscapeAction(True, north_m, east_m, "offboard")
+            self._north_m = north_m
+            self._east_m = east_m
+            self._up_m = up_m
+            return EscapeAction(True, north_m, east_m, up_m, "offboard")
         if self._holding:
             self._holding = False
-            return EscapeAction(False, 0.0, 0.0, "position")
-        return EscapeAction(False, 0.0, 0.0, None)
+            self._north_m = 0.0
+            self._east_m = 0.0
+            self._up_m = 0.0
+            return EscapeAction(False, 0.0, 0.0, 0.0, "position")
+        return EscapeAction(False, 0.0, 0.0, 0.0, None)

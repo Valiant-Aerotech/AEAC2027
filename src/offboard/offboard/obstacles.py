@@ -230,12 +230,15 @@ class Obstacles(Node):
             bins = (math.inf,) * 72
             north_m = 0.0
             east_m = 0.0
+            up_m = 0.0
             if self._gps_ok and self._lat is not None and self._lon is not None:
                 motions = self._tracks.motions(self._traffic, time.monotonic())
                 alt = self._own_alt()
                 bins = sector_scan(self._lat, self._lon, alt, motions)
                 if self._armed and self._local_ok:
-                    north_m, east_m = hover_escape(self._lat, self._lon, alt, motions)
+                    north_m, east_m, up_m = hover_escape(
+                        self._lat, self._lon, alt, motions, prefer=self._gate.remembered()
+                    )
             self._publish_scan(bins)
             action = self._gate.update(
                 armed=self._armed and self._gps_ok and self._local_ok,
@@ -243,6 +246,7 @@ class Obstacles(Node):
                 roll=self._roll,
                 north_m=north_m,
                 east_m=east_m,
+                up_m=up_m,
             )
             if (
                 self._armed
@@ -253,12 +257,12 @@ class Obstacles(Node):
             ):
                 self._warn("blocked", "escape blocked")
             if action.mode == "offboard":
-                self._warn("offboard", f"escape {north_m:.0f} m north {east_m:.0f} m east")
+                self._warn("offboard", f"escape {north_m:.0f} m north {east_m:.0f} m east {up_m:.0f} m up")
             elif action.mode == "position":
                 self._warn("position", "position mode")
             if action.heartbeat and self._local_ok:
                 self._publish_heartbeat()
-                self._publish_setpoint(action.north_m, action.east_m)
+                self._publish_setpoint(action.north_m, action.east_m, action.up_m)
             self._publish_mode(action.mode)
         except Exception as exc:
             self._warn("timer", f"timer: {exc}")
@@ -292,10 +296,11 @@ class Obstacles(Node):
         msg.body_rate = False
         self._offboard_pub.publish(msg)
 
-    def _publish_setpoint(self, north_m: float, east_m: float) -> None:
+    def _publish_setpoint(self, north_m: float, east_m: float, up_m: float) -> None:
         msg = TrajectorySetpoint()
         msg.timestamp = self._micros()
-        msg.position = [self._x + north_m, self._y + east_m, self._z]
+        # Local z is down, so a climb subtracts.
+        msg.position = [self._x + north_m, self._y + east_m, self._z - up_m]
         msg.yaw = self._heading if math.isfinite(self._heading) else NAN
         msg.velocity = list(UNUSED)
         msg.acceleration = list(UNUSED)

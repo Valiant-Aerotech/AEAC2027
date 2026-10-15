@@ -9,7 +9,12 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from mission.boundary import DEFAULT_SOFT_INSET_M, signed_distance_m
+from mission.boundary import (
+    DEFAULT_ALTITUDE_MARGIN_M,
+    DEFAULT_SOFT_INSET_M,
+    MAX_ALTITUDE_AGL_M,
+    signed_distance_m,
+)
 from telemetry.traffic import (
     TASK2_STANDOFF_M,
     TrafficAircraft,
@@ -27,6 +32,8 @@ SECTOR_DEG = 360.0 / SECTOR_COUNT
 # How far ahead a published path is treated as a moving circle.
 LEAD_S = 5.0
 ESCAPE_CAP_M = 40.0
+FLOOR_AGL_M = 8.0
+CEILING_AGL_M = MAX_ALTITUDE_AGL_M - DEFAULT_ALTITUDE_MARGIN_M
 # Medicine Hat clamp applies only when the aircraft is actually near that polygon.
 FIELD_CLAMP_M = 2_000.0
 _METRES_PER_DEG_LAT = 111_320.0
@@ -121,14 +128,15 @@ class TrafficMotion:
     north_m_s: float = 0.0
     east_m_s: float = 0.0
     age_s: float = 0.0
+    up_m_s: float = 0.0
 
 
 class TrafficTracks:
     """Velocity and sample age from successive traffic snapshots. No ROS."""
 
     def __init__(self) -> None:
-        self._latest: dict[str, tuple[float, float, float]] = {}
-        self._previous: dict[str, tuple[float, float, float]] = {}
+        self._latest: dict[str, tuple[float, float, float, float]] = {}
+        self._previous: dict[str, tuple[float, float, float, float]] = {}
 
     def motions(self, traffic: tuple[TrafficAircraft, ...], now_s: float) -> tuple[TrafficMotion, ...]:
         seen: set[str] = set()
@@ -137,22 +145,25 @@ class TrafficTracks:
             seen.add(aircraft.uav_id)
             latest = self._latest.get(aircraft.uav_id)
             moved = latest is None or horizontal_distance_m(latest[1], latest[2], aircraft.lat, aircraft.lon) > 0.5
-            if moved:
+            climbed = latest is not None and abs(aircraft.alt_agl_m - latest[3]) > 0.5
+            if moved or climbed:
                 if latest is not None:
                     self._previous[aircraft.uav_id] = latest
-                latest = (now_s, aircraft.lat, aircraft.lon)
+                latest = (now_s, aircraft.lat, aircraft.lon, aircraft.alt_agl_m)
                 self._latest[aircraft.uav_id] = latest
             previous = self._previous.get(aircraft.uav_id)
             north_m_s = 0.0
             east_m_s = 0.0
+            up_m_s = 0.0
             if previous is not None and latest is not None:
                 dt = latest[0] - previous[0]
                 if dt > 0.05:
                     north, east = offset_m(latest[1], latest[2], previous[1], previous[2])
                     north_m_s = north / dt
                     east_m_s = east / dt
+                    up_m_s = (latest[3] - previous[3]) / dt
             age = 0.0 if latest is None else max(0.0, now_s - latest[0])
-            out.append(TrafficMotion(aircraft, north_m_s, east_m_s, age))
+            out.append(TrafficMotion(aircraft, north_m_s, east_m_s, age, up_m_s))
         for stale in [key for key in self._latest if key not in seen]:
             self._latest.pop(stale, None)
             self._previous.pop(stale, None)
@@ -170,10 +181,20 @@ def _to_other(lat: float, lon: float, other: TrafficAircraft) -> tuple[float, fl
     return offset_m(other.lat, other.lon, lat, lon)
 
 
-def _overlaps(alt_agl_m: float, other: TrafficAircraft) -> bool:
+def _overlaps(alt_agl_m: float, motion: TrafficMotion) -> bool:
+    """True when the next 5 s of the other altitude meets our vertical keep-away.
+
+    A climb that stays above the band is ignored. A descent that will enter
+    the band is avoided before the heights meet.
+    """
     if not math.isfinite(alt_agl_m):
         return True
-    return abs(alt_agl_m - other.alt_agl_m) <= other.keepout_height_m
+    height = motion.aircraft.keepout_height_m
+    start = motion.aircraft.alt_agl_m
+    end = start + motion.up_m_s * LEAD_S
+    low = min(start, end)
+    high = max(start, end)
+    return low <= alt_agl_m + height and high >= alt_agl_m - height
 
 
 def _bearing_deg(north_m: float, east_m: float) -> float:
@@ -198,7 +219,7 @@ def sector_scan(
     """
     bins = [math.inf] * SECTOR_COUNT
     for motion in motions:
-        if not _overlaps(alt_agl_m, motion.aircraft):
+        if not _overlaps(alt_agl_m, motion):
             continue
         north, east = _to_other(lat, lon, motion.aircraft)
         distance = math.hypot(north, east)
@@ -247,7 +268,7 @@ def _capsules(
 ) -> list[tuple[float, float, float, float, float]]:
     capsules = []
     for motion in motions:
-        if not _overlaps(alt_agl_m, motion.aircraft):
+        if not _overlaps(alt_agl_m, motion):
             continue
         north, east = _to_other(lat, lon, motion.aircraft)
         if math.hypot(north, east) > SCAN_RANGE_M:
@@ -284,45 +305,152 @@ def _inside_field(lat: float, lon: float, north_m: float, east_m: float, clamp: 
     return signed_distance_m(lat2, lon2) >= DEFAULT_SOFT_INSET_M
 
 
+def _two_nearest(
+    capsules: list[tuple[float, float, float, float, float]],
+) -> list[tuple[float, float]]:
+    ranked = sorted(capsules, key=lambda item: math.hypot(item[0], item[1]))
+    return [(item[0], item[1]) for item in ranked[:2]]
+
+
+def _toward_both(north_m: float, east_m: float, pair: list[tuple[float, float]]) -> bool:
+    """True when this step moves closer to both of the two nearest aircraft.
+
+    That direction is the slit between them.
+    """
+    if len(pair) < 2 or (north_m == 0.0 and east_m == 0.0):
+        return False
+    return all(north_m * north + east_m * east > 0.0 for north, east in pair)
+
+
+def _ray_clearance(
+    north_m: float,
+    east_m: float,
+    capsules: list[tuple[float, float, float, float, float]],
+) -> float:
+    clearance = math.inf
+    for start_n, start_e, end_n, end_e, radius in capsules:
+        gap = _segment_distance(north_m, east_m, start_n, start_e, end_n, end_e) - radius
+        if gap < clearance:
+            clearance = gap
+    return clearance
+
+
+def _blocks_hover(lat: float, lon: float, motion: TrafficMotion) -> bool:
+    """True when the hover sits inside this aircraft's horizontal buffer."""
+    north, east = _to_other(lat, lon, motion.aircraft)
+    if math.hypot(north, east) > SCAN_RANGE_M:
+        return False
+    return (
+        _segment_distance(
+            0.0,
+            0.0,
+            north,
+            east,
+            north + motion.north_m_s * LEAD_S,
+            east + motion.east_m_s * LEAD_S,
+        )
+        < buffer_radius_m(motion) - 0.05
+    )
+
+
+def _altitude_clear(alt_agl_m: float, motions: tuple[TrafficMotion, ...]) -> bool:
+    for motion in motions:
+        height = motion.aircraft.keepout_height_m
+        start = motion.aircraft.alt_agl_m
+        end = start + motion.up_m_s * LEAD_S
+        low = min(start, end) - height
+        high = max(start, end) + height
+        if low <= alt_agl_m <= high:
+            return False
+    return True
+
+
+def _vertical_step(alt_agl_m: float, motions: tuple[TrafficMotion, ...]) -> float:
+    """Metres up (positive) that leaves every blocking band. Zero means stay."""
+    if not math.isfinite(alt_agl_m) or not motions or _altitude_clear(alt_agl_m, motions):
+        return 0.0
+    for step in range(1, int(ESCAPE_CAP_M) + 1):
+        for sign in (1.0, -1.0):
+            target = alt_agl_m + sign * step
+            if target < FLOOR_AGL_M or target > CEILING_AGL_M:
+                continue
+            if _altitude_clear(target, motions):
+                return sign * step
+    return 0.0
+
+
 def hover_escape(
     lat: float,
     lon: float,
     alt_agl_m: float,
     motions: tuple[TrafficMotion, ...],
-) -> tuple[float, float]:
-    """Shortest north/east step, in metres, that keeps a hover outside every buffer.
+    prefer: tuple[float, ...] | None = None,
+) -> tuple[float, float, float]:
+    """North, east, and up metres that keep a hover outside every buffer.
 
     The other aircraft does not dodge. A zero-velocity hover that lies in its
     path is a full velocity obstacle: the step clears the track it will fly
-    over the next few seconds. The step is capped at 40 m. Zero means stay.
+    over the next few seconds. Rays through the slit between the two nearest
+    aircraft are dropped. Among the rest, the step with the most room is kept.
+    Up or down is used only when no horizontal ray is clear and inside the
+    field. ``prefer`` repeats a step that is still clear. Each axis is capped
+    at 40 m. Zero means stay.
     """
     capsules = _capsules(lat, lon, alt_agl_m, motions)
     if not capsules:
-        return (0.0, 0.0)
+        return (0.0, 0.0, 0.0)
     clamp = signed_distance_m(lat, lon) > -FIELD_CLAMP_M
     if _clear_of(0.0, 0.0, capsules) and _inside_field(lat, lon, 0.0, 0.0, clamp):
-        return (0.0, 0.0)
+        return (0.0, 0.0, 0.0)
+    nearest = _two_nearest(capsules)
+    if (
+        prefer is not None
+        and len(prefer) >= 2
+        and (prefer[0] != 0.0 or prefer[1] != 0.0)
+        and _clear_of(prefer[0], prefer[1], capsules)
+        and _inside_field(lat, lon, prefer[0], prefer[1], clamp)
+        and not _toward_both(prefer[0], prefer[1], nearest)
+    ):
+        return (prefer[0], prefer[1], 0.0)
 
     best: tuple[float, float] | None = None
-    best_d = ESCAPE_CAP_M + 1.0
+    best_clearance = -math.inf
     for index in range(SECTOR_COUNT):
         bearing = math.radians(index * SECTOR_DEG)
         north_hat = math.cos(bearing)
         east_hat = math.sin(bearing)
+        if _toward_both(north_hat, east_hat, nearest):
+            continue
+        ray_best: tuple[float, float] | None = None
+        ray_clearance = -math.inf
         for step in range(1, int(ESCAPE_CAP_M) + 1):
             point_n = north_hat * step
             point_e = east_hat * step
+            length = math.hypot(point_n, point_e)
+            if length > ESCAPE_CAP_M:
+                scale = ESCAPE_CAP_M / length
+                point_n *= scale
+                point_e *= scale
             if not _clear_of(point_n, point_e, capsules):
                 continue
             if not _inside_field(lat, lon, point_n, point_e, clamp):
                 continue
-            if step < best_d:
-                best_d = step
-                best = (point_n, point_e)
-            break
+            clearance = _ray_clearance(point_n, point_e, capsules)
+            if clearance > ray_clearance:
+                ray_clearance = clearance
+                ray_best = (point_n, point_e)
+        if ray_best is not None and ray_clearance > best_clearance:
+            best_clearance = ray_clearance
+            best = ray_best
+    blockers = tuple(motion for motion in motions if _blocks_hover(lat, lon, motion))
     if best is None:
-        return (0.0, 0.0)
-    return best
+        remembered = 0.0 if prefer is None or len(prefer) < 3 else prefer[2]
+        if remembered != 0.0 and math.isfinite(alt_agl_m):
+            target = alt_agl_m + remembered
+            if FLOOR_AGL_M <= target <= CEILING_AGL_M and _altitude_clear(target, blockers):
+                return (0.0, 0.0, remembered)
+        return (0.0, 0.0, _vertical_step(alt_agl_m, blockers))
+    return (best[0], best[1], 0.0)
 
 
 def hover_is_blocked(
@@ -335,8 +463,8 @@ def hover_is_blocked(
     capsules = _capsules(lat, lon, alt_agl_m, motions)
     if not capsules or _clear_of(0.0, 0.0, capsules):
         return False
-    north_m, east_m = hover_escape(lat, lon, alt_agl_m, motions)
-    return math.hypot(north_m, east_m) < 0.5
+    north_m, east_m, up_m = hover_escape(lat, lon, alt_agl_m, motions)
+    return math.hypot(north_m, east_m) < 0.5 and abs(up_m) < 0.5
 
 
 def standoff_reached(

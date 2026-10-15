@@ -13,13 +13,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src" / "telemetry"
 
 from telemetry.client import (
     HOLD_FIX_S,
-    SEND_FLOOR_S,
+    MIN_SEND_GAP_S,
     SEND_PERIOD_S,
     WRITE_TIMEOUT_S,
     CompetitionClient,
     LiveSession,
     format_infraction,
     make_client,
+    planned_stamp,
     send_due,
 )
 from telemetry.packet import TelemetryPacket
@@ -68,12 +69,14 @@ def packet(mode: str = "armed-automatic", **changes) -> TelemetryPacket:
 
 
 def test_send_floor_and_period() -> None:
-    assert SEND_FLOOR_S == 0.5
-    assert SEND_PERIOD_S == 0.9
-    assert send_due(None, 0.0, 0.49) is False
-    assert send_due(None, 0.0, 0.5) is True
-    assert send_due(0.0, 0.0, 0.5) is False
-    assert send_due(0.0, 0.0, 0.9) is True
+    assert SEND_PERIOD_S == 1.0
+    assert MIN_SEND_GAP_S == 0.8
+    assert send_due(None, None, WALL, 0.0) is True
+    assert send_due(WALL, None, WALL + 0.5, 0.0) is False
+    assert send_due(WALL, None, WALL + 1.0, 0.0) is True
+    assert send_due(WALL, 10.0, WALL + 1.0, 10.5) is False
+    assert planned_stamp(WALL, WALL + 1.3) == WALL + 1.0
+    assert planned_stamp(WALL, WALL + 2.2) == WALL + 2.2
 
 
 def test_loopback_sends_inside_tick() -> None:
@@ -203,7 +206,7 @@ def test_write_timeout_follows_a_read() -> None:
     client.tick(packet(timestamp=1.0))
     session.pump_once()
     assert sock.timeout_at_send[-1] == WRITE_TIMEOUT_S
-    client._last_send_mono = time.monotonic() - SEND_PERIOD_S
+    client._last_packet_unix = WALL - SEND_PERIOD_S
     client._last_attempt_mono = time.monotonic() - SEND_PERIOD_S
     session.pump_once()
     assert sock.timeout_at_send[-1] == WRITE_TIMEOUT_S
@@ -228,6 +231,50 @@ def test_empty_frame_waits_before_reconnect() -> None:
     assert session._ws is None
     assert connects == []
     assert client.status.streaming is False
+
+
+class TimeoutSocket(FakeSocket):
+    def send(self, data: str) -> None:
+        raise TimeoutError("write timed out")
+
+
+def test_late_write_keeps_a_one_second_stamp() -> None:
+    times = {"wall": WALL}
+    sock = FakeSocket()
+    client = CompetitionClient(uav_id="valiant-1", _clock=lambda: times["wall"])
+    session = LiveSession(client, lambda: sock)
+    client._live = session
+    client.tick(packet(timestamp=1.0))
+    session.pump_once()
+    assert json.loads(sock.sent[0])["data"]["unixTime"] == WALL
+    times["wall"] = WALL + 1.3
+    client._last_attempt_mono = time.monotonic() - 2.0
+    session.pump_once()
+    assert len(sock.sent) == 2
+    assert json.loads(sock.sent[1])["data"]["unixTime"] == WALL + 1.0
+    times["wall"] = WALL + 1.4
+    session.pump_once()
+    assert len(sock.sent) == 2
+
+
+def test_failed_write_does_not_retry_inside_the_gap() -> None:
+    times = {"wall": WALL}
+    sock = TimeoutSocket()
+    client = CompetitionClient(uav_id="valiant-1", _clock=lambda: times["wall"])
+    session = LiveSession(client, lambda: sock)
+    client._live = session
+    client.tick(packet(timestamp=1.0))
+    session.pump_once()
+    assert client.status.packets_sent == 0
+    assert client._last_packet_unix == WALL
+    times["wall"] = WALL + 0.5
+    session.pump_once()
+    assert client._last_packet_unix == WALL
+    times["wall"] = WALL + 1.0
+    client._last_attempt_mono = time.monotonic() - 2.0
+    session._next_connect_mono = 0.0
+    session.pump_once()
+    assert client._last_packet_unix == WALL + SEND_PERIOD_S
 
 
 def test_infraction_does_not_drop_the_socket() -> None:
@@ -260,6 +307,10 @@ def test_infraction_does_not_drop_the_socket() -> None:
     )
     assert "slow_telem" in line
     assert "armed_s=0.0" in line
+    assert "unix_gap=1.00s" in format_infraction(
+        {"last_infraction": "fast_telem", "score": 24, "fast_telem": 1},
+        1.0,
+    )
 
 
 if __name__ == "__main__":
@@ -273,5 +324,7 @@ if __name__ == "__main__":
     test_server_keepaway_overrides_placeholder()
     test_write_timeout_follows_a_read()
     test_empty_frame_waits_before_reconnect()
+    test_late_write_keeps_a_one_second_stamp()
+    test_failed_write_does_not_retry_inside_the_gap()
     test_infraction_does_not_drop_the_socket()
     print("client cases ok")

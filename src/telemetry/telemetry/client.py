@@ -31,9 +31,9 @@ from telemetry.penalties import (
 from telemetry.secrets import CompetitionSecrets, competition_secrets
 from telemetry.traffic import TrafficAircraft, parse_traffic
 
-TARGET_PERIOD_S = 0.9
-SEND_PERIOD_S = 0.9
-SEND_FLOOR_S = 0.5
+TARGET_PERIOD_S = 1.0
+SEND_PERIOD_S = 1.0
+MIN_SEND_GAP_S = 0.8
 WRITE_TIMEOUT_S = 0.3
 READ_TIMEOUT_S = 0.05
 RECONNECT_WAIT_S = 0.2
@@ -56,17 +56,33 @@ def clip_crew_message(message: str) -> str:
     return message[:47] + "..."
 
 
-def send_due(last_success: float | None, last_attempt: float | None, now: float) -> bool:
-    """True when a live write may start.
+def planned_stamp(last_unix: float | None, wall: float) -> float:
+    """Unix time for the packet that is due now.
 
-    The floor blocks a fast penalty. The period is the normal gap after a
-    write that actually finished.
+    On time, the stamp is the previous one plus 1 s. A hole of a full extra
+    period starts the cadence from the current clock instead of replaying the
+    missed slots.
     """
-    if last_attempt is not None and now - last_attempt < SEND_FLOOR_S:
+    if last_unix is None:
+        return wall
+    planned = last_unix + SEND_PERIOD_S
+    if wall - planned >= SEND_PERIOD_S:
+        return wall
+    return planned
+
+
+def send_due(
+    last_unix: float | None,
+    last_attempt_mono: float | None,
+    wall: float,
+    mono: float,
+) -> bool:
+    """True when the next 1 s unixTime slot is due and the last attempt is not recent."""
+    if last_attempt_mono is not None and mono - last_attempt_mono < MIN_SEND_GAP_S:
         return False
-    if last_success is not None and now - last_success < SEND_PERIOD_S:
-        return False
-    return True
+    if last_unix is None:
+        return True
+    return wall + 1e-6 >= last_unix + SEND_PERIOD_S
 
 
 def url_is_websocket(url: str) -> bool:
@@ -92,17 +108,20 @@ def _socket_timeout(ws: object, seconds: float) -> None:
         settimeout(seconds)
 
 
-def format_infraction(message: dict) -> str:
+def format_infraction(message: dict, unix_gap_s: float | None = None) -> str:
     """One line for a server infraction event. Missing fields stay blank."""
     counts = {key: message[key] for key in INFRACTION_KEYS if message.get(key)}
     try:
         armed_s = float(message.get("armed_seconds") or 0)
     except (TypeError, ValueError):
         armed_s = 0.0
-    return (
+    line = (
         f"infraction last={message.get('last_infraction')} "
         f"score={message.get('score')} armed_s={armed_s:.1f} {counts}"
     )
+    if unix_gap_s is not None and (message.get("slow_telem") or message.get("fast_telem")):
+        line += f" unix_gap={unix_gap_s:.2f}s"
+    return line
 
 
 class LoopbackTransport:
@@ -222,7 +241,8 @@ class LiveSession:
                     client.status.last_error = f"traffic: {exc}"
             elif event == "infraction":
                 try:
-                    print(f"[Comp] {format_infraction(message)}")
+                    gap = client._unix_gap_s
+                    print(f"[Comp] {format_infraction(message, gap)}")
                 except Exception as exc:
                     client.status.last_error = f"infraction: {exc}"
             elif event == "error":
@@ -235,15 +255,24 @@ class LiveSession:
         mono = time.monotonic()
         wall = client._stamp()
         with client._lock:
-            if not send_due(client._last_send_mono, client._last_attempt_mono, mono):
+            if not send_due(client._last_packet_unix, client._last_attempt_mono, wall, mono):
                 return
-            packet = client._prepare_live(mono, wall)
+        if not self._ensure_socket():
+            return
+        with client._lock:
+            mono = time.monotonic()
+            wall = client._stamp()
+            if not send_due(client._last_packet_unix, client._last_attempt_mono, wall, mono):
+                return
+            stamp = planned_stamp(client._last_packet_unix, wall)
+            packet = client._prepare_live(mono, stamp)
             if packet is None:
                 return
+            previous = client._last_packet_unix
             client._last_attempt_mono = mono
+            client._last_packet_unix = stamp
+            client._unix_gap_s = None if previous is None else stamp - previous
         try:
-            if not self._ensure_socket():
-                return
             _socket_timeout(self._ws, WRITE_TIMEOUT_S)
             payload = json.dumps({"action": "telemetry", "data": packet.to_wire()})
             self._ws.send(payload)
@@ -251,7 +280,7 @@ class LiveSession:
             self._schedule_reconnect()
             client._fail_live(str(exc), mono=mono)
             return
-        client._mark_sent(packet, mono, wall)
+        client._mark_sent(packet, mono, stamp)
 
 
 @dataclass
@@ -275,6 +304,7 @@ class CompetitionClient:
     _last_send_wall: float | None = None
     _last_packet_unix: float | None = None
     _last_attempt_mono: float | None = None
+    _unix_gap_s: float | None = None
     _armed_since: float | None = None
     _saw_packet_before_arm: bool = False
     status: ClientStatus = field(default_factory=lambda: ClientStatus())
@@ -401,7 +431,6 @@ class CompetitionClient:
             self.penalties.note_packet(mono)
             finished = time.monotonic()
             self._last_send_mono = finished
-            self._last_attempt_mono = finished
             self._last_send_wall = wall_now
             self._last_packet_unix = packet.timestamp
             self.status.packets_sent += 1

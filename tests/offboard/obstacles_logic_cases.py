@@ -49,6 +49,14 @@ def test_yaw_is_not_a_cancel() -> None:
     assert second.mode == "offboard"
 
 
+def test_climb_requests_offboard() -> None:
+    gate = EscapeGate()
+    action = gate.update(armed=True, pitch=0.0, roll=0.0, north_m=0.0, east_m=0.0, up_m=30.0)
+    assert action.mode == "offboard"
+    assert action.up_m == 30.0
+    assert gate.remembered() == (0.0, 0.0, 30.0)
+
+
 def test_clear_hover_holds_the_new_point() -> None:
     gate = EscapeGate()
     gate.update(armed=True, pitch=0.0, roll=0.0, north_m=0.0, east_m=-20.0)
@@ -64,5 +72,6 @@ if __name__ == "__main__":
     test_centered_hover_requests_offboard()
     test_pitch_during_the_move_returns_position_mode()
     test_yaw_is_not_a_cancel()
+    test_climb_requests_offboard()
     test_clear_hover_holds_the_new_point()
     print("obstacles logic cases ok")
