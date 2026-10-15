@@ -7,6 +7,7 @@ traffic row. Those are stored when present. A row that omits them uses the
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass
 
@@ -117,6 +118,44 @@ def parse_traffic(payload: object) -> tuple[TrafficAircraft, ...]:
                     default=DEFAULT_KEEPOUT_HEIGHT_M,
                 ),
                 heading_deg=None if direction is None else float(direction),
+            )
+        )
+    return tuple(out)
+
+
+def traffic_json(traffic: tuple[TrafficAircraft, ...]) -> str:
+    """Stable JSON for `/aeac/traffic`. One object per aircraft."""
+    rows = [
+        {
+            "alt_agl_m": item.alt_agl_m,
+            "id": item.uav_id,
+            "keepout_height_m": item.keepout_height_m,
+            "keepout_radius_m": item.keepout_radius_m,
+            "lat": item.lat,
+            "lon": item.lon,
+        }
+        for item in traffic
+    ]
+    return json.dumps(rows, separators=(",", ":"))
+
+
+def parse_traffic_json(text: str) -> tuple[TrafficAircraft, ...]:
+    """Read the JSON published on `/aeac/traffic`."""
+    payload = json.loads(text)
+    if not isinstance(payload, list):
+        return ()
+    out = []
+    for item in payload:
+        if not isinstance(item, dict) or "lat" not in item or "lon" not in item:
+            continue
+        out.append(
+            TrafficAircraft(
+                uav_id=str(item.get("id", "")),
+                lat=float(item["lat"]),
+                lon=float(item["lon"]),
+                alt_agl_m=float(item.get("alt_agl_m") or 0.0),
+                keepout_radius_m=float(item.get("keepout_radius_m", DEFAULT_KEEPOUT_RADIUS_M)),
+                keepout_height_m=float(item.get("keepout_height_m", DEFAULT_KEEPOUT_HEIGHT_M)),
             )
         )
     return tuple(out)

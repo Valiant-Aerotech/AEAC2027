@@ -14,11 +14,12 @@ setup(
     zip_safe=True,
     maintainer="Devansh",
     maintainer_email="54031999+devanshhdalal@users.noreply.github.com",
-    description="PX4 position-hold setpoint stream. Does not arm or change mode.",
+    description="PX4 position hold and server-traffic obstacle scan.",
     license="Proprietary",
     entry_points={
         "console_scripts": [
             "hold = offboard.hold:main",
+            "obstacles = offboard.obstacles:main",
         ],
     },
 )

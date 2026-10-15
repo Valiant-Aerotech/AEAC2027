@@ -287,6 +287,10 @@ class CompetitionClient:
     _live: LiveSession | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
+    def traffic_snapshot(self) -> tuple[TrafficAircraft, ...]:
+        with self._lock:
+            return self.traffic
+
     def telemetry_ready(self) -> bool:
         """True once the server has acked a live packet, or a loopback packet was stored.
 

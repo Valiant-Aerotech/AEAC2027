@@ -25,3 +25,4 @@ jobs:
           python tests/telemetry/fc_state_cases.py
           python tests/mission/deconflict_cases.py
           python tests/offboard/hold_logic_cases.py
+          python tests/offboard/obstacles_logic_cases.py

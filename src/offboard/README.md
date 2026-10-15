@@ -12,3 +12,5 @@ Topic parameters, if the defaults do not match `ros2 topic list | grep fmu`:
 Before trusting silence from the node, run `ros2 topic info -v` on the local-position topic and the control-mode topic. A QoS mismatch on either one looks the same as a wrong name.
 
 If `commander mode offboard` is refused, check `ros2 topic hz /fmu/in/offboard_control_mode` and the publisher QoS before publishing setpoints any earlier. The heartbeat should be about 10 Hz the whole time.
+
+`obstacles` publishes `/fmu/in/obstacle_distance` from `/aeac/traffic`. While the aircraft is armed and pitch and roll are centered, it also requests offboard and shifts the hover clear of a simulated aircraft. Pitch or roll asks for position mode once. Do not run `obstacles` and `hold` together. Leave `CP_DIST` at a few metres, set `CP_GO_NO_DATA` to 1, and set `MPC_POS_MODE` to acceleration-based. The node does not write those parameters.

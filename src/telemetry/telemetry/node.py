@@ -16,6 +16,7 @@ try:
     import rclpy
     from px4_msgs.msg import BatteryStatus, FailsafeFlags, HomePosition, VehicleGlobalPosition, VehicleGnss, VehicleStatus
     from rclpy.node import Node
+    from std_msgs.msg import String
     from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 except ImportError as exc:
     rclpy = None
@@ -25,12 +26,14 @@ except ImportError as exc:
     VehicleGlobalPosition = None
     VehicleGnss = None
     VehicleStatus = None
+    String = None
     Node = object
     _IMPORT_ERROR: ImportError | None = exc
 else:
     _IMPORT_ERROR = None
 
 from telemetry.client import make_client
+from telemetry.traffic import traffic_json
 from telemetry.fc_state import (
     AGL_WARN_M,
     ARMING_STATE_ARMED,
@@ -48,6 +51,7 @@ HOME_TOPIC = "/fmu/out/home_position_v2"
 FAILSAFE_TOPIC = "/fmu/out/failsafe_flags"
 GNSS_TOPIC = "/fmu/out/vehicle_gnss"
 GLOBAL_TOPIC = "/fmu/out/vehicle_global_position"
+TRAFFIC_TOPIC = "/aeac/traffic"
 
 
 def _stream_qos():
@@ -91,6 +95,10 @@ class FcTelemetry(Node):
         self._frame_bias = 0.0
         self._battery_pct: float | None = None
         self._battery_mono: float | None = None
+        self._traffic_json = ""
+        self.declare_parameter("traffic_topic", TRAFFIC_TOPIC)
+        traffic_topic = str(self.get_parameter("traffic_topic").value)
+        self._traffic_pub = self.create_publisher(String, traffic_topic, _stream_qos())
         self._subscribe("vehicle_status_topic", STATUS_TOPIC, VehicleStatus, self._on_status, _stream_qos())
         self._subscribe("battery_status_topic", BATTERY_TOPIC, BatteryStatus, self._on_battery, _stream_qos())
         self._subscribe("home_position_topic", HOME_TOPIC, HomePosition, self._on_home, _home_qos())
@@ -179,6 +187,15 @@ class FcTelemetry(Node):
         self._frame_bias = ground_bias_m(self._alt, self._home_alt, on_ground=on_ground)
         self.get_logger().warning(f"home {self._home_alt:.1f} m global {self._alt:.1f} m")
 
+    def _publish_traffic(self) -> None:
+        payload = traffic_json(self._client.traffic_snapshot())
+        if payload == self._traffic_json:
+            return
+        self._traffic_json = payload
+        message = String()
+        message.data = payload
+        self._traffic_pub.publish(message)
+
     def _on_timer(self) -> None:
         try:
             if not self._have_status:
@@ -212,6 +229,7 @@ class FcTelemetry(Node):
             if packet.alt_agl_m <= AGL_WARN_M:
                 self._warn("agl", f"agl {packet.alt_agl_m:.0f} m")
             self._client.tick(packet)
+            self._publish_traffic()
         except Exception as exc:
             self._warn("tick", f"tick failed: {exc}")
 
