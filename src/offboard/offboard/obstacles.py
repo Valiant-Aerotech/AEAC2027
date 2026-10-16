@@ -1,8 +1,7 @@
-"""Publish server aircraft as a PX4 obstacle scan, and step a centered hover clear.
+"""Publish server aircraft as a PX4 obstacle scan, and hold a clear hover target.
 
 Does not arm and does not terminate. Pitch or roll leaves the deadband and
-position mode is requested once. Do not run this beside ``hold``: both publish
-``/fmu/in/trajectory_setpoint`` while an escape is active.
+position mode is requested once.
 
 Collision Prevention uses the scan only. It will not move a centered hover.
 ``CP_DIST`` stays a few metres, ``CP_GO_NO_DATA`` must be 1, and
@@ -51,7 +50,7 @@ else:
     _IMPORT_ERROR = None
 
 from offboard.hold_logic import NAN, UNUSED
-from offboard.obstacles_logic import EscapeGate
+from offboard.obstacles_logic import EscapeGate, EscapeTarget, EscapeTargetLatch, LocalSample, TrafficFreshness
 from mission.deconflict import TrafficTracks, hover_escape, hover_is_blocked, sector_scan
 from telemetry.fc_state import ARMING_STATE_ARMED
 from telemetry.traffic import parse_traffic_json
@@ -108,9 +107,10 @@ class Obstacles(Node):
     def __init__(self) -> None:
         super().__init__("obstacles")
         self._tracks = TrafficTracks()
+        self._freshness = TrafficFreshness()
         self._gate = EscapeGate()
+        self._target_latch = EscapeTargetLatch()
         self._warn_at: dict[str, float] = {}
-        self._traffic: tuple = ()
         self._lat: float | None = None
         self._lon: float | None = None
         self._alt: float | None = None
@@ -120,7 +120,12 @@ class Obstacles(Node):
         self._y = math.nan
         self._z = math.nan
         self._heading = math.nan
-        self._local_ok = False
+        self._xy_ok = False
+        self._z_ok = False
+        self._heading_ok = False
+        self._xy_reset_counter = 0
+        self._z_reset_counter = 0
+        self._heading_reset_counter = 0
         self._armed = False
         self._pitch: float | None = None
         self._roll: float | None = None
@@ -163,7 +168,9 @@ class Obstacles(Node):
 
     def _on_traffic(self, msg) -> None:
         def take() -> None:
-            self._traffic = parse_traffic_json(str(msg.data))
+            now = time.monotonic()
+            snapshot = parse_traffic_json(str(msg.data))
+            self._freshness.observe(self._tracks.observe(snapshot, now), now)
 
         self._guard("traffic", take)
 
@@ -180,11 +187,16 @@ class Obstacles(Node):
 
     def _on_local(self, msg) -> None:
         def take() -> None:
-            self._local_ok = bool(msg.xy_valid) and bool(msg.z_valid)
+            self._xy_ok = bool(msg.xy_valid)
+            self._z_ok = bool(msg.z_valid)
             self._x = float(msg.x)
             self._y = float(msg.y)
             self._z = float(msg.z)
             self._heading = float(msg.heading)
+            self._heading_ok = bool(msg.heading_good_for_control)
+            self._xy_reset_counter = int(msg.xy_reset_counter)
+            self._z_reset_counter = int(msg.z_reset_counter)
+            self._heading_reset_counter = int(msg.heading_reset_counter)
 
         self._guard("local", take)
 
@@ -224,24 +236,43 @@ class Obstacles(Node):
             return math.nan
         return self._alt - self._home_alt
 
+    def _local_sample(self) -> LocalSample:
+        return LocalSample(
+            x=self._x,
+            y=self._y,
+            z=self._z,
+            yaw=self._heading,
+            xy_valid=self._xy_ok,
+            z_valid=self._z_ok,
+            heading_good_for_control=self._heading_ok,
+            xy_reset_counter=self._xy_reset_counter,
+            z_reset_counter=self._z_reset_counter,
+            heading_reset_counter=self._heading_reset_counter,
+        )
+
     def _on_timer(self) -> None:
         try:
-            motions = ()
+            now = time.monotonic()
+            fresh = self._freshness.fresh(now)
+            motions = self._tracks.motions(now)
             bins = (math.inf,) * 72
             north_m = 0.0
             east_m = 0.0
             up_m = 0.0
             if self._gps_ok and self._lat is not None and self._lon is not None:
-                motions = self._tracks.motions(self._traffic, time.monotonic())
                 alt = self._own_alt()
                 bins = sector_scan(self._lat, self._lon, alt, motions)
-                if self._armed and self._local_ok:
+                if fresh and self._armed:
                     north_m, east_m, up_m = hover_escape(
                         self._lat, self._lon, alt, motions, prefer=self._gate.remembered()
                     )
             self._publish_scan(bins)
+            if not fresh:
+                self._gate.reset()
+                self._target_latch.reset()
+                return
             action = self._gate.update(
-                armed=self._armed and self._gps_ok and self._local_ok,
+                armed=self._armed and self._gps_ok,
                 pitch=self._pitch,
                 roll=self._roll,
                 north_m=north_m,
@@ -260,9 +291,11 @@ class Obstacles(Node):
                 self._warn("offboard", f"escape {north_m:.0f} m north {east_m:.0f} m east {up_m:.0f} m up")
             elif action.mode == "position":
                 self._warn("position", "position mode")
-            if action.heartbeat and self._local_ok:
+            target = self._target_latch.update(action, self._local_sample())
+            if target is not None:
                 self._publish_heartbeat()
-                self._publish_setpoint(action.north_m, action.east_m, action.up_m)
+                if self._offboard:
+                    self._publish_setpoint(target)
             self._publish_mode(action.mode)
         except Exception as exc:
             self._warn("timer", f"timer: {exc}")
@@ -296,12 +329,11 @@ class Obstacles(Node):
         msg.body_rate = False
         self._offboard_pub.publish(msg)
 
-    def _publish_setpoint(self, north_m: float, east_m: float, up_m: float) -> None:
+    def _publish_setpoint(self, target: EscapeTarget) -> None:
         msg = TrajectorySetpoint()
         msg.timestamp = self._micros()
-        # Local z is down, so a climb subtracts.
-        msg.position = [self._x + north_m, self._y + east_m, self._z - up_m]
-        msg.yaw = self._heading if math.isfinite(self._heading) else NAN
+        msg.position = [target.x, target.y, target.z]
+        msg.yaw = target.yaw
         msg.velocity = list(UNUSED)
         msg.acceleration = list(UNUSED)
         msg.jerk = list(UNUSED)

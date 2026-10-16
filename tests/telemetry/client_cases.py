@@ -25,7 +25,7 @@ from telemetry.client import (
 )
 from telemetry.packet import TelemetryPacket
 from telemetry.secrets import CompetitionSecrets
-from telemetry.traffic import parse_traffic
+from telemetry.traffic import TrafficSnapshotError, parse_traffic
 
 WALL = 1_800_000_000.0
 
@@ -198,6 +198,66 @@ def test_server_keepaway_overrides_placeholder() -> None:
     assert traffic[0].keepout_height_m == 25.0
 
 
+def test_traffic_identity_advances_for_equal_observations() -> None:
+    client = CompetitionClient(uav_id="valiant-1")
+    payload = {
+        "event": "traffic",
+        "payload": {
+            "traffic": [
+                {
+                    "aircraftIndex": 0,
+                    "position": {"lat": 50.1, "lon": -110.7, "altitude": 40},
+                }
+            ]
+        },
+    }
+
+    first = client._accept_traffic(payload)
+    second = client._accept_traffic(payload)
+
+    assert first.session_id == second.session_id
+    assert first.sequence == 0
+    assert second.sequence == 1
+    assert first.aircraft == second.aircraft
+    assert client.traffic_snapshot() is second
+
+
+def test_empty_traffic_observations_receive_identities() -> None:
+    client = CompetitionClient(uav_id="valiant-1")
+    payload = {"event": "traffic", "payload": {"traffic": []}}
+
+    first = client._accept_traffic(payload)
+    second = client._accept_traffic(payload)
+
+    assert first.aircraft == ()
+    assert second.aircraft == ()
+    assert first.session_id == second.session_id
+    assert (first.sequence, second.sequence) == (0, 1)
+
+
+def test_malformed_traffic_does_not_mutate_identity_state() -> None:
+    client = CompetitionClient(uav_id="valiant-1")
+    accepted = client._accept_traffic({"event": "traffic", "payload": {"traffic": []}})
+
+    try:
+        client._accept_traffic(
+            {
+                "event": "traffic",
+                "payload": {"traffic": [{"aircraftIndex": 0}]},
+            }
+        )
+    except TrafficSnapshotError:
+        pass
+    else:
+        raise AssertionError("malformed traffic was accepted")
+
+    assert client.traffic_snapshot() is accepted
+    assert client._traffic_sequence == accepted.sequence + 1
+
+    next_snapshot = client._accept_traffic({"event": "traffic", "payload": {"traffic": []}})
+    assert next_snapshot.sequence == accepted.sequence + 1
+
+
 def test_write_timeout_follows_a_read() -> None:
     sock = FakeSocket()
     client = CompetitionClient(uav_id="valiant-1", _clock=lambda: WALL)
@@ -322,6 +382,9 @@ if __name__ == "__main__":
     test_bad_clock_stays_on_loopback()
     test_traffic_payload_shape()
     test_server_keepaway_overrides_placeholder()
+    test_traffic_identity_advances_for_equal_observations()
+    test_empty_traffic_observations_receive_identities()
+    test_malformed_traffic_does_not_mutate_identity_state()
     test_write_timeout_follows_a_read()
     test_empty_frame_waits_before_reconnect()
     test_late_write_keeps_a_one_second_stamp()

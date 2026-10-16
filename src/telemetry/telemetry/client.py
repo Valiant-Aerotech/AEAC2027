@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import threading
 import time
+import uuid
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Callable
@@ -29,7 +30,7 @@ from telemetry.penalties import (
     PenaltyEvent,
 )
 from telemetry.secrets import CompetitionSecrets, competition_secrets
-from telemetry.traffic import TrafficAircraft, parse_traffic
+from telemetry.traffic import TRAFFIC_SNAPSHOT_VERSION, TrafficSnapshot, parse_traffic
 
 TARGET_PERIOD_S = 1.0
 SEND_PERIOD_S = 1.0
@@ -236,7 +237,7 @@ class LiveSession:
                 client._acked = True
             elif event == "traffic":
                 try:
-                    client.traffic = parse_traffic(message)
+                    client._accept_traffic(message)
                 except Exception as exc:
                     client.status.last_error = f"traffic: {exc}"
             elif event == "infraction":
@@ -308,7 +309,9 @@ class CompetitionClient:
     _armed_since: float | None = None
     _saw_packet_before_arm: bool = False
     status: ClientStatus = field(default_factory=lambda: ClientStatus())
-    traffic: tuple[TrafficAircraft, ...] = ()
+    traffic: TrafficSnapshot | None = None
+    _traffic_session_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    _traffic_sequence: int = 0
     _clock: Callable[[], float] = time.time
     _latest: TelemetryPacket | None = None
     _last_valid: TelemetryPacket | None = None
@@ -317,9 +320,21 @@ class CompetitionClient:
     _live: LiveSession | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def traffic_snapshot(self) -> tuple[TrafficAircraft, ...]:
+    def traffic_snapshot(self) -> TrafficSnapshot | None:
         with self._lock:
             return self.traffic
+
+    def _accept_traffic(self, payload: object) -> TrafficSnapshot:
+        aircraft = parse_traffic(payload)
+        snapshot = TrafficSnapshot(
+            version=TRAFFIC_SNAPSHOT_VERSION,
+            session_id=self._traffic_session_id,
+            sequence=self._traffic_sequence,
+            aircraft=aircraft,
+        )
+        self.traffic = snapshot
+        self._traffic_sequence += 1
+        return snapshot
 
     def telemetry_ready(self) -> bool:
         """True once the server has acked a live packet, or a loopback packet was stored.
@@ -531,7 +546,8 @@ class CompetitionClient:
         self.status.last_error = self._hook_error
         self._saw_packet_before_arm = True
         try:
-            self.traffic = parse_traffic(self.transport.poll_traffic())
+            with self._lock:
+                self._accept_traffic(self.transport.poll_traffic())
         except Exception as exc:
             self.status.last_error = f"traffic: {exc}"
         return True

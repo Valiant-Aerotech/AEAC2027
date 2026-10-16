@@ -3,7 +3,7 @@
 Python field names stay stable for logs and the penalty book. ``to_wire``
 is the camelCase payload the competition websocket accepts.
 
-Invalid-GPS rules match Comp Server Support (Waleed, 2026-09-27): no-fix is
+Invalid-GPS rules match Comp Server Support: no-fix is
 lat and lon both 0, or horizontal accuracy non-finite or <= 0. There is no
 upper accuracy ceiling. Non-finite numerics and out-of-range lat/lon are
 validation rejects, not invalid-GPS scores — see ``validation_reject_reason``.

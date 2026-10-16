@@ -14,11 +14,10 @@ setup(
     zip_safe=True,
     maintainer="Devansh",
     maintainer_email="54031999+devanshhdalal@users.noreply.github.com",
-    description="PX4 position hold and server-traffic obstacle scan.",
+    description="PX4 server-traffic obstacle scan and escape control.",
     license="Proprietary",
     entry_points={
         "console_scripts": [
-            "hold = offboard.hold:main",
             "obstacles = offboard.obstacles:main",
         ],
     },

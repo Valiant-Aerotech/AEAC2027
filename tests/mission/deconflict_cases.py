@@ -18,7 +18,7 @@ from mission.deconflict import (
     hover_escape,
     sector_scan,
 )
-from telemetry.traffic import TrafficAircraft
+from telemetry.traffic import TRAFFIC_SNAPSHOT_VERSION, TrafficAircraft, TrafficSnapshot
 
 LAT = 50.0
 LON = -110.0
@@ -34,6 +34,10 @@ def shift(north_m: float, east_m: float = 0.0) -> tuple[float, float]:
 def craft(north_m: float, east_m: float = 0.0, alt: float = 45.0, name: str = "a") -> TrafficAircraft:
     lat, lon = shift(north_m, east_m)
     return TrafficAircraft(name, lat, lon, alt)
+
+
+def snapshot(sequence: int, *aircraft: TrafficAircraft, session_id: str = "session-a") -> TrafficSnapshot:
+    return TrafficSnapshot(TRAFFIC_SNAPSHOT_VERSION, session_id, sequence, aircraft)
 
 
 def test_empty_traffic_keeps_infinity() -> None:
@@ -207,10 +211,62 @@ def test_cornered_hover_under_the_ceiling_descends() -> None:
 def test_tracks_store_vertical_speed() -> None:
     tracks = TrafficTracks()
     high = craft(0.0, 20.0, alt=90.0, name="high")
-    tracks.motions((high,), 0.0)
+    assert tracks.observe(snapshot(1, high), 0.0) is True
     lower = craft(0.0, 20.0, alt=74.0, name="high")
-    motions = tracks.motions((lower,), 2.0)
+    assert tracks.observe(snapshot(2, lower), 2.0) is True
+    motions = tracks.motions(2.0)
     assert motions[0].up_m_s < -5.0
+
+
+def test_duplicate_snapshot_does_not_refresh_track_age() -> None:
+    tracks = TrafficTracks()
+    traffic = snapshot(1, craft(20.0))
+    assert tracks.observe(traffic, 10.0) is True
+    assert tracks.observe(traffic, 11.5) is False
+    assert tracks.motions(11.5)[0].age_s == 1.5
+
+
+def test_older_same_session_snapshot_does_not_replace_or_refresh_track() -> None:
+    tracks = TrafficTracks()
+    current = craft(20.0, name="current")
+    assert tracks.observe(snapshot(2, current), 10.0) is True
+    assert tracks.observe(snapshot(1, craft(5.0, name="stale")), 11.5) is False
+    motions = tracks.motions(11.5)
+    assert len(motions) == 1
+    assert motions[0].aircraft.uav_id == "current"
+    assert motions[0].age_s == 1.5
+
+
+def test_same_position_observation_refreshes_age_with_zero_velocity() -> None:
+    tracks = TrafficTracks()
+    aircraft = craft(20.0)
+    tracks.observe(snapshot(1, aircraft), 10.0)
+    tracks.observe(snapshot(2, aircraft), 12.0)
+    motion = tracks.motions(12.0)[0]
+    assert motion.age_s == 0.0
+    assert motion.north_m_s == 0.0
+    assert motion.east_m_s == 0.0
+    assert motion.up_m_s == 0.0
+
+
+def test_accepted_omission_removes_track() -> None:
+    tracks = TrafficTracks()
+    tracks.observe(snapshot(1, craft(20.0)), 10.0)
+    assert len(tracks.motions(10.0)) == 1
+    tracks.observe(snapshot(2), 11.0)
+    assert tracks.motions(11.0) == ()
+
+
+def test_new_session_discards_velocity_history() -> None:
+    tracks = TrafficTracks()
+    tracks.observe(snapshot(1, craft(20.0)), 10.0)
+    tracks.observe(snapshot(2, craft(10.0)), 11.0)
+    assert tracks.motions(11.0)[0].north_m_s != 0.0
+    tracks.observe(snapshot(1, craft(5.0), session_id="session-b"), 12.0)
+    motion = tracks.motions(12.0)[0]
+    assert motion.north_m_s == 0.0
+    assert motion.east_m_s == 0.0
+    assert motion.up_m_s == 0.0
 
 
 def test_abeam_track_does_not_avoid() -> None:
@@ -240,4 +296,9 @@ if __name__ == "__main__":
     test_cornered_hover_climbs_clear()
     test_cornered_hover_under_the_ceiling_descends()
     test_tracks_store_vertical_speed()
+    test_duplicate_snapshot_does_not_refresh_track_age()
+    test_older_same_session_snapshot_does_not_replace_or_refresh_track()
+    test_same_position_observation_refreshes_age_with_zero_velocity()
+    test_accepted_omission_removes_track()
+    test_new_session_discards_velocity_history()
     print("deconflict cases ok")

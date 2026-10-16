@@ -18,6 +18,7 @@ from mission.boundary import (
 from telemetry.traffic import (
     TASK2_STANDOFF_M,
     TrafficAircraft,
+    TrafficSnapshot,
     horizontal_distance_m,
     inside_keepout,
     offset_m,
@@ -135,22 +136,47 @@ class TrafficTracks:
     """Velocity and sample age from successive traffic snapshots. No ROS."""
 
     def __init__(self) -> None:
+        self._session_id: str | None = None
+        self._sequence: int | None = None
+        self._aircraft: dict[str, TrafficAircraft] = {}
         self._latest: dict[str, tuple[float, float, float, float]] = {}
         self._previous: dict[str, tuple[float, float, float, float]] = {}
 
-    def motions(self, traffic: tuple[TrafficAircraft, ...], now_s: float) -> tuple[TrafficMotion, ...]:
+    def observe(self, snapshot: TrafficSnapshot, now_s: float) -> bool:
+        if (
+            snapshot.session_id == self._session_id
+            and self._sequence is not None
+            and snapshot.sequence <= self._sequence
+        ):
+            return False
+
+        if snapshot.session_id != self._session_id:
+            self._aircraft.clear()
+            self._latest.clear()
+            self._previous.clear()
+
         seen: set[str] = set()
-        out: list[TrafficMotion] = []
-        for aircraft in traffic:
+        for aircraft in snapshot.aircraft:
             seen.add(aircraft.uav_id)
             latest = self._latest.get(aircraft.uav_id)
-            moved = latest is None or horizontal_distance_m(latest[1], latest[2], aircraft.lat, aircraft.lon) > 0.5
-            climbed = latest is not None and abs(aircraft.alt_agl_m - latest[3]) > 0.5
-            if moved or climbed:
-                if latest is not None:
-                    self._previous[aircraft.uav_id] = latest
-                latest = (now_s, aircraft.lat, aircraft.lon, aircraft.alt_agl_m)
-                self._latest[aircraft.uav_id] = latest
+            if latest is not None:
+                self._previous[aircraft.uav_id] = latest
+            self._aircraft[aircraft.uav_id] = aircraft
+            self._latest[aircraft.uav_id] = (now_s, aircraft.lat, aircraft.lon, aircraft.alt_agl_m)
+
+        for omitted in set(self._aircraft) - seen:
+            self._aircraft.pop(omitted, None)
+            self._latest.pop(omitted, None)
+            self._previous.pop(omitted, None)
+
+        self._session_id = snapshot.session_id
+        self._sequence = snapshot.sequence
+        return True
+
+    def motions(self, now_s: float) -> tuple[TrafficMotion, ...]:
+        out: list[TrafficMotion] = []
+        for uav_id, aircraft in self._aircraft.items():
+            latest = self._latest[uav_id]
             previous = self._previous.get(aircraft.uav_id)
             north_m_s = 0.0
             east_m_s = 0.0
@@ -162,11 +188,8 @@ class TrafficTracks:
                     north_m_s = north / dt
                     east_m_s = east / dt
                     up_m_s = (latest[3] - previous[3]) / dt
-            age = 0.0 if latest is None else max(0.0, now_s - latest[0])
+            age = max(0.0, now_s - latest[0])
             out.append(TrafficMotion(aircraft, north_m_s, east_m_s, age, up_m_s))
-        for stale in [key for key in self._latest if key not in seen]:
-            self._latest.pop(stale, None)
-            self._previous.pop(stale, None)
         return tuple(out)
 
 

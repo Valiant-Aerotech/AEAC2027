@@ -95,7 +95,7 @@ class FcTelemetry(Node):
         self._frame_bias = 0.0
         self._battery_pct: float | None = None
         self._battery_mono: float | None = None
-        self._traffic_json = ""
+        self._published_traffic_identity: tuple[str, int] | None = None
         self.declare_parameter("traffic_topic", TRAFFIC_TOPIC)
         traffic_topic = str(self.get_parameter("traffic_topic").value)
         self._traffic_pub = self.create_publisher(String, traffic_topic, _stream_qos())
@@ -188,13 +188,16 @@ class FcTelemetry(Node):
         self.get_logger().warning(f"home {self._home_alt:.1f} m global {self._alt:.1f} m")
 
     def _publish_traffic(self) -> None:
-        payload = traffic_json(self._client.traffic_snapshot())
-        if payload == self._traffic_json:
+        snapshot = self._client.traffic_snapshot()
+        if snapshot is None:
             return
-        self._traffic_json = payload
+        identity = (snapshot.session_id, snapshot.sequence)
+        if identity == self._published_traffic_identity:
+            return
         message = String()
-        message.data = payload
+        message.data = traffic_json(snapshot)
         self._traffic_pub.publish(message)
+        self._published_traffic_identity = identity
 
     def _on_timer(self) -> None:
         try:
